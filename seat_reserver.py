@@ -273,8 +273,16 @@ def book_once(
         return 0, None, str(exc)
 
 
-def get_json(config: Config, url: str) -> tuple[int, dict[str, Any] | None, str]:
-    req = request.Request(url, headers=request_headers(config), method="GET")
+def get_json(
+    config: Config,
+    url: str,
+    extra_headers: dict[str, str] | None = None,
+) -> tuple[int, dict[str, Any] | None, str]:
+    headers = request_headers(config)
+    if extra_headers:
+        headers.update(extra_headers)
+
+    req = request.Request(url, headers=headers, method="GET")
     try:
         with request.urlopen(req, timeout=config.request_timeout_seconds) as resp:
             text = resp.read().decode("utf-8", errors="replace")
@@ -301,7 +309,14 @@ def refresh_token(config: Config) -> bool:
 
     query = parse.urlencode({"username": config.username, "password": config.password})
     auth_url = f"{config.auth_url}?{query}"
-    status_code, payload, raw = get_json(config, auth_url)
+    status_code, payload, raw = get_json(
+        config,
+        auth_url,
+        extra_headers={
+            "Actcode": "true",
+            "Content-Type": "application/json",
+        },
+    )
     if status_code != 200 or not is_success(payload):
         print("Token refresh failed")
         if raw:
