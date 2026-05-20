@@ -442,7 +442,19 @@ def build_parser() -> argparse.ArgumentParser:
         "--date",
         help="Booking date in YYYY-MM-DD. Default: today on the server.",
     )
+    parser.add_argument(
+        "--refresh-token-only",
+        action="store_true",
+        help="Refresh and persist token, then exit without booking.",
+    )
     return parser
+
+
+def refresh_token_only(config: Config) -> int:
+    if config.username and config.password:
+        return 0 if refresh_token(config) else 1
+
+    return 0 if ensure_token(config) else 1
 
 
 def main() -> int:
@@ -455,6 +467,9 @@ def main() -> int:
     except ConfigError as exc:
         print(f"Config error: {exc}", file=sys.stderr)
         return 2
+
+    if args.refresh_token_only:
+        return refresh_token_only(config)
 
     return run(config, date_value)
 

@@ -128,6 +128,12 @@ python3 seat_reserver.py --date 2026-05-18
 python3 seat_reserver.py --env /path/to/.env
 ```
 
+只刷新 token，不预约：
+
+```bash
+python3 seat_reserver.py --refresh-token-only
+```
+
 ## Debian 12 部署
 
 安装 Python：
@@ -160,7 +166,7 @@ python3 seat_reserver.py --date "$(date +%F)"
 
 ## 定时任务
 
-使用 cron 按北京时间 06:00:01 执行。
+建议使用两段 cron：`05:59:45` 先刷新 token，`06:00:01` 再直接预约。这样可以避免 6 点后再耗时登录。
 
 编辑 crontab：
 
@@ -172,6 +178,7 @@ crontab -e
 
 ```cron
 CRON_TZ=Asia/Shanghai
+59 5 * * * sleep 45; cd /home/YOUR_USER/seat-reserver && /usr/bin/python3 seat_reserver.py --refresh-token-only >> seat_reserver.log 2>&1
 0 6 * * * sleep 1; cd /home/YOUR_USER/seat-reserver && /usr/bin/python3 seat_reserver.py >> seat_reserver.log 2>&1
 ```
 
@@ -192,11 +199,11 @@ tail -f seat_reserver.log
 ## 运行流程
 
 ```text
-1. cron 在北京时间 06:00:00 触发
-2. sleep 1，实际 06:00:01 启动脚本
+1. 05:59:45 预热任务刷新 token，并写回 .env
+2. 06:00:01 预约任务启动
 3. 读取 .env 配置
 4. 检查 token 是否有效
-5. token 失效时尝试正常刷新
+5. token 有效时直接进入预约
 6. 按候选座位和候选时间段依次预约
 7. 第一个成功后立即停止
 8. 全部失败后退出并写日志
