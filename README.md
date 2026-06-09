@@ -74,6 +74,8 @@ BOOK_ATTEMPT_DELAY_SECONDS=1.2
 BOOK_TIMEOUT_SECONDS=8
 BOOK_NETWORK_RETRY_ATTEMPTS=3
 BOOK_NETWORK_RETRY_DELAY_SECONDS=0.8
+BOOK_TOKEN_REFRESHED_AT=0
+BOOK_ASSUME_FRESH_TOKEN_SECONDS=180
 ```
 
 真实的 `.env` 不要提交到 Git。项目里的 `.gitignore` 已经忽略 `.env`。
@@ -119,9 +121,15 @@ BOOK_PERSIST_REFRESHED_TOKEN=true
 ```env
 BOOK_NETWORK_RETRY_ATTEMPTS=3
 BOOK_NETWORK_RETRY_DELAY_SECONDS=0.8
+BOOK_TOKEN_REFRESHED_AT=0
+BOOK_ASSUME_FRESH_TOKEN_SECONDS=180
 ```
 
-这组重试只针对临时网络错误，不会改变座位候选顺序，也不会增加 `BOOK_MAX_ATTEMPTS` 的业务重试次数。
+说明：
+
+- `BOOK_NETWORK_RETRY_*` 只针对临时网络错误，不会改变座位候选顺序，也不会增加 `BOOK_MAX_ATTEMPTS` 的业务重试次数。
+- `BOOK_TOKEN_REFRESHED_AT` 由脚本在预热成功后自动写回 `.env`。
+- `BOOK_ASSUME_FRESH_TOKEN_SECONDS` 用来让 6 点的正式预约在 token 刚刚预热成功后，跳过 `/rest/v2/user` 校验，直接进入预约，减少关键窗口里的额外网络请求。
 
 ## 手动运行
 

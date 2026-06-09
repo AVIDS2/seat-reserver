@@ -62,6 +62,8 @@ class Config:
     request_timeout_seconds: float
     network_retry_attempts: int
     network_retry_delay_seconds: float
+    token_refreshed_at_epoch: int
+    assume_fresh_token_seconds: int
     hmac_request_key: str
     user_agent: str
     referer: str
@@ -204,6 +206,8 @@ def load_config(env_path: Path) -> Config:
         request_timeout_seconds=getenv_float("BOOK_TIMEOUT_SECONDS", 8.0),
         network_retry_attempts=getenv_int("BOOK_NETWORK_RETRY_ATTEMPTS", 3),
         network_retry_delay_seconds=getenv_float("BOOK_NETWORK_RETRY_DELAY_SECONDS", 0.8),
+        token_refreshed_at_epoch=getenv_int("BOOK_TOKEN_REFRESHED_AT", 0),
+        assume_fresh_token_seconds=getenv_int("BOOK_ASSUME_FRESH_TOKEN_SECONDS", 180),
         hmac_request_key=getenv_optional("BOOK_HMAC_REQUEST_KEY"),
         user_agent=getenv("BOOK_USER_AGENT", DEFAULT_USER_AGENT),
         referer=getenv("BOOK_REFERER", DEFAULT_REFERER),
@@ -346,13 +350,23 @@ def refresh_token(config: Config) -> bool:
         return False
 
     config.token = token
+    config.token_refreshed_at_epoch = int(time.time())
     print("Token refresh success")
     if config.persist_refreshed_token:
         update_env_value(config.env_path, "BOOK_TOKEN", token)
+        update_env_value(
+            config.env_path,
+            "BOOK_TOKEN_REFRESHED_AT",
+            str(config.token_refreshed_at_epoch),
+        )
     return True
 
 
 def ensure_token(config: Config) -> bool:
+    if token_recently_refreshed(config):
+        print("Token check skipped: recently refreshed")
+        return True
+
     if token_is_valid(config):
         print("Token check success")
         return True
@@ -362,6 +376,18 @@ def ensure_token(config: Config) -> bool:
         return False
 
     return refresh_token(config)
+
+
+def token_recently_refreshed(config: Config) -> bool:
+    if not config.token:
+        return False
+    if config.token_refreshed_at_epoch <= 0:
+        return False
+    if config.assume_fresh_token_seconds <= 0:
+        return False
+
+    age_seconds = int(time.time()) - config.token_refreshed_at_epoch
+    return 0 <= age_seconds <= config.assume_fresh_token_seconds
 
 
 def update_env_value(path: Path, key: str, value: str) -> None:
