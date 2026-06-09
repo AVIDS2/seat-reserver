@@ -40,6 +40,8 @@ class SeatReserverNetworkRetryTests(unittest.TestCase):
             network_retry_delay_seconds=0.1,
             token_refreshed_at_epoch=0,
             assume_fresh_token_seconds=180,
+            booking_window_seconds=20.0,
+            booking_request_timeout_seconds=3.0,
             hmac_request_key="",
             user_agent="ua",
             referer="ref",

@@ -33,6 +33,7 @@ DEFAULT_USER_AGENT = (
     "MiniProgramEnv/Windows WindowsWechat/WMPF WindowsWechat(0x63090a13) "
     "UnifiedPCWindowsWechat(0xf2541938) XWEB/19823"
 )
+MIN_BOOKING_ATTEMPT_TIMEOUT_SECONDS = 0.5
 
 
 class ConfigError(ValueError):
@@ -64,6 +65,8 @@ class Config:
     network_retry_delay_seconds: float
     token_refreshed_at_epoch: int
     assume_fresh_token_seconds: int
+    booking_window_seconds: float
+    booking_request_timeout_seconds: float
     hmac_request_key: str
     user_agent: str
     referer: str
@@ -208,6 +211,8 @@ def load_config(env_path: Path) -> Config:
         network_retry_delay_seconds=getenv_float("BOOK_NETWORK_RETRY_DELAY_SECONDS", 0.8),
         token_refreshed_at_epoch=getenv_int("BOOK_TOKEN_REFRESHED_AT", 0),
         assume_fresh_token_seconds=getenv_int("BOOK_ASSUME_FRESH_TOKEN_SECONDS", 180),
+        booking_window_seconds=getenv_float("BOOK_BOOKING_WINDOW_SECONDS", 20.0),
+        booking_request_timeout_seconds=getenv_float("BOOK_BOOKING_REQUEST_TIMEOUT_SECONDS", 3.0),
         hmac_request_key=getenv_optional("BOOK_HMAC_REQUEST_KEY"),
         user_agent=getenv("BOOK_USER_AGENT", DEFAULT_USER_AGENT),
         referer=getenv("BOOK_REFERER", DEFAULT_REFERER),
@@ -252,6 +257,7 @@ def book_once(
     config: Config,
     date_value: str,
     candidate: BookingCandidate,
+    timeout_seconds: float | None = None,
 ) -> tuple[int, dict[str, Any] | None, str]:
     body = parse.urlencode(
         {
@@ -270,7 +276,8 @@ def book_once(
         method="POST",
     )
 
-    return send_request_with_retry(config, req)
+    effective_timeout = timeout_seconds if timeout_seconds is not None else config.booking_request_timeout_seconds
+    return send_request_with_retry(config, req, timeout_seconds=effective_timeout)
 
 
 def get_json(
@@ -289,13 +296,15 @@ def get_json(
 def send_request_with_retry(
     config: Config,
     req: request.Request,
+    timeout_seconds: float | None = None,
 ) -> tuple[int, dict[str, Any] | None, str]:
     attempts = max(1, config.network_retry_attempts)
     last_error = ""
+    request_timeout = timeout_seconds if timeout_seconds is not None else config.request_timeout_seconds
 
     for attempt in range(1, attempts + 1):
         try:
-            with request.urlopen(req, timeout=config.request_timeout_seconds) as resp:
+            with request.urlopen(req, timeout=request_timeout) as resp:
                 text = resp.read().decode("utf-8", errors="replace")
                 return resp.status, parse_json(text), text
         except error.HTTPError as exc:
@@ -453,22 +462,45 @@ def run(config: Config, date_value: str) -> int:
     if not ensure_token(config):
         return 1
 
-    candidates = config.candidates[: config.max_attempts]
-    attempts = len(candidates)
-    for attempt, candidate in enumerate(candidates, start=1):
+    candidates = config.candidates
+    max_attempts = max(1, config.max_attempts)
+    start_time = time.monotonic()
+    deadline = start_time + max(0.0, config.booking_window_seconds)
+
+    for attempt in range(1, max_attempts + 1):
+        now = time.monotonic()
+        remaining_window = deadline - now
+        if remaining_window < MIN_BOOKING_ATTEMPT_TIMEOUT_SECONDS:
+            print("Booking window exhausted")
+            break
+
+        candidate = candidates[(attempt - 1) % len(candidates)]
+        per_attempt_timeout = min(
+            config.booking_request_timeout_seconds,
+            remaining_window,
+        )
         print(
-            f"Attempt {attempt}/{attempts}: "
+            f"Attempt {attempt}/{max_attempts}: "
             f"seat={candidate.seat_id}, date={date_value}, "
             f"time={format_time(candidate.start_time)}-{format_time(candidate.end_time)}"
         )
-        status_code, payload, raw = book_once(config, date_value, candidate)
+        status_code, payload, raw = book_once(
+            config,
+            date_value,
+            candidate,
+            timeout_seconds=per_attempt_timeout,
+        )
         print_result(status_code, payload, raw)
 
         if is_success(payload):
             return 0
 
-        if attempt < attempts:
-            time.sleep(config.attempt_delay_seconds)
+        if attempt < max_attempts:
+            remaining_window = deadline - time.monotonic()
+            if remaining_window < MIN_BOOKING_ATTEMPT_TIMEOUT_SECONDS:
+                print("Booking window exhausted")
+                break
+            time.sleep(min(config.attempt_delay_seconds, max(0.0, remaining_window)))
 
     return 1
 
