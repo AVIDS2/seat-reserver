@@ -72,6 +72,8 @@ BOOK_TIME_CANDIDATES=840-1320,780-1260,900-1320
 BOOK_MAX_ATTEMPTS=6
 BOOK_ATTEMPT_DELAY_SECONDS=1.2
 BOOK_TIMEOUT_SECONDS=8
+BOOK_NETWORK_RETRY_ATTEMPTS=3
+BOOK_NETWORK_RETRY_DELAY_SECONDS=0.8
 ```
 
 真实的 `.env` 不要提交到 Git。项目里的 `.gitignore` 已经忽略 `.env`。
@@ -107,6 +109,19 @@ BOOK_PERSIST_REFRESHED_TOKEN=true
 ```
 
 新 token 会自动写回 `.env`。
+
+## 瞬时网络重试
+
+为降低 VPS 在 6 点前后遇到瞬时 DNS 或网络抖动时直接失败的概率，脚本会对底层 `URLError` 做有限次短重试。
+
+默认配置：
+
+```env
+BOOK_NETWORK_RETRY_ATTEMPTS=3
+BOOK_NETWORK_RETRY_DELAY_SECONDS=0.8
+```
+
+这组重试只针对临时网络错误，不会改变座位候选顺序，也不会增加 `BOOK_MAX_ATTEMPTS` 的业务重试次数。
 
 ## 手动运行
 

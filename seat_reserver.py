@@ -60,6 +60,8 @@ class Config:
     max_attempts: int
     attempt_delay_seconds: float
     request_timeout_seconds: float
+    network_retry_attempts: int
+    network_retry_delay_seconds: float
     hmac_request_key: str
     user_agent: str
     referer: str
@@ -200,6 +202,8 @@ def load_config(env_path: Path) -> Config:
         max_attempts=max_attempts,
         attempt_delay_seconds=getenv_float("BOOK_ATTEMPT_DELAY_SECONDS", 1.2),
         request_timeout_seconds=getenv_float("BOOK_TIMEOUT_SECONDS", 8.0),
+        network_retry_attempts=getenv_int("BOOK_NETWORK_RETRY_ATTEMPTS", 3),
+        network_retry_delay_seconds=getenv_float("BOOK_NETWORK_RETRY_DELAY_SECONDS", 0.8),
         hmac_request_key=getenv_optional("BOOK_HMAC_REQUEST_KEY"),
         user_agent=getenv("BOOK_USER_AGENT", DEFAULT_USER_AGENT),
         referer=getenv("BOOK_REFERER", DEFAULT_REFERER),
@@ -262,15 +266,7 @@ def book_once(
         method="POST",
     )
 
-    try:
-        with request.urlopen(req, timeout=config.request_timeout_seconds) as resp:
-            text = resp.read().decode("utf-8", errors="replace")
-            return resp.status, parse_json(text), text
-    except error.HTTPError as exc:
-        text = exc.read().decode("utf-8", errors="replace")
-        return exc.code, parse_json(text), text
-    except error.URLError as exc:
-        return 0, None, str(exc)
+    return send_request_with_retry(config, req)
 
 
 def get_json(
@@ -283,15 +279,35 @@ def get_json(
         headers.update(extra_headers)
 
     req = request.Request(url, headers=headers, method="GET")
-    try:
-        with request.urlopen(req, timeout=config.request_timeout_seconds) as resp:
-            text = resp.read().decode("utf-8", errors="replace")
-            return resp.status, parse_json(text), text
-    except error.HTTPError as exc:
-        text = exc.read().decode("utf-8", errors="replace")
-        return exc.code, parse_json(text), text
-    except error.URLError as exc:
-        return 0, None, str(exc)
+    return send_request_with_retry(config, req)
+
+
+def send_request_with_retry(
+    config: Config,
+    req: request.Request,
+) -> tuple[int, dict[str, Any] | None, str]:
+    attempts = max(1, config.network_retry_attempts)
+    last_error = ""
+
+    for attempt in range(1, attempts + 1):
+        try:
+            with request.urlopen(req, timeout=config.request_timeout_seconds) as resp:
+                text = resp.read().decode("utf-8", errors="replace")
+                return resp.status, parse_json(text), text
+        except error.HTTPError as exc:
+            text = exc.read().decode("utf-8", errors="replace")
+            return exc.code, parse_json(text), text
+        except error.URLError as exc:
+            last_error = str(exc)
+            if attempt >= attempts:
+                break
+            print(
+                f"Transient network error on attempt {attempt}/{attempts}: "
+                f"{last_error}. Retrying..."
+            )
+            time.sleep(config.network_retry_delay_seconds)
+
+    return 0, None, last_error
 
 
 def token_is_valid(config: Config) -> bool:
