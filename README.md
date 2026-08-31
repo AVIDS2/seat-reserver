@@ -78,9 +78,24 @@ BOOK_TOKEN_REFRESHED_AT=0
 BOOK_ASSUME_FRESH_TOKEN_SECONDS=180
 BOOK_BOOKING_WINDOW_SECONDS=20
 BOOK_BOOKING_REQUEST_TIMEOUT_SECONDS=3
+BOOK_HMAC_REQUEST_KEY=<当前小程序 freeBook 请求中的 X-hmac-request-key>
 ```
 
 真实的 `.env` 不要提交到 Git。项目里的 `.gitignore` 已经忽略 `.env`。
+
+## 小程序客户端参数
+
+预约接口除了 token，还会校验当前小程序客户端请求参数。当前已验证可用的客户端版本为：
+
+```text
+Referer 页面版本：59
+UnifiedPCWindowsWechat：0xf2541b37
+XWEB：20089
+```
+
+`BOOK_HMAC_REQUEST_KEY` 必须从当前小程序一次正常的 `freeBook` 请求头中获取。它不是账号密码或 token，不要把真实值提交到 Git。小程序升级后如果 token 刷新成功、但预约接口持续返回业务错误，应先对比当前正常请求中的 `Referer`、`User-Agent` 和 `X-hmac-request-key`。
+
+预约请求体中的 `authid` 当前仍为空，不需要额外配置。
 
 ## token 刷新机制
 

@@ -25,13 +25,13 @@ from urllib import error, parse, request
 DEFAULT_API_URL = "https://leosys.cn/cczukaoyan/rest/v2/freeBook"
 DEFAULT_AUTH_URL = "https://leosys.cn/cczukaoyan/rest/auth"
 DEFAULT_USER_URL = "https://leosys.cn/cczukaoyan/rest/v2/user"
-DEFAULT_REFERER = "https://servicewechat.com/wxd0a21b477b3ac4f2/56/page-frame.html"
+DEFAULT_REFERER = "https://servicewechat.com/wxd0a21b477b3ac4f2/59/page-frame.html"
 DEFAULT_USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
     "(KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36 "
     "MicroMessenger/7.0.20.1781(0x6700143B) NetType/WIFI "
     "MiniProgramEnv/Windows WindowsWechat/WMPF WindowsWechat(0x63090a13) "
-    "UnifiedPCWindowsWechat(0xf2541938) XWEB/19823"
+    "UnifiedPCWindowsWechat(0xf2541b37) XWEB/20089"
 )
 MIN_BOOKING_ATTEMPT_TIMEOUT_SECONDS = 0.5
 
