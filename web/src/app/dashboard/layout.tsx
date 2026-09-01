@@ -1,4 +1,6 @@
 import KBar from '@/components/kbar';
+import { getPlatformUserServer } from '@/features/booking/api/server-service';
+import { PlatformSessionProvider } from '@/features/auth/platform-session';
 import AppSidebar from '@/components/layout/app-sidebar';
 import Header from '@/components/layout/header';
 import { InfoSidebar } from '@/components/layout/info-sidebar';
@@ -19,20 +21,15 @@ export const metadata: Metadata = {
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const cookieStore = await cookies();
-  if (process.env.NEXT_PUBLIC_DEMO_MODE === 'false') {
-    const baseUrl = process.env.INTERNAL_API_URL || 'http://api:3001/api/v1';
-    const response = await fetch(`${baseUrl}/platform/auth/me`, {
-      headers: { cookie: cookieStore.toString() },
-      cache: 'no-store'
-    }).catch(() => null);
-    if (!response?.ok) redirect('/auth/sign-in');
-  }
+  const user = await getPlatformUserServer();
+  if (!user) redirect('/auth/sign-in');
 
   // Persisting the sidebar state in the cookie.
   const defaultOpen = cookieStore.get('sidebar_state')?.value === 'true';
   return (
-    <KBar>
-      <SidebarProvider defaultOpen={defaultOpen}>
+    <PlatformSessionProvider initialUser={user}>
+      <KBar>
+        <SidebarProvider defaultOpen={defaultOpen}>
         <a
           href='#main-content'
           className='bg-background ring-ring sr-only rounded-md px-3 py-2 text-sm font-medium shadow focus:not-sr-only focus:absolute focus:top-2 focus:start-2 focus:z-50 focus:ring-2'
@@ -47,7 +44,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
             <InfoSidebar side='right' />
           </InfobarProvider>
         </SidebarInset>
-      </SidebarProvider>
-    </KBar>
+        </SidebarProvider>
+      </KBar>
+    </PlatformSessionProvider>
   );
 }

@@ -5,6 +5,7 @@ import { Breadcrumbs } from '../breadcrumbs';
 import SearchInput from '../search-input';
 import { ThemeModeToggle } from '../themes/theme-mode-toggle';
 import { NotificationCenter } from '@/features/notifications/components/notification-center';
+import { UserNav } from './user-nav';
 
 export default function Header() {
   return (
@@ -25,6 +26,7 @@ export default function Header() {
         </div>
         <ThemeModeToggle />
         <NotificationCenter />
+        <UserNav />
       </div>
     </header>
   );

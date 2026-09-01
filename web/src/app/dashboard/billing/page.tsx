@@ -1,57 +1,16 @@
-'use client';
-
+import Link from 'next/link';
 import PageContainer from '@/components/layout/page-container';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { useOrganization } from '@clerk/nextjs';
-import { PricingTable } from '@clerk/nextjs';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { buttonVariants } from '@/components/ui/button';
 import { Icons } from '@/components/icons';
-import { billingInfoContent } from '@/config/infoconfig';
+import { cn } from '@/lib/utils';
+
+export const metadata = { title: '平台设置' };
 
 export default function BillingPage() {
-  const { organization, isLoaded } = useOrganization();
-
   return (
-    <PageContainer
-      isLoading={!isLoaded}
-      access={!!organization}
-      accessFallback={
-        <div className='flex min-h-[400px] items-center justify-center'>
-          <div className='space-y-2 text-center'>
-            <h2 className='text-2xl font-semibold'>No Organization Selected</h2>
-            <p className='text-muted-foreground'>
-              Please select or create an organization to view billing information.
-            </p>
-          </div>
-        </div>
-      }
-      infoContent={billingInfoContent}
-      pageTitle='Billing & Plans'
-      pageDescription={`Manage your subscription and usage limits for ${organization?.name}`}
-    >
-      <div className='space-y-6'>
-        {/* Info Alert */}
-        <Alert>
-          <Icons.info className='h-4 w-4' />
-          <AlertDescription>
-            Plans and subscriptions are managed through Clerk Billing. Subscribe to a plan to unlock
-            features and higher limits.
-          </AlertDescription>
-        </Alert>
-
-        {/* Clerk Pricing Table */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Available Plans</CardTitle>
-            <CardDescription>Choose a plan that fits your organization's needs</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className='mx-auto max-w-4xl'>
-              <PricingTable for='organization' />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+    <PageContainer pageTitle='平台设置' pageDescription='当前版本采用邀请制，不接入订阅或支付。'>
+      <Card className='mx-auto w-full max-w-[760px] shadow-none'><CardHeader className='border-b'><CardTitle className='flex items-center gap-2'><Icons.shield />邀请制平台</CardTitle><CardDescription>每个成员通过邀请码加入，学校账号和预约任务按用户独立隔离。</CardDescription></CardHeader><CardContent className='flex flex-wrap gap-2 pt-5'><Link href='/dashboard/admin' className={cn(buttonVariants())}><Icons.teams data-icon='inline-start' />管理成员和邀请码</Link><Link href='/dashboard/profile' className={cn(buttonVariants({ variant: 'outline' }))}><Icons.user data-icon='inline-start' />个人资料</Link></CardContent></Card>
     </PageContainer>
   );
 }

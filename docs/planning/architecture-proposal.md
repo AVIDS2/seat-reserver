@@ -5,7 +5,7 @@
 
 ## 当前决策（2026-09-01）
 
-前端采用 `web/` 中的 Kiranism Next.js Dashboard Starter；后端采用 `api/` 中导入并完成平台业务模块的 brocoders NestJS boilerplate。生产运行时采用 PostgreSQL + TypeORM、JWT/HttpOnly Cookie、Redis + BullMQ 和 Nest Schedule；根目录 `seat_reserver.py` 与 VPS cron 继续独立运行。
+前端采用 `web/` 中的 Kiranism Next.js Dashboard Starter；后端采用 `api/` 中导入并完成平台业务模块的 brocoders NestJS boilerplate。生产运行时采用 PostgreSQL + TypeORM、JWT/HttpOnly Cookie、Redis + BullMQ 和 Nest Schedule；根目录 `seat_reserver.py` 与 VPS cron 继续独立运行。当前可执行入口是根目录 `docker-compose.platform.yml`，公网域名为 `seat.rglens.com`。
 
 选择这套组合是因为 Kiranism 与 brocoders 的职责边界清晰，避免把两个 Next.js 全栈模板合并；`ixartz/SaaS-Boilerplate` 和 Wasp Open SaaS 作为参考，不作为本项目后端底座。
 
@@ -366,16 +366,19 @@ GET    /api/v1/booking-runs/latest          各任务最近一次运行
 #### Admin（admin only）
 
 ```
-GET    /api/v1/admin/users                  用户列表
-PATCH  /api/v1/admin/users/{id}             更新用户状态/角色
-GET    /api/v1/admin/stats                  全局统计（今日成功/失败/总任务数）
-GET    /api/v1/admin/booking-runs           全局运行日志
+GET    /api/v1/platform/admin/users                    用户列表
+POST   /api/v1/platform/admin/users/{id}/enable       启用用户
+POST   /api/v1/platform/admin/users/{id}/disable      禁用用户
+GET    /api/v1/platform/admin/overview                 全局统计
+GET    /api/v1/platform/invitations                    邀请码列表
+POST   /api/v1/platform/invitations                    创建邀请码
+DELETE /api/v1/platform/invitations/{id}               停用邀请码
 ```
 
 #### Health
 
 ```
-GET    /api/v1/health                       健康检查（DB + Redis 连通性）
+GET    /api/v1/platform/health              健康检查（DB + Redis 连通性）
 ```
 
 ### 6.3 关键请求/响应示例
@@ -776,11 +779,11 @@ seat.rglens.com {
 
 **目标**：所有服务能 `docker compose up` 启动
 
-- [ ] 创建 `web/` Next.js 项目，初始化 shadcn/ui
+- [x] 创建 `web/` Next.js 项目，初始化 shadcn/ui
 - [x] 导入 `api/` brocoders NestJS 后端基线
-- [ ] 配置 Docker Compose：web + api + postgres + redis
-- [ ] `GET /api/v1/health` 返回 `{"status": "ok", "db": "ok", "redis": "ok"}`
-- [ ] 项目 `.gitignore` 和 `.env.example`
+- [x] 配置 Docker Compose：web + api + postgres + redis
+- [x] `GET /api/v1/platform/health` 返回数据库和 Redis 状态
+- [x] 项目 `.gitignore` 和 `.env.example`
 
 **验收**：`docker compose up` 后所有容器健康，浏览器能打开 web 和 /api/v1/docs
 
@@ -788,13 +791,13 @@ seat.rglens.com {
 
 **目标**：用户能注册和登录
 
-- [ ] TypeORM entities: users, invitations, invitation_uses
-- [ ] TypeORM migration
-- [ ] POST /auth/register（需邀请码）
-- [ ] POST /auth/login（HttpOnly cookie + JWT）
-- [ ] GET /auth/me
-- [ ] Admin: 邀请码 CRUD
-- [ ] 管理员种子账号（首次启动自动创建）
+- [x] TypeORM entities: users, invitations, school_accounts, booking_tasks, booking_runs, notifications
+- [x] TypeORM migration
+- [x] POST /platform/auth/register（首个账号免邀请码，之后需邀请码）
+- [x] POST /platform/auth/login（HttpOnly cookie + JWT）
+- [x] GET /platform/auth/me
+- [x] Admin: 邀请码、成员状态和全局概览
+- [x] 管理员种子账号（可选环境变量）
 - [ ] 后端测试：注册、登录、权限、邀请码校验
 
 **验收**：无邀请码不能注册；有效邀请码可注册并登录；/auth/me 返回当前用户
@@ -803,13 +806,13 @@ seat.rglens.com {
 
 **目标**：用户能添加和验证学校账号
 
-- [ ] TypeORM entity: school_accounts
-- [ ] Fernet 加密/解密工具
-- [ ] POST /school-accounts（加密存储密码）
-- [ ] POST /school-accounts/{id}/verify（调 /rest/auth + /rest/v2/user）
-- [ ] seat_client 模块：auth(), get_user()
-- [ ] 日志脱敏：token 只记前缀，密码永不打印
-- [ ] 测试：加密存储、verify 成功/失败、脱敏
+- [x] TypeORM entity: school_accounts
+- [x] AES-256-GCM 加密/解密工具
+- [x] POST /platform/accounts（加密存储密码）
+- [x] POST /platform/accounts/{id}/refresh（调 /rest/auth + /rest/v2/user）
+- [x] seat_client 模块：auth(), verifyToken()
+- [x] 日志脱敏：密码和 token 不写入日志
+- [ ] 测试：加密存储、verify 成功/失败、脱敏（补充更多单元测试）
 
 **验收**：正确密码 verify 成功；错误密码失败；DB 中无明文密码；日志中无明文 token
 
@@ -817,13 +820,13 @@ seat.rglens.com {
 
 **目标**：用户能创建和管理预约任务
 
-- [ ] TypeORM entity: booking_tasks
-- [ ] 任务 CRUD API
-- [ ] 候选策略校验（seat_id、time_candidates 格式）
-- [ ] 启用/禁用任务
-- [ ] dry-run（只检查 token + 生成候选列表，不调 freeBook）
-- [ ] 用户最多 N 个启用任务的限制
-- [ ] 测试：CRUD、权限隔离、候选校验
+- [x] TypeORM entity: booking_tasks
+- [x] 任务 CRUD API
+- [x] 候选策略校验（seat_id、time_candidates 格式）
+- [x] 启用/禁用任务
+- [x] dry-run（只检查 token + 生成候选列表，不调 freeBook）
+- [ ] 用户最多 N 个启用任务的限制（当前不设硬上限）
+- [ ] 测试：CRUD、权限隔离、候选校验（补充更多 e2e）
 
 **验收**：用户只能看到自己的任务；dry-run 不发送 freeBook
 
@@ -831,15 +834,15 @@ seat.rglens.com {
 
 **目标**：系统每天自动执行预热和预约
 
-- [ ] seat_client 模块：free_book()
-- [ ] Scheduler：每天 05:30 生成当日任务
-- [ ] Worker：消费 prewarm 队列
-- [ ] Worker：消费 booking 队列
-- [ ] Redis 锁：防重复执行
-- [ ] booking_runs 日志写入
-- [ ] 错峰偏移逻辑
-- [ ] 手动触发 prewarm / booking 的 API
-- [ ] 测试：幂等锁、日志写入、成功/失败路径
+- [x] seat_client 模块：freeBook()
+- [x] Scheduler：每天 05:59:50 预热、06:00 生成预约任务
+- [x] Worker：消费 prewarm 队列
+- [x] Worker：消费 booking 队列
+- [x] Redis 锁：防重复执行
+- [x] booking_runs 日志写入
+- [x] 错峰偏移逻辑
+- [x] 手动触发 prewarm / booking 的 API
+- [ ] 测试：幂等锁、日志写入、成功/失败路径（补充更多集成测试）
 
 **验收**：手动触发 prewarm 能刷新 token；booking 成功/失败都写日志；同一任务不重复执行
 
@@ -847,22 +850,22 @@ seat.rglens.com {
 
 **目标**：完整的 Web 管理界面
 
-- [ ] 登录/注册页
-- [ ] Dashboard：今日状态卡片、最近成功/失败
-- [ ] 学校账号页：添加、验证、列表
-- [ ] 预约任务页：创建、编辑、启禁用、dry-run
-- [ ] 运行日志页：按任务筛选、详情展示
-- [ ] 管理员页：邀请码管理、用户列表、全局概览
+- [x] 登录/注册页
+- [x] Dashboard：动态状态卡片、最近成功/失败
+- [x] 学校账号页：添加、验证、编辑、删除、列表
+- [x] 预约任务页：创建、编辑、启禁用、dry-run、预热、手动执行
+- [x] 运行日志页：按任务筛选、详情展示
+- [x] 管理员页：邀请码管理、用户列表、全局概览
 
 **验收**：从注册到创建任务全流程可用；管理员可创建邀请码
 
 ### Phase 7: 打磨和文档（1-2 天）
 
-- [ ] 错误处理和用户提示优化
-- [ ] 加载状态和空状态设计
-- [ ] 部署文档
-- [ ] .env.example 完善
-- [ ] README 更新
+- [x] 错误处理和用户提示优化
+- [x] 加载状态和空状态设计
+- [x] 部署文档
+- [x] .env.example 完善
+- [x] README 更新
 
 **总计预估**：15-20 天（单人开发）
 

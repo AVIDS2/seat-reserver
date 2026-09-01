@@ -40,7 +40,9 @@ export class AuthService {
   ) {}
 
   async validateLogin(loginDto: AuthEmailLoginDto): Promise<LoginResponseDto> {
-    const user = await this.usersService.findByEmail(loginDto.email);
+    const user = await this.usersService.findByEmail(
+      loginDto.email.toLowerCase(),
+    );
 
     if (!user) {
       throw this.invalidLoginException({
@@ -540,6 +542,10 @@ export class AuthService {
     const user = await this.usersService.findById(session.user.id);
 
     if (!user?.role) {
+      throw new UnauthorizedException();
+    }
+
+    if (user.status?.id?.toString() !== StatusEnum.active.toString()) {
       throw new UnauthorizedException();
     }
 

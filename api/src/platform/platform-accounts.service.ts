@@ -1,8 +1,15 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  UnprocessableEntityException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { UserEntity } from '../users/infrastructure/persistence/relational/entities/user.entity';
-import { CreateSchoolAccountDto } from './dto/school-account.dto';
+import {
+  CreateSchoolAccountDto,
+  UpdateSchoolAccountDto,
+} from './dto/school-account.dto';
 import { SchoolAccountEntity } from './entities/school-account.entity';
 import { BookingTaskEntity } from './entities/booking-task.entity';
 import { PlatformCryptoService } from './platform-crypto.service';
@@ -51,7 +58,7 @@ export class PlatformAccountsService {
     const verified = await this.seatClient.verifyToken(authenticated.token);
 
     if (!verified.success) {
-      throw new NotFoundException('学校账号验证失败');
+      throw new UnprocessableEntityException('学校账号验证失败');
     }
 
     const account = this.accounts.create({
@@ -70,26 +77,69 @@ export class PlatformAccountsService {
 
   async refresh(userId: number, id: number): Promise<SchoolAccountView> {
     const account = await this.findOwned(userId, id);
-    const password = this.crypto.decrypt(account.encryptedSchoolPassword);
-    const authenticated = await this.seatClient.authenticate(
-      account.schoolUsername,
-      password,
-    );
-    const verified = await this.seatClient.verifyToken(authenticated.token);
+    try {
+      const password = this.crypto.decrypt(account.encryptedSchoolPassword);
+      const authenticated = await this.seatClient.authenticate(
+        account.schoolUsername,
+        password,
+      );
+      const verified = await this.seatClient.verifyToken(authenticated.token);
+      if (!verified.success)
+        throw new UnprocessableEntityException('学校账号 Token 验证失败');
 
-    account.encryptedToken = this.crypto.encrypt(authenticated.token);
-    account.tokenRefreshedAt = new Date();
-    account.lastVerifiedAt = verified.success
-      ? new Date()
-      : account.lastVerifiedAt;
-    account.status = verified.success ? 'active' : 'attention';
+      account.encryptedToken = this.crypto.encrypt(authenticated.token);
+      account.tokenRefreshedAt = new Date();
+      account.lastVerifiedAt = new Date();
+      account.status = 'active';
+      return this.toView(await this.accounts.save(account));
+    } catch (error: unknown) {
+      account.encryptedToken = null;
+      account.status = 'attention';
+      await this.accounts.save(account);
+      throw error;
+    }
+  }
 
+  async update(
+    userId: number,
+    id: number,
+    dto: UpdateSchoolAccountDto,
+  ): Promise<SchoolAccountView> {
+    const account = await this.findOwned(userId, id);
+    const label = dto.label?.trim() || account.label;
+    const username = dto.schoolUsername?.trim() || account.schoolUsername;
+    const password = dto.schoolPassword
+      ? dto.schoolPassword
+      : this.crypto.decrypt(account.encryptedSchoolPassword);
+    const credentialsChanged =
+      username !== account.schoolUsername || Boolean(dto.schoolPassword);
+
+    if (credentialsChanged) {
+      const authenticated = await this.seatClient.authenticate(
+        username,
+        password,
+      );
+      const verified = await this.seatClient.verifyToken(authenticated.token);
+      if (!verified.success)
+        throw new UnprocessableEntityException('学校账号验证失败');
+      account.schoolUsername = username;
+      account.encryptedSchoolPassword = this.crypto.encrypt(password);
+      account.encryptedToken = this.crypto.encrypt(authenticated.token);
+      account.tokenRefreshedAt = new Date();
+      account.lastVerifiedAt = new Date();
+      account.status = 'active';
+    }
+    account.label = label;
     return this.toView(await this.accounts.save(account));
   }
 
   async remove(userId: number, id: number): Promise<void> {
     const account = await this.findOwned(userId, id);
-    await this.accounts.remove(account);
+    const tasks = await this.tasks.find({
+      where: { schoolAccount: { id: account.id } },
+    });
+    if (tasks.length) await this.tasks.softRemove(tasks);
+    await this.accounts.softRemove(account);
   }
 
   async findOwned(userId: number, id: number): Promise<SchoolAccountEntity> {

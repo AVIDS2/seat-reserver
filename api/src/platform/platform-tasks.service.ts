@@ -13,7 +13,9 @@ import {
 import { BookingRunEntity } from './entities/booking-run.entity';
 import { BookingTaskEntity } from './entities/booking-task.entity';
 import { PlatformAccountsService } from './platform-accounts.service';
+import { PlatformCryptoService } from './platform-crypto.service';
 import { PlatformQueueService } from './platform-queue.service';
+import { SeatClientService } from './seat-client.service';
 
 export type BookingTaskView = {
   id: string;
@@ -26,8 +28,28 @@ export type BookingTaskView = {
   nextRun: string;
   status: 'enabled' | 'paused' | 'attention';
   enabled: boolean;
+  backupSeatIds: string[];
+  timeCandidates: Array<{ start: number; end: number }>;
+  maxAttempts: number;
+  attemptDelaySeconds: number;
+  bookingWindowSeconds: number;
+  prewarmOffsetSeconds: number;
+  runOffsetSeconds: number;
   lastRun: string;
   lastMessage: string;
+};
+
+export type DryRunView = {
+  taskId: string;
+  accountId: string;
+  tokenStatus: 'valid' | 'missing' | 'invalid' | 'unavailable';
+  candidates: Array<{
+    order: number;
+    seatId: string;
+    startTime: number;
+    endTime: number;
+  }>;
+  message: string;
 };
 
 @Injectable()
@@ -38,7 +60,9 @@ export class PlatformTasksService {
     @InjectRepository(BookingRunEntity)
     private readonly runs: Repository<BookingRunEntity>,
     private readonly accounts: PlatformAccountsService,
+    private readonly crypto: PlatformCryptoService,
     private readonly queue: PlatformQueueService,
+    private readonly seatClient: SeatClientService,
   ) {}
 
   async list(userId: number): Promise<BookingTaskView[]> {
@@ -113,7 +137,43 @@ export class PlatformTasksService {
 
   async remove(userId: number, id: number): Promise<void> {
     const task = await this.findOwned(userId, id);
-    await this.tasks.remove(task);
+    await this.tasks.softRemove(task);
+  }
+
+  async dryRun(userId: number, id: number): Promise<DryRunView> {
+    const task = await this.findOwned(userId, id);
+    const account = task.schoolAccount;
+    const candidates = this.seatClient.buildCandidates(
+      task.primarySeatId,
+      task.backupSeatIds,
+      task.timeCandidates,
+    );
+    let tokenStatus: DryRunView['tokenStatus'] = 'missing';
+    if (account?.encryptedToken) {
+      try {
+        const token = this.crypto.decrypt(account.encryptedToken);
+        tokenStatus = (await this.seatClient.verifyToken(token)).success
+          ? 'valid'
+          : 'invalid';
+      } catch {
+        tokenStatus = 'unavailable';
+      }
+    }
+    return {
+      taskId: String(task.id),
+      accountId: String(task.schoolAccountId),
+      tokenStatus,
+      candidates: candidates.map((candidate, index) => ({
+        order: index + 1,
+        ...candidate,
+      })),
+      message:
+        tokenStatus === 'valid'
+          ? 'Token 有效；本次 dry-run 未发送预约请求。'
+          : tokenStatus === 'missing'
+            ? '尚未缓存 Token；本次 dry-run 未发送预约请求。'
+            : 'Token 检查未通过；本次 dry-run 未发送预约请求。',
+    };
   }
 
   async enqueue(
@@ -169,6 +229,13 @@ export class PlatformTasksService {
         : '已暂停',
       status: hasIssue ? 'attention' : task.enabled ? 'enabled' : 'paused',
       enabled: task.enabled,
+      backupSeatIds: task.backupSeatIds,
+      timeCandidates: task.timeCandidates,
+      maxAttempts: task.maxAttempts,
+      attemptDelaySeconds: task.attemptDelaySeconds,
+      bookingWindowSeconds: task.bookingWindowSeconds,
+      prewarmOffsetSeconds: task.prewarmOffsetSeconds,
+      runOffsetSeconds: task.runOffsetSeconds,
       lastRun: lastRun ? formatDate(lastRun.createdAt) : '尚未运行',
       lastMessage:
         lastRun?.message ??

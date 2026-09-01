@@ -4,6 +4,7 @@ import {
   ArrayUnique,
   IsArray,
   IsBoolean,
+  IsDateString,
   IsInt,
   IsNotEmpty,
   IsNumber,
@@ -115,6 +116,6 @@ export class UpdateBookingTaskDto extends PartialType(CreateBookingTaskDto) {}
 export class RunBookingDto {
   @ApiProperty({ example: '2026-09-01', required: false })
   @IsOptional()
-  @IsString()
+  @IsDateString()
   targetDate?: string;
 }

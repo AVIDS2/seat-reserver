@@ -103,6 +103,16 @@ export class PlatformTasksController {
     };
   }
 
+  @Post(':id/dry-run')
+  async dryRun(
+    @Request() request: RequestWithUser<JwtPayloadType>,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return {
+      dryRun: await this.tasks.dryRun(Number(request.user.id), id),
+    };
+  }
+
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   async remove(

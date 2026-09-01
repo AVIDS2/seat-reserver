@@ -51,6 +51,16 @@ export function RunStatusBadge({ status }: { status: RunStatus }) {
       label: '执行中',
       icon: Icons.play,
       className: 'border-blue-500/20 bg-blue-500/10 text-blue-700 dark:text-blue-400'
+    },
+    pending: {
+      label: '排队中',
+      icon: Icons.clock,
+      className: 'border-border bg-muted text-muted-foreground'
+    },
+    skipped: {
+      label: '已跳过',
+      icon: Icons.minus,
+      className: 'border-border bg-muted text-muted-foreground'
     }
   }[status];
   const Icon = config.icon;

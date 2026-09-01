@@ -1,6 +1,6 @@
 # 账号绑定自动化研究
 
-目标：验证用户只输入学校账号、学校密码、座位系统激活码后，平台能否自动完成“一考即过”自习室模式绑定，并拿到后续 `/cczukaoyan/rest/auth` 可刷新的凭据或 token。
+目标：验证用户只输入学校账号、学校密码、座位系统激活码后，平台能否自动完成“一考即过”自习室模式绑定，并拿到后续 `/cczukaoyan/rest/auth` 可刷新的凭据或 token。当前平台已实现学校账号密码登录、Token 验证、加密缓存和每日预热；若未来绑定链路被要求，再按本文补充。
 
 ## 边界
 
@@ -26,6 +26,26 @@
 MVP 只研究并实现 `self_study` 自习室模式。图书馆模式先不做，但数据模型后续应保留 `service_type`。
 
 ## 工具
+
+### 推荐自动化路径
+
+Reqable 官方支持 Report Server、Python capture script、HAR 和 MCP。当前推荐使用 Report Server：Reqable 把会话以 HAR POST 到本地接收器，接收器自动转换、脱敏并保存，后续所有账号使用同一套分析规则，不需要重复人工整理请求。
+
+启动接收器：
+
+```powershell
+python tools/binding_discovery/reqable_report_server.py --bind 0.0.0.0 --port 8788 --path /reqable/report
+```
+
+在 Reqable 的 Report Server 中填写：
+
+```text
+http://<本机局域网地址>:8788/reqable/report
+```
+
+只完成登录、选择学校/系统、激活码绑定和进入用户页，不点击预约提交。接收器会自动屏蔽敏感字段；如报告中出现 `freeBook`，分析器会把它标为不适合作为绑定捕获结果。
+
+需要更深的协议结构分析时，优先使用官方 Reqable MCP 或 mitmproxy addon；本项目不引入 SSL pinning 绕过、验证码绕过、签名伪造或风控绕过脚本。
 
 ### 安装依赖
 

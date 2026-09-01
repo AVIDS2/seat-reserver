@@ -1,15 +1,51 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
-// The first product slice is local/demo-ready. Replace this boundary with the
-// chosen production auth middleware when the account service is connected.
-export default function proxy() {
-  return NextResponse.next();
+const production = process.env.NEXT_PUBLIC_DEMO_MODE === 'false';
+const internalApi = process.env.INTERNAL_API_URL || 'http://api:3001/api/v1';
+
+export async function proxy(request: NextRequest): Promise<NextResponse> {
+  if (!production) return NextResponse.next();
+
+  const cookie = request.headers.get('cookie') || '';
+  const me = await fetch(`${internalApi}/platform/auth/me`, {
+    headers: { cookie },
+    cache: 'no-store'
+  }).catch(() => null);
+  if (me?.ok) return NextResponse.next();
+
+  const refresh = await fetch(`${internalApi}/platform/auth/refresh`, {
+    method: 'POST',
+    headers: { cookie },
+    cache: 'no-store'
+  }).catch(() => null);
+  if (!refresh?.ok) return NextResponse.redirect(new URL('/auth/sign-in', request.url));
+
+  const nextHeaders = new Headers(request.headers);
+  const headers = refresh.headers as Headers & { getSetCookie?: () => string[] };
+  const setCookies = headers.getSetCookie?.() || [refresh.headers.get('set-cookie') || ''];
+  const mergedCookies = mergeRequestCookies(cookie, setCookies);
+  if (mergedCookies) nextHeaders.set('cookie', mergedCookies);
+  const response = NextResponse.next({ request: { headers: nextHeaders } });
+  for (const setCookie of setCookies) {
+    if (setCookie) response.headers.append('set-cookie', setCookie);
+  }
+  return response;
 }
+
+function mergeRequestCookies(original: string, setCookies: string[]): string {
+  const values = new Map<string, string>();
+  for (const pair of original.split(';')) {
+    const [name, ...value] = pair.trim().split('=');
+    if (name && value.length) values.set(name, value.join('='));
+  }
+  for (const setCookie of setCookies) {
+    const pair = setCookie.split(';', 1)[0];
+    const [name, ...value] = pair.split('=');
+    if (name && value.length) values.set(name, value.join('='));
+  }
+  return Array.from(values.entries()).map(([name, value]) => `${name}=${value}`).join('; ');
+}
+
 export const config = {
-  matcher: [
-    // Skip Next.js internals and all static files, unless found in search params
-    '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
-    // Always run for API routes
-    '/(api|trpc)(.*)'
-  ]
+  matcher: ['/dashboard/:path*']
 };

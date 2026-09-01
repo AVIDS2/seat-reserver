@@ -5,6 +5,7 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Patch,
   Post,
   Request,
   Res,
@@ -12,6 +13,7 @@ import {
 } from '@nestjs/common';
 import { ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
+import { Throttle } from '@nestjs/throttler';
 import type { Response } from 'express';
 import { AuthService } from '../auth/auth.service';
 import { LoginResponseDto } from '../auth/dto/login-response.dto';
@@ -21,21 +23,23 @@ import { RoleEnum } from '../roles/roles.enum';
 import { StatusEnum } from '../statuses/statuses.enum';
 import { RequestWithUser } from '../utils/types/request-with-user.type';
 import { JwtPayloadType } from '../auth/strategies/types/jwt-payload.type';
+import { JwtRefreshPayloadType } from '../auth/strategies/types/jwt-refresh-payload.type';
 import { PlatformInvitationsService } from './platform-invitations.service';
 import { PlatformRegisterDto, PlatformLoginDto } from './dto/platform-auth.dto';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { PlatformProfileDto } from './dto/platform-profile.dto';
+import { DataSource } from 'typeorm';
+import bcrypt from 'bcryptjs';
 import { UserEntity } from '../users/infrastructure/persistence/relational/entities/user.entity';
 
 @ApiTags('Platform Auth')
+@Throttle({ default: { limit: 10, ttl: 60_000, blockDuration: 60_000 } })
 @Controller({ path: 'platform/auth', version: '1' })
 export class PlatformAuthController {
   constructor(
     private readonly auth: AuthService,
     private readonly users: UsersService,
     private readonly invitations: PlatformInvitationsService,
-    @InjectRepository(UserEntity)
-    private readonly userEntities: Repository<UserEntity>,
+    private readonly dataSource: DataSource,
   ) {}
 
   @Post('register')
@@ -45,27 +49,39 @@ export class PlatformAuthController {
     @Body() dto: PlatformRegisterDto,
     @Res({ passthrough: true }) response: Response,
   ) {
-    const userCount = await this.userEntities.count();
-    const firstUser = userCount === 0;
-    if (!firstUser) {
-      if (!dto.inviteCode) throw new BadRequestException('邀请码不能为空');
-      await this.invitations.consume(dto.inviteCode);
-    }
-
-    const created = await this.users.create({
-      email: dto.email,
-      password: dto.password,
-      firstName: dto.firstName,
-      lastName: dto.lastName,
-      role: { id: firstUser ? RoleEnum.admin : RoleEnum.user },
-      status: { id: StatusEnum.active },
+    const email = dto.email.toLowerCase();
+    const created = await this.dataSource.transaction(async (manager) => {
+      await manager.query(
+        `SELECT pg_advisory_xact_lock(hashtext('platform-registration'))`,
+      );
+      const users = manager.getRepository(UserEntity);
+      const existing = await users.findOne({ where: { email } });
+      if (existing) throw new BadRequestException('邮箱已注册');
+      const firstUser = (await users.count()) === 0;
+      if (!firstUser) {
+        if (!dto.inviteCode) throw new BadRequestException('邀请码不能为空');
+        await this.invitations.consumeWithinTransaction(
+          manager,
+          dto.inviteCode,
+        );
+      }
+      return users.save(
+        users.create({
+          email,
+          password: await bcrypt.hash(dto.password, 12),
+          firstName: dto.firstName,
+          lastName: dto.lastName,
+          role: { id: firstUser ? RoleEnum.admin : RoleEnum.user },
+          status: { id: StatusEnum.active },
+        }),
+      );
     });
     const login = await this.auth.validateLogin({
-      email: dto.email,
+      email,
       password: dto.password,
     });
     setAuthCookies(response, login);
-    return { user: created };
+    return { user: login.user ?? created };
   }
 
   @Post('login')
@@ -74,6 +90,10 @@ export class PlatformAuthController {
     @Body() dto: PlatformLoginDto,
     @Res({ passthrough: true }) response: Response,
   ) {
+    const user = await this.users.findByEmail(dto.email.toLowerCase());
+    if (user?.status?.id?.toString() !== StatusEnum.active.toString()) {
+      throw new BadRequestException('账号不可用');
+    }
     const login = await this.auth.validateLogin(dto as AuthEmailLoginDto);
     setAuthCookies(response, login);
     return { user: login.user };
@@ -83,6 +103,15 @@ export class PlatformAuthController {
   @UseGuards(AuthGuard('jwt'))
   async me(@Request() request: RequestWithUser<JwtPayloadType>) {
     return { user: await this.auth.me(request.user) };
+  }
+
+  @Patch('me')
+  @UseGuards(AuthGuard('jwt'))
+  async updateMe(
+    @Request() request: RequestWithUser<JwtPayloadType>,
+    @Body() dto: PlatformProfileDto,
+  ) {
+    return { user: await this.auth.update(request.user, dto) };
   }
 
   @Post('refresh')
@@ -98,10 +127,10 @@ export class PlatformAuthController {
   }
 
   @Post('logout')
-  @UseGuards(AuthGuard('jwt'))
+  @UseGuards(AuthGuard('jwt-refresh'))
   @HttpCode(HttpStatus.NO_CONTENT)
   async logout(
-    @Request() request: RequestWithUser<JwtPayloadType>,
+    @Request() request: RequestWithUser<JwtRefreshPayloadType>,
     @Res({ passthrough: true }) response: Response,
   ) {
     await this.auth.logout({ sessionId: request.user.sessionId });

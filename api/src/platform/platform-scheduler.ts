@@ -5,6 +5,7 @@ import { Repository } from 'typeorm';
 import { BookingTaskEntity } from './entities/booking-task.entity';
 import { PlatformQueueService } from './platform-queue.service';
 import { PlatformRedisService } from './platform-redis.service';
+import { StatusEnum } from '../statuses/statuses.enum';
 
 @Injectable()
 export class PlatformScheduler {
@@ -35,7 +36,7 @@ export class PlatformScheduler {
 
     try {
       const tasks = await this.tasks.find({
-        where: { enabled: true },
+        where: { enabled: true, user: { status: { id: StatusEnum.active } } },
         relations: ['user', 'schoolAccount'],
       });
       await Promise.all(

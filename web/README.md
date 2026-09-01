@@ -4,16 +4,17 @@
 
 ## 当前状态
 
-当前版本完成了前端工作台第一版：
+当前版本完成了可连接 NestJS 平台 API 的预约控制台：
 
 - 总览：明早执行窗口、任务概览、账号状态和最近运行。
-- 预约任务：搜索、启用/暂停、新建任务和演示运行。
-- 账号与授权：脱敏账号信息、Token 状态和演示刷新。
+- 预约任务：搜索、启用/暂停、新建、编辑、删除、预热、dry-run 和手动运行。
+- 账号与授权：脱敏账号信息、Token 状态、刷新和移除。
 - 运行记录：状态筛选、搜索和运行详情。
-- 通知中心：预约和授权相关提醒。
-- 登录/注册：本地演示入口，后续接入正式认证服务。
+- 通知中心：从 API 读取预约/预热结果并持久化已读状态。
+- 管理员工作台：用户状态、邀请码和全局运行统计。
+- 登录/注册：NestJS JWT + HttpOnly Cookie，支持 refresh token 轮换。
 
-页面当前使用本地 mock 数据。点击“立即运行”或“刷新 Token”只改变演示状态，不会调用真实预约接口。
+本地默认仍可使用 mock 数据。生产环境由 `NEXT_PUBLIC_DEMO_MODE=false` 开启真实 API；真实预约请求只在后端 BullMQ worker 执行。
 
 ## 开发
 
@@ -24,7 +25,7 @@ bun install
 bun run dev
 ```
 
-打开 <http://localhost:3000/dashboard/overview>。
+打开 <http://localhost:3000/auth/sign-in>。
 
 常用检查：
 
@@ -45,9 +46,9 @@ src/config/nav-config.ts 侧边栏和命令菜单导航
 
 ## 后端接入边界
 
-页面数据通过 `src/features/booking/api/service.ts` 读取。接入真实后端时，优先替换这个 service 层，不要让页面直接调用接口。
+页面数据和动作统一通过 `src/features/booking/api/service.ts` 读取，服务端首屏通过 `server-service.ts` 传入数据，不让页面直接拼接后端逻辑。
 
-现有仓库根目录的 `seat_reserver.py` 仍然是稳定的 Python 抢座 CLI，VPS cron 不由本前端开发服务器替代。后续后端需要负责用户认证、任务持久化、账号加密和运行日志，再通过 API 或队列调用抢座 worker。
+现有仓库根目录的 `seat_reserver.py` 仍然是稳定的 Python 抢座 CLI，VPS cron 不由本前端开发服务器替代。生产平台通过 NestJS API、PostgreSQL、Redis/BullMQ 和内置 scheduler/worker 完成用户认证、任务持久化、账号加密、Token 预热和运行日志。
 
 ## 设计来源
 

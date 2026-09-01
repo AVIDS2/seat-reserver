@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react';
 import type { NavGroup, NavItem } from '@/types';
+import { usePlatformSession } from '@/features/auth/platform-session';
 
 /**
  * Navigation filtering stays as a small seam so a real auth/RBAC provider can
@@ -12,5 +13,18 @@ export function useFilteredNavItems(items: NavItem[]) {
 }
 
 export function useFilteredNavGroups(groups: NavGroup[]) {
-  return useMemo(() => groups, [groups]);
+  const user = usePlatformSession();
+  return useMemo(
+    () =>
+      groups
+        .map((group) => ({
+          ...group,
+          items: group.items.filter((item) => {
+            if (!item.access?.role) return true;
+            return item.access.role === user?.role;
+          })
+        }))
+        .filter((group) => group.items.length > 0),
+    [groups, user?.role]
+  );
 }

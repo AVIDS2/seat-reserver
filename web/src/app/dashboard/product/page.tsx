@@ -1,37 +1,17 @@
 import PageContainer from '@/components/layout/page-container';
-import { buttonVariants } from '@/components/ui/button';
-import ProductListingPage from '@/features/products/components/product-listing';
-import { searchParamsCache } from '@/lib/searchparams';
-import { cn } from '@/lib/utils';
-import { Icons } from '@/components/icons';
 import Link from 'next/link';
-import { SearchParams } from 'nuqs/server';
-import { productInfoContent } from '@/config/infoconfig';
+import { Icons } from '@/components/icons';
+import { buttonVariants } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { cn } from '@/lib/utils';
 
 export const metadata = {
-  title: 'Dashboard: Products'
+  title: '预约策略'
 };
-
-type pageProps = {
-  searchParams: Promise<SearchParams>;
-};
-
-export default async function Page(props: pageProps) {
-  const searchParams = await props.searchParams;
-  searchParamsCache.parse(searchParams);
-
+export default function Page() {
   return (
-    <PageContainer
-      pageTitle='Products'
-      pageDescription='Manage products (React Query + nuqs table pattern.)'
-      infoContent={productInfoContent}
-      pageHeaderAction={
-        <Link href='/dashboard/product/new' className={cn(buttonVariants(), 'text-xs md:text-sm')}>
-          <Icons.add className='mr-2 h-4 w-4' /> Add New
-        </Link>
-      }
-    >
-      <ProductListingPage />
+    <PageContainer pageTitle='预约策略' pageDescription='通过预约任务管理座位、时间段和执行参数.'>
+      <Card className='mx-auto w-full max-w-[760px] shadow-none'><CardHeader className='border-b'><CardTitle className='flex items-center gap-2'><Icons.adjustments />策略管理</CardTitle><CardDescription>当前版本的完整策略入口是预约任务页面，支持主座位、备选座位、多时间段和执行窗口。</CardDescription></CardHeader><CardContent className='pt-5'><Link href='/dashboard/tasks' className={cn(buttonVariants())}><Icons.target data-icon='inline-start' />打开预约任务</Link></CardContent></Card>
     </PageContainer>
   );
 }

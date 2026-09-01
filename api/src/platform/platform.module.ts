@@ -4,9 +4,14 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from '../auth/auth.module';
 import { UsersModule } from '../users/users.module';
+import { SessionModule } from '../session/session.module';
 import { UserEntity } from '../users/infrastructure/persistence/relational/entities/user.entity';
 import { PlatformAccountsController } from './platform-accounts.controller';
 import { PlatformAccountsService } from './platform-accounts.service';
+import { PlatformAdminController } from './platform-admin.controller';
+import { PlatformAdminInvitationController } from './platform-admin-invitation.controller';
+import { PlatformAdminGuard } from './platform-admin.guard';
+import { PlatformAdminService } from './platform-admin.service';
 import { PlatformAuthController } from './platform-auth.controller';
 import { PlatformBookingExecutor } from './platform-booking.executor';
 import { PlatformDashboardController } from './platform-dashboard.controller';
@@ -14,9 +19,12 @@ import { PlatformDashboardService } from './platform-dashboard.service';
 import { PlatformHealthController } from './platform-health.controller';
 import { PlatformInvitationsController } from './platform-invitations.controller';
 import { PlatformInvitationsService } from './platform-invitations.service';
+import { PlatformNotificationsController } from './platform-notifications.controller';
+import { PlatformNotificationsService } from './platform-notifications.service';
 import { BookingRunEntity } from './entities/booking-run.entity';
 import { BookingTaskEntity } from './entities/booking-task.entity';
 import { PlatformInvitationEntity } from './entities/platform-invitation.entity';
+import { PlatformNotificationEntity } from './entities/platform-notification.entity';
 import { SchoolAccountEntity } from './entities/school-account.entity';
 import { PlatformProcessor } from './platform-processor';
 import { PlatformCryptoService } from './platform-crypto.service';
@@ -35,6 +43,7 @@ import { SeatClientService } from './seat-client.service';
 @Module({
   imports: [
     AuthModule,
+    SessionModule,
     UsersModule,
     ScheduleModule.forRoot(),
     BullModule.forRoot({ connection: redisConnection() }),
@@ -43,25 +52,32 @@ import { SeatClientService } from './seat-client.service';
       BookingRunEntity,
       BookingTaskEntity,
       PlatformInvitationEntity,
+      PlatformNotificationEntity,
       SchoolAccountEntity,
       UserEntity,
     ]),
   ],
   controllers: [
     PlatformAccountsController,
+    PlatformAdminController,
+    PlatformAdminInvitationController,
     PlatformAuthController,
     PlatformDashboardController,
     PlatformHealthController,
     PlatformInvitationsController,
+    PlatformNotificationsController,
     PlatformRunsController,
     PlatformTasksController,
   ],
   providers: [
     PlatformAccountsService,
+    PlatformAdminGuard,
+    PlatformAdminService,
     PlatformBookingExecutor,
     PlatformCryptoService,
     PlatformDashboardService,
     PlatformInvitationsService,
+    PlatformNotificationsService,
     PlatformProcessor,
     PlatformQueueService,
     PlatformRedisService,

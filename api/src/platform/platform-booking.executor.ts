@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  UnprocessableEntityException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { PlatformCryptoService } from './platform-crypto.service';
@@ -6,6 +10,9 @@ import { BookingRunEntity } from './entities/booking-run.entity';
 import { BookingTaskEntity } from './entities/booking-task.entity';
 import { SchoolAccountEntity } from './entities/school-account.entity';
 import { SeatClientService } from './seat-client.service';
+import { PlatformNotificationsService } from './platform-notifications.service';
+import { PlatformRedisService } from './platform-redis.service';
+import { StatusEnum } from '../statuses/statuses.enum';
 
 @Injectable()
 export class PlatformBookingExecutor {
@@ -18,30 +25,48 @@ export class PlatformBookingExecutor {
     private readonly accounts: Repository<SchoolAccountEntity>,
     private readonly crypto: PlatformCryptoService,
     private readonly seatClient: SeatClientService,
+    private readonly notifications: PlatformNotificationsService,
+    private readonly redis: PlatformRedisService,
   ) {}
 
   async execute(runId: number): Promise<void> {
-    const run = await this.runs.findOne({
-      where: { id: runId },
-      relations: ['task', 'task.schoolAccount', 'schoolAccount', 'user'],
-    });
-    if (!run) throw new NotFoundException('运行记录不存在');
-
-    run.status = 'running';
-    run.startedAt = new Date();
-    await this.runs.save(run);
-
+    const lockKey = `platform:run:${runId}`;
+    const lock = await this.redis.tryLock(lockKey, 120);
+    if (!lock) return;
     try {
-      if (run.runType === 'prewarm') {
-        await this.executePrewarm(run);
-      } else {
-        await this.executeBooking(run);
-      }
-    } catch (error: unknown) {
-      run.status = 'failed';
-      run.finishedAt = new Date();
-      run.message = safeErrorMessage(error);
+      const run = await this.runs.findOne({
+        where: { id: runId },
+        relations: ['task', 'task.schoolAccount', 'schoolAccount', 'user'],
+      });
+      if (!run) throw new NotFoundException('运行记录不存在');
+
+      run.status = 'running';
+      run.startedAt = new Date();
       await this.runs.save(run);
+
+      if (run.user?.status?.id !== StatusEnum.active) {
+        run.status = 'skipped';
+        run.finishedAt = new Date();
+        run.message = '用户账号已禁用，跳过本次执行';
+        await this.runs.save(run);
+        return;
+      }
+
+      try {
+        if (run.runType === 'prewarm') {
+          await this.executePrewarm(run);
+        } else {
+          await this.executeBooking(run);
+        }
+      } catch (error: unknown) {
+        run.status = 'failed';
+        run.finishedAt = new Date();
+        run.message = safeErrorMessage(error);
+        await this.runs.save(run);
+        await this.notifyRunFailure(run);
+      }
+    } finally {
+      await this.redis.unlock(lockKey, lock);
     }
   }
 
@@ -53,6 +78,13 @@ export class PlatformBookingExecutor {
     run.attemptsUsed = 1;
     run.message = 'Token 预热成功';
     await this.runs.save(run);
+    await this.notify(
+      run.userId,
+      'prewarm',
+      '账号预热完成',
+      '预约前 Token 已通过正常登录和用户接口验证。',
+      '/dashboard/accounts',
+    );
   }
 
   private async executeBooking(run: BookingRunEntity): Promise<void> {
@@ -108,6 +140,13 @@ export class PlatformBookingExecutor {
         run.reservedBegin = stringValue(data.begin);
         run.reservedEnd = stringValue(data.end);
         await this.runs.save(run);
+        await this.notify(
+          run.userId,
+          'booking_success',
+          '预约成功',
+          `${run.location ?? '目标座位'} · ${run.reservedBegin ?? ''}-${run.reservedEnd ?? ''}`,
+          '/dashboard/runs',
+        );
         return;
       }
 
@@ -122,23 +161,56 @@ export class PlatformBookingExecutor {
     run.finishedAt = new Date();
     run.message = lastMessage;
     await this.runs.save(run);
+    await this.notifyRunFailure(run);
+  }
+
+  private async notifyRunFailure(run: BookingRunEntity): Promise<void> {
+    await this.notify(
+      run.userId,
+      run.runType === 'prewarm' ? 'prewarm_failed' : 'booking_failed',
+      run.runType === 'prewarm' ? '账号预热失败' : '预约未成功',
+      run.message ?? '任务执行失败，请查看运行记录。',
+      run.runType === 'prewarm' ? '/dashboard/accounts' : '/dashboard/runs',
+    );
+  }
+
+  private async notify(
+    userId: number,
+    kind: string,
+    title: string,
+    body: string,
+    actionUrl: string,
+  ): Promise<void> {
+    try {
+      await this.notifications.create({ userId, kind, title, body, actionUrl });
+    } catch {
+      // A notification failure must never change the booking result.
+    }
   }
 
   private async refreshAccount(account: SchoolAccountEntity): Promise<string> {
-    const password = this.crypto.decrypt(account.encryptedSchoolPassword);
-    const authenticated = await this.seatClient.authenticate(
-      account.schoolUsername,
-      password,
-    );
-    const verified = await this.seatClient.verifyToken(authenticated.token);
-    account.encryptedToken = this.crypto.encrypt(authenticated.token);
-    account.tokenRefreshedAt = new Date();
-    account.lastVerifiedAt = verified.success
-      ? new Date()
-      : account.lastVerifiedAt;
-    account.status = verified.success ? 'active' : 'attention';
-    await this.accounts.save(account);
-    return authenticated.token;
+    try {
+      const password = this.crypto.decrypt(account.encryptedSchoolPassword);
+      const authenticated = await this.seatClient.authenticate(
+        account.schoolUsername,
+        password,
+      );
+      const verified = await this.seatClient.verifyToken(authenticated.token);
+      if (!verified.success) {
+        throw new UnprocessableEntityException('学校账号 Token 验证失败');
+      }
+      account.encryptedToken = this.crypto.encrypt(authenticated.token);
+      account.tokenRefreshedAt = new Date();
+      account.lastVerifiedAt = new Date();
+      account.status = 'active';
+      await this.accounts.save(account);
+      return authenticated.token;
+    } catch (error: unknown) {
+      account.status = 'attention';
+      account.encryptedToken = null;
+      await this.accounts.save(account);
+      throw error;
+    }
   }
 
   private async getAccount(

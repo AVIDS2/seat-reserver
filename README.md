@@ -16,7 +16,7 @@
 
 ## Web 预约控制台
 
-`web/` 是基于 Kiranism Next.js Dashboard Starter 的前端控制台，提供总览、预约任务、账号与授权、运行记录和通知中心页面。生产构建通过同域 `/api/v1` 调用平台 API；只有显式设置 `NEXT_PUBLIC_DEMO_MODE=true` 时才使用 mock 数据。
+`web/` 是基于 Kiranism Next.js Dashboard Starter 的前端控制台，提供总览、预约任务、账号与授权、运行记录、通知中心和管理员工作台。生产构建通过同域 `/api/v1` 调用平台 API；只有显式设置 `NEXT_PUBLIC_DEMO_MODE=true` 时才使用 mock 数据。
 
 本地启动：
 
@@ -34,7 +34,7 @@ bun run dev
 
 后端使用 NestJS、TypeORM、PostgreSQL、JWT/HttpOnly Cookie、角色权限、Swagger、Redis/BullMQ、Nest Schedule 和 Docker。API 容器内包含 scheduler 与 queue worker，当前规模不需要单独拆进程。
 
-本地验证后端基线：
+本地验证后端：
 
 ```bash
 cd api
@@ -42,6 +42,19 @@ npm install
 npm run build
 npm run lint
 ```
+
+平台 API 主要入口：
+
+```text
+POST /api/v1/platform/auth/register
+POST /api/v1/platform/auth/login
+GET  /api/v1/platform/auth/me
+GET  /api/v1/platform/dashboard
+GET  /api/v1/platform/admin/overview
+GET  /api/v1/platform/health
+```
+
+首个注册账号自动成为管理员；后续注册需要管理员在 `/dashboard/admin` 创建的邀请码。学校账号绑定时由后端调用学校登录接口和用户校验接口，密码与 Token 加密后保存。
 
 不要把 `api/.env`、学校账号密码、Token 或 Redis/数据库凭据提交到 Git。
 

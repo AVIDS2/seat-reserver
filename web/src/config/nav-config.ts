@@ -45,5 +45,18 @@ export const navGroups: NavGroup[] = [
         items: []
       }
     ]
+  },
+  {
+    label: '管理',
+    items: [
+      {
+        title: '管理员工作台',
+        url: '/dashboard/admin',
+        icon: 'teams',
+        access: { role: 'admin' },
+        shortcut: ['a', 'd'],
+        items: []
+      }
+    ]
   }
 ];

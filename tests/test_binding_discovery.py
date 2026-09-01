@@ -5,6 +5,7 @@ import tempfile
 
 from tools.binding_discovery.analyze_capture import analyze_capture, mask_secret
 from tools.binding_discovery.capture_utils import should_capture_url, should_block_url, sanitize_record
+from tools.binding_discovery.reqable_report_server import har_to_records
 
 
 class BindingDiscoveryTests(unittest.TestCase):
@@ -64,6 +65,33 @@ class BindingDiscoveryTests(unittest.TestCase):
         self.assertTrue(report["act_code_bind_found"])
         self.assertEqual(report["free_book_requests"], 0)
         self.assertNotIn("secret", json.dumps(report, ensure_ascii=False))
+
+    def test_reqable_har_is_converted_and_sanitized(self):
+        records = har_to_records(
+            {
+                "log": {
+                    "entries": [
+                        {
+                            "request": {
+                                "method": "GET",
+                                "url": "https://leosys.cn/cczukaoyan/rest/auth?username=2300&password=secret",
+                                "headers": [{"name": "token", "value": "secret-token"}],
+                            },
+                            "response": {
+                                "status": 200,
+                                "headers": [],
+                                "content": {"text": '{"token":"secret-token"}'},
+                            },
+                        }
+                    ]
+                }
+            }
+        )
+        serialized = json.dumps(records, ensure_ascii=False)
+        self.assertEqual(len(records), 1)
+        self.assertIn("/cczukaoyan/rest/auth", serialized)
+        self.assertNotIn("secret-token", serialized)
+        self.assertNotIn("password=secret", serialized)
 
 
 if __name__ == "__main__":

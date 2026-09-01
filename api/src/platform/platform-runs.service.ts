@@ -9,7 +9,13 @@ export type BookingRunView = {
   task: string;
   targetDate: string;
   startedAt: string;
-  status: 'success' | 'failed' | 'prewarming' | 'running';
+  status:
+    | 'success'
+    | 'failed'
+    | 'prewarming'
+    | 'running'
+    | 'pending'
+    | 'skipped';
   statusLabel: string;
   attempts: number;
   result: string;
@@ -50,7 +56,13 @@ export class PlatformRunsService {
           ? 'failed'
           : run.status === 'running'
             ? 'running'
-            : 'prewarming';
+            : run.status === 'pending'
+              ? 'pending'
+              : run.status === 'skipped'
+                ? 'skipped'
+                : run.runType === 'prewarm'
+                  ? 'prewarming'
+                  : 'running';
     const statusLabel =
       status === 'success'
         ? '预约成功'
@@ -58,7 +70,11 @@ export class PlatformRunsService {
           ? '未抢到'
           : status === 'running'
             ? '执行中'
-            : '预热中';
+            : status === 'pending'
+              ? '排队中'
+              : status === 'skipped'
+                ? '已跳过'
+                : '预热中';
     return {
       id: String(run.id),
       account: run.schoolAccount?.label ?? '未知账号',
@@ -74,7 +90,9 @@ export class PlatformRunsService {
         ? `${run.reservedBegin ?? ''} - ${run.reservedEnd ?? ''}`.trim()
         : run.status === 'failed'
           ? '窗口结束'
-          : '处理中',
+          : run.status === 'skipped'
+            ? '未执行'
+            : '处理中',
       detail: run.message ?? '任务已进入队列，等待执行。',
     };
   }

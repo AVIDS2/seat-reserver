@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 
 import { Icons } from '@/components/icons';
 import { navGroups } from '@/config/nav-config';
+import { usePlatformSession } from '@/features/auth/platform-session';
 import {
   Sidebar,
   SidebarContent,
@@ -20,6 +21,13 @@ import {
 
 export default function AppSidebar() {
   const pathname = usePathname();
+  const user = usePlatformSession();
+  const visibleGroups = navGroups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => !item.access?.role || item.access.role === user?.role)
+    }))
+    .filter((group) => group.items.length > 0);
 
   return (
     <Sidebar collapsible='icon' variant='inset'>
@@ -44,7 +52,7 @@ export default function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent className='overflow-x-hidden'>
-        {navGroups.map((group) => (
+        {visibleGroups.map((group) => (
           <SidebarGroup key={group.label || 'ungrouped'} className='py-0'>
             {group.label && <SidebarGroupLabel>{group.label}</SidebarGroupLabel>}
             <SidebarMenu>
@@ -82,8 +90,10 @@ export default function AppSidebar() {
                 你
               </div>
               <div className='grid flex-1 text-left text-sm leading-tight'>
-                <span className='truncate font-medium'>个人工作区</span>
-                <span className='text-muted-foreground truncate text-xs'>2 个账号已接入</span>
+                <span className='truncate font-medium'>{user?.displayName || '个人工作区'}</span>
+                <span className='text-muted-foreground truncate text-xs'>
+                  {user?.role === 'admin' ? '管理员工作区' : '个人预约工作区'}
+                </span>
               </div>
               <Icons.chevronRight className='ml-auto size-4' />
             </SidebarMenuButton>

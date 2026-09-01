@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { randomBytes } from 'node:crypto';
-import { Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 import { UserEntity } from '../users/infrastructure/persistence/relational/entities/user.entity';
 import { CreateInvitationDto } from './dto/invitation.dto';
 import { PlatformInvitationEntity } from './entities/platform-invitation.entity';
@@ -48,9 +48,23 @@ export class PlatformInvitationsService {
   }
 
   async consume(code: string): Promise<void> {
-    const invitation = await this.invitations.findOne({
-      where: { codeHash: this.crypto.digest(code) },
-    });
+    await this.invitations.manager.transaction((manager) =>
+      this.consumeWithinTransaction(manager, code),
+    );
+  }
+
+  async consumeWithinTransaction(
+    manager: EntityManager,
+    code: string,
+  ): Promise<void> {
+    const repository = manager.getRepository(PlatformInvitationEntity);
+    const invitation = await repository
+      .createQueryBuilder('invitation')
+      .setLock('pessimistic_write')
+      .where('invitation."codeHash" = :codeHash', {
+        codeHash: this.crypto.digest(code.trim()),
+      })
+      .getOne();
     if (
       !invitation ||
       invitation.status !== 'active' ||
@@ -60,13 +74,13 @@ export class PlatformInvitationsService {
     }
     if (invitation.usedCount >= invitation.maxUses) {
       invitation.status = 'exhausted';
-      await this.invitations.save(invitation);
+      await repository.save(invitation);
       throw new UnprocessableEntityException('邀请码已用完');
     }
     invitation.usedCount += 1;
     if (invitation.usedCount >= invitation.maxUses)
       invitation.status = 'exhausted';
-    await this.invitations.save(invitation);
+    await repository.save(invitation);
   }
 
   async list(): Promise<InvitationView[]> {

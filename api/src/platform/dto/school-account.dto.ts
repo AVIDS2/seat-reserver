@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, PartialType } from '@nestjs/swagger';
 import { IsNotEmpty, IsString, MaxLength, MinLength } from 'class-validator';
 
 export class CreateSchoolAccountDto {
@@ -20,3 +20,7 @@ export class CreateSchoolAccountDto {
   @MinLength(1)
   schoolPassword: string;
 }
+
+export class UpdateSchoolAccountDto extends PartialType(
+  CreateSchoolAccountDto,
+) {}
