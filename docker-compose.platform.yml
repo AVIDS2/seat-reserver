@@ -1,0 +1,139 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${PLATFORM_DB_NAME:?PLATFORM_DB_NAME is required}
+      POSTGRES_USER: ${PLATFORM_DB_USER:?PLATFORM_DB_USER is required}
+      POSTGRES_PASSWORD: ${PLATFORM_DB_PASSWORD:?PLATFORM_DB_PASSWORD is required}
+    volumes:
+      - platform_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks:
+      - platform_internal
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - platform_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks:
+      - platform_internal
+
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile.platform
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      APP_PORT: 3001
+      APP_NAME: seat-reservation-platform
+      API_PREFIX: api
+      APP_FALLBACK_LANGUAGE: zh
+      APP_HEADER_LANGUAGE: x-custom-lang
+      FRONTEND_DOMAIN: ${PLATFORM_PUBLIC_URL:?PLATFORM_PUBLIC_URL is required}
+      BACKEND_DOMAIN: http://api:3001
+      APP_CORS_ORIGINS: ${PLATFORM_PUBLIC_URL:?PLATFORM_PUBLIC_URL is required}
+      FILE_DRIVER: local
+      MAIL_HOST: localhost
+      MAIL_PORT: 25
+      MAIL_IGNORE_TLS: "true"
+      MAIL_SECURE: "false"
+      MAIL_REQUIRE_TLS: "false"
+      MAIL_DEFAULT_EMAIL: noreply@rglens.com
+      MAIL_DEFAULT_NAME: Seat Platform
+      DATABASE_TYPE: postgres
+      DATABASE_HOST: postgres
+      DATABASE_PORT: 5432
+      DATABASE_USERNAME: ${PLATFORM_DB_USER:?PLATFORM_DB_USER is required}
+      DATABASE_PASSWORD: ${PLATFORM_DB_PASSWORD:?PLATFORM_DB_PASSWORD is required}
+      DATABASE_NAME: ${PLATFORM_DB_NAME:?PLATFORM_DB_NAME is required}
+      DATABASE_SYNCHRONIZE: "false"
+      DATABASE_MAX_CONNECTIONS: 20
+      DATABASE_SSL_ENABLED: "false"
+      AUTH_JWT_SECRET: ${PLATFORM_AUTH_JWT_SECRET:?PLATFORM_AUTH_JWT_SECRET is required}
+      AUTH_JWT_TOKEN_EXPIRES_IN: 15m
+      AUTH_REFRESH_SECRET: ${PLATFORM_AUTH_REFRESH_SECRET:?PLATFORM_AUTH_REFRESH_SECRET is required}
+      AUTH_REFRESH_TOKEN_EXPIRES_IN: 30d
+      AUTH_FORGOT_SECRET: ${PLATFORM_AUTH_FORGOT_SECRET:?PLATFORM_AUTH_FORGOT_SECRET is required}
+      AUTH_FORGOT_TOKEN_EXPIRES_IN: 1h
+      AUTH_CONFIRM_EMAIL_SECRET: ${PLATFORM_AUTH_CONFIRM_SECRET:?PLATFORM_AUTH_CONFIRM_SECRET is required}
+      AUTH_CONFIRM_EMAIL_TOKEN_EXPIRES_IN: 1d
+      AUTH_UNIFORM_ERRORS: "true"
+      QUEUE_REDIS_URL: redis://redis:6379/1
+      CREDENTIAL_ENCRYPTION_KEY: ${PLATFORM_CREDENTIAL_ENCRYPTION_KEY:?PLATFORM_CREDENTIAL_ENCRYPTION_KEY is required}
+      PLATFORM_ADMIN_EMAIL: ${PLATFORM_ADMIN_EMAIL:-}
+      PLATFORM_ADMIN_PASSWORD: ${PLATFORM_ADMIN_PASSWORD:-}
+      SEAT_API_URL: ${SEAT_API_URL:-https://leosys.cn/cczukaoyan/rest/v2/freeBook}
+      SEAT_AUTH_URL: ${SEAT_AUTH_URL:-https://leosys.cn/cczukaoyan/rest/auth}
+      SEAT_USER_URL: ${SEAT_USER_URL:-https://leosys.cn/cczukaoyan/rest/v2/user}
+      SEAT_HMAC_REQUEST_KEY: ${SEAT_HMAC_REQUEST_KEY:-}
+      SEAT_REFERER: ${SEAT_REFERER:-https://servicewechat.com/wxd0a21b477b3ac4f2/59/page-frame.html}
+      SEAT_USER_AGENT: ${SEAT_USER_AGENT:-Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36 MicroMessenger/7.0.20.1781(0x6700143B) NetType/WIFI MiniProgramEnv/Windows WindowsWechat/WMPF WindowsWechat(0x63090a13) UnifiedPCWindowsWechat(0xf2541b37) XWEB/20089}
+    ports:
+      - "127.0.0.1:${PLATFORM_API_PORT:-3201}:3001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3001/api/v1/platform/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+    networks:
+      - platform_internal
+
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: /api/v1
+        NEXT_PUBLIC_DEMO_MODE: "false"
+        NEXT_PUBLIC_SENTRY_DISABLED: "true"
+        NEXT_PUBLIC_APP_URL: ${PLATFORM_PUBLIC_URL:-https://seat.rglens.com}
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      HOSTNAME: 0.0.0.0
+      NEXT_PUBLIC_API_URL: /api/v1
+      NEXT_PUBLIC_DEMO_MODE: "false"
+      NEXT_PUBLIC_APP_URL: ${PLATFORM_PUBLIC_URL:-https://seat.rglens.com}
+      INTERNAL_API_URL: http://api:3001/api/v1
+      NEXT_PUBLIC_SENTRY_DISABLED: "true"
+    ports:
+      - "127.0.0.1:${PLATFORM_WEB_PORT:-3200}:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/dashboard/overview').then(r => process.exit(r.status < 500 ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+    networks:
+      - platform_internal
+
+volumes:
+  platform_postgres_data:
+  platform_redis_data:
+
+networks:
+  platform_internal:
+    driver: bridge

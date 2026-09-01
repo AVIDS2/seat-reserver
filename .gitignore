@@ -1,5 +1,16 @@
 .env
+.env.*
+!.env.example
 *.log
 __pycache__/
 *.py[cod]
 tools/binding_discovery/captures/
+
+# Web and API local artifacts
+web/node_modules/
+web/.next/
+web/.playwright-cli/
+api/node_modules/
+api/dist/
+api/coverage/
+api/.env

@@ -3,6 +3,12 @@
 > 基于现有 `seat_reserver.py` 单账号 CLI 的平台化扩展方案。
 > 前提：现有 CLI + VPS cron 方案必须继续独立运行，平台是平行路径，不是替代。
 
+## 当前决策（2026-09-01）
+
+前端采用 `web/` 中的 Kiranism Next.js Dashboard Starter；后端采用 `api/` 中导入并完成平台业务模块的 brocoders NestJS boilerplate。生产运行时采用 PostgreSQL + TypeORM、JWT/HttpOnly Cookie、Redis + BullMQ 和 Nest Schedule；根目录 `seat_reserver.py` 与 VPS cron 继续独立运行。
+
+选择这套组合是因为 Kiranism 与 brocoders 的职责边界清晰，避免把两个 Next.js 全栈模板合并；`ixartz/SaaS-Boilerplate` 和 Wasp Open SaaS 作为参考，不作为本项目后端底座。
+
 ---
 
 ## 1. 产品边界和非目标
@@ -85,7 +91,7 @@
 └──────────────────────┬──────────────────────────┘
                        │ HTTP JSON
 ┌──────────────────────▼──────────────────────────┐
-│                   API (FastAPI)                  │
+│                   API (NestJS)                  │
 │  modules: auth / invitations / school_accounts / │
 │           booking_tasks / booking_runs           │
 └──────────────────────┬──────────────────────────┘
@@ -114,7 +120,7 @@
 | **booking_runs** | 运行日志查询（只读，由 worker 写入） | 不触发执行 |
 | **seat_client** | 封装对"一考即过"小程序的 HTTP 请求 | 不缓存、不重试（重试在 worker 层） |
 | **scheduler** | 每日生成预热/预约执行计划 | 不执行任务本身 |
-| **worker** | 从队列取任务、执行 seat_client 调用、写日志 | 不暴露 HTTP 接口 |
+| **worker** | API 容器内的 BullMQ worker，从队列取任务、执行 seat_client 调用、写日志 | 不暴露 HTTP 接口；后续有规模需求时再单独扩容 |
 
 ### 3.3 seat_client 与现有 CLI 的关系
 
@@ -140,11 +146,11 @@ seat_reserver.py (CLI)          seat_client/ (平台模块)
 ```
 前端：  Next.js 14+ (App Router) + TypeScript + shadcn/ui + Tailwind CSS
 数据层：TanStack Query + React Hook Form + Zod
-后端：  FastAPI + Pydantic v2
-ORM：   SQLAlchemy 2.0 + Alembic
+后端：  NestJS 11 + TypeScript
+ORM：   TypeORM 0.3+
 数据库：PostgreSQL 16
-缓存/锁：Redis 7
-调度：  APScheduler (集成在 worker 进程内)
+缓存/锁：Redis 7 + BullMQ
+调度：  Nest Schedule
 部署：  Docker Compose
 ```
 
@@ -152,13 +158,13 @@ ORM：   SQLAlchemy 2.0 + Alembic
 
 | 决策 | 选择 | 理由 | 否决的方案 |
 |---|---|---|---|
-| 后端语言 | Python | 与现有 CLI 同语言，seat_client 逻辑可直接复用 | Node.js — 需重写 HTTP 逻辑 |
-| Web 框架 | FastAPI | async 原生、Pydantic 集成好、自动生成 OpenAPI 文档 | Django — 太重，Admin 不需要；Flask — 无 async，无类型校验 |
+| 后端语言 | TypeScript | 与 Kiranism 前端共享类型生态，适合常驻 API/队列进程 | Python — 继续保留为现有 CLI/Worker |
+| Web 框架 | NestJS | 模块化、依赖注入、Swagger、守卫和常驻进程支持成熟 | FastAPI — 需要额外维护另一套运行时和类型体系 |
 | 前端框架 | Next.js | SSR/SSG 灵活、shadcn/ui 生态成熟 | 纯 SPA (Vite) — 无 SSR，SEO 无所谓但开发体验差 |
 | 数据库 | PostgreSQL | JSON 字段支持好（存候选策略）、够用、成熟 | SQLite — 并发写入锁问题；MySQL — 无特别优势 |
-| 队列 | Redis List + Lock | 轻量、够用、无需额外组件 | Celery + RabbitMQ — 太重；Redis Streams — 过度设计 |
-| 调度 | APScheduler | Python 原生、可嵌入 worker 进程、Cron 表达式支持 | 系统 cron — 无法感知任务状态；Celery Beat — 依赖链太长 |
-| ORM | SQLAlchemy 2.0 | Python 标准、Alembic migration 成熟 | Prisma — Python 支持弱；raw SQL — 维护成本高 |
+| 队列 | Redis + BullMQ | 与 NestJS 集成成熟，支持重试、延迟任务、幂等和队列监控 | Redis List — 需要自己补队列语义 |
+| 调度 | Nest Schedule | 与常驻 NestJS 服务同进程，适合每日生成预热/预约任务 | 系统 cron — 无法感知任务状态 |
+| ORM | TypeORM 0.3+ | 与 brocoders 基线一致，已有实体、迁移和仓库模式 | Prisma — 需要替换后端基线 |
 | 认证 | HttpOnly Cookie + JWT | 安全、简单、前后端同域部署无跨域问题 | Bearer Token — 需前端存 token，XSS 风险；Session — 需服务端状态 |
 
 ### 4.3 不引入的东西
@@ -167,9 +173,8 @@ ORM：   SQLAlchemy 2.0 + Alembic
 |---|---|
 | Kubernetes | 单机部署，Docker Compose 足够 |
 | GraphQL | REST 够用，OpenAPI 自动生成文档 |
-| Message Queue (RabbitMQ/Kafka) | Redis List 足以处理每日几十个任务 |
-| 微服务 | 4 个进程（web/api/scheduler/worker）足够，不需要服务发现 |
-| TypeScript 后端 | Python 可复用现有 HTTP 逻辑 |
+| Message Queue (RabbitMQ/Kafka) | Redis + BullMQ 足以处理每日几十个任务 |
+| 微服务 | 3 个应用进程（web/api/worker）足够，不需要服务发现 |
 
 ---
 
@@ -425,7 +430,7 @@ GET    /api/v1/health                       健康检查（DB + Redis 连通性�
 ```
                     ┌─────────────────┐
                     │   Scheduler     │
-                    │  (APScheduler)  │
+                    │ (Nest Schedule) │
                     │                 │
                     │  每天 05:30     │
                     │  生成当日任务   │
@@ -632,6 +637,8 @@ SENSITIVE_KEYS = {"password", "token", "school_password", "encrypted_school_pass
 
 ## 9. Docker Compose 部署拓扑
 
+> 当前可执行的生产配置是仓库根目录的 `docker-compose.platform.yml`，配套变量模板是 `deploy/platform.env.example`。下面早期的拓扑草图和 Python Compose 片段保留作设计记录，不要直接照抄；实际端口、环境变量和健康检查以根目录 Compose 文件为准。
+
 ### 9.1 服务拓扑
 
 ```
@@ -672,7 +679,7 @@ SENSITIVE_KEYS = {"password", "token", "school_password", "encrypted_school_pass
 └─────────────────────────────────────────────────────────┘
 ```
 
-### 9.2 docker-compose.yml 结构
+### 9.2 早期 docker-compose.yml 结构（已被生产文件取代）
 
 ```yaml
 services:
@@ -738,17 +745,15 @@ volumes:
   redisdata:
 ```
 
-### 9.3 反向代理（Caddy 示例）
+### 9.3 反向代理（当前 VPS 的 OpenResty）
 
 ```
-your-domain.com {
-    handle /api/* {
-        reverse_proxy api:8000
-    }
-    handle {
-        reverse_proxy web:3000
-    }
+seat.rglens.com {
+    /api/*  -> 127.0.0.1:3201
+    /*      -> 127.0.0.1:3200
 }
+
+数据库和 Redis 不映射公网；OpenResty 负责 HTTPS，Next 前端通过同域 `/api/v1` 访问 Nest API。
 ```
 
 ### 9.4 资源估算
@@ -757,7 +762,7 @@ your-domain.com {
 |---|---|---|---|
 | postgres | 256MB | 0.25 | 小规模够用 |
 | redis | 64MB | 0.1 | 仅锁和队列 |
-| api | 256MB | 0.25 | FastAPI async |
+| api | 256MB | 0.25 | NestJS HTTP API |
 | web | 256MB | 0.25 | Next.js |
 | worker | 128MB | 0.1 | 按需运行 |
 | scheduler | 64MB | 0.1 | 几乎空闲 |
@@ -772,7 +777,7 @@ your-domain.com {
 **目标**：所有服务能 `docker compose up` 启动
 
 - [ ] 创建 `web/` Next.js 项目，初始化 shadcn/ui
-- [ ] 创建 `api/` FastAPI 项目
+- [x] 导入 `api/` brocoders NestJS 后端基线
 - [ ] 配置 Docker Compose：web + api + postgres + redis
 - [ ] `GET /api/v1/health` 返回 `{"status": "ok", "db": "ok", "redis": "ok"}`
 - [ ] 项目 `.gitignore` 和 `.env.example`
@@ -783,8 +788,8 @@ your-domain.com {
 
 **目标**：用户能注册和登录
 
-- [ ] SQLAlchemy models: users, invitations, invitation_uses
-- [ ] Alembic migration
+- [ ] TypeORM entities: users, invitations, invitation_uses
+- [ ] TypeORM migration
 - [ ] POST /auth/register（需邀请码）
 - [ ] POST /auth/login（HttpOnly cookie + JWT）
 - [ ] GET /auth/me
@@ -798,7 +803,7 @@ your-domain.com {
 
 **目标**：用户能添加和验证学校账号
 
-- [ ] SQLAlchemy model: school_accounts
+- [ ] TypeORM entity: school_accounts
 - [ ] Fernet 加密/解密工具
 - [ ] POST /school-accounts（加密存储密码）
 - [ ] POST /school-accounts/{id}/verify（调 /rest/auth + /rest/v2/user）
@@ -812,7 +817,7 @@ your-domain.com {
 
 **目标**：用户能创建和管理预约任务
 
-- [ ] SQLAlchemy model: booking_tasks
+- [ ] TypeORM entity: booking_tasks
 - [ ] 任务 CRUD API
 - [ ] 候选策略校验（seat_id、time_candidates 格式）
 - [ ] 启用/禁用任务

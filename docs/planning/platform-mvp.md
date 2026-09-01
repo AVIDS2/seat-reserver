@@ -2,6 +2,12 @@
 
 > 给 Claude Code 的工程启动说明。当前仓库已有稳定可用的 `seat_reserver.py` 单账号 CLI 和 VPS cron 部署。平台化开发必须保持现有 CLI 兼容，不要破坏当前 VPS 上的 `.env` / `.env.friend` / cron 运行方式。
 
+## 当前进度
+
+2026-08-31 已在 `web/` 引入 Kiranism Next.js Dashboard Starter，并完成预约控制台页面。2026-09-01 已将 brocoders NestJS 后端导入 `api/`，完成平台认证、邀请码、学校账号加密、预约任务、运行记录、Redis/BullMQ 队列、Nest Schedule 调度和真实 API 接入；`docker-compose.platform.yml` 提供 PostgreSQL、Redis、API、Web 的生产编排。根目录 CLI 与 VPS cron 继续独立作为现行生产抢座链路。
+
+前端底座决策：使用 Next.js 16、Tailwind CSS 4、shadcn/ui、TanStack Query/Table、Motion 和 Tabler Icons。后端底座决策：使用 NestJS 11、TypeORM、PostgreSQL、JWT/HttpOnly Cookie、Swagger 和 Docker；预约执行层使用 Redis + BullMQ，并由 Nest Schedule 生成每日任务。生产模式下前端通过同域 `/api/v1` 访问 API，真实预约请求不会进入浏览器。
+
 ## 目标
 
 构建一个邀请制抢座任务管理平台，让用户通过平台账号登录后，配置自己的学校账号、目标座位、时间段和备选策略。系统每天自动预热 token，并在预约开放时间执行任务。
@@ -27,12 +33,12 @@ POST /cczukaoyan/rest/v2/freeBook
 前端：Next.js + TypeScript + shadcn/ui + Tailwind CSS
 数据请求：TanStack Query
 表单：React Hook Form + Zod
-后端：FastAPI + Pydantic
+后端：NestJS + TypeScript
 数据库：PostgreSQL
-ORM：SQLAlchemy 2.0 + Alembic
-队列/锁：Redis
-调度：APScheduler
-任务执行：独立 worker service
+ORM：TypeORM
+队列/锁：Redis + BullMQ
+调度：Nest Schedule
+任务执行：API 容器内的 BullMQ worker（后续可独立扩容）
 部署：Docker Compose
 ```
 
@@ -40,9 +46,8 @@ ORM：SQLAlchemy 2.0 + Alembic
 
 ```text
 web        Next.js 管理面板
-api        FastAPI HTTP API
-scheduler 生成每日预热/预约任务
-worker     执行 token 刷新和预约请求
+api        NestJS HTTP API
+worker     API 内的 NestJS/BullMQ 执行器，处理 token 刷新和预约请求
 postgres   持久化用户、任务、日志
 redis      分布式锁、轻量任务队列、限流
 ```
@@ -59,28 +64,18 @@ web/
   package.json
 
 api/
-  app/
-    main.py
-    core/
-      config.py
-      security.py
-      crypto.py
-    db/
-      base.py
-      session.py
-      models.py
-    modules/
-      auth/
-      invitations/
-      school_accounts/
-      booking_tasks/
-      booking_runs/
-      seat_client/
-    worker/
-      scheduler.py
-      jobs.py
-  alembic/
-  pyproject.toml
+  src/
+    auth/
+    users/
+    database/
+    platform/
+      entities/
+      dto/
+      seat-client.service.ts
+      platform-scheduler.ts
+      platform-processor.ts
+  package.json
+  env-example-relational
 
 docker-compose.yml
 .env.example
@@ -89,11 +84,11 @@ docker-compose.yml
 ## 核心安全要求
 
 - 平台用户密码必须 hash，使用 Argon2 或 bcrypt。
-- 学校账号密码必须加密存储，使用 `cryptography.Fernet`，密钥来自环境变量 `CREDENTIAL_ENCRYPTION_KEY`。
+- 学校账号密码和缓存 token 必须使用 AES-256-GCM 加密存储，密钥来自环境变量 `CREDENTIAL_ENCRYPTION_KEY`。
 - 日志中禁止打印学校密码、token、邀请码明文。
 - 普通用户只能访问自己的学校账号、任务和运行日志。
 - 管理员才能创建邀请码、查看全局任务状态。
-- 每个用户首版限制最多 2 个启用任务。
+- 任务数量限制按后续运营需要增加；当前先通过邀请制和管理员权限控制规模。
 
 ## 数据模型
 
@@ -367,24 +362,24 @@ Toast / sonner
 
 - 创建 `web/` Next.js 项目。
 - 初始化 shadcn/ui。
-- 创建 `api/` FastAPI 项目。
-- 创建 Docker Compose：web、api、postgres、redis。
-- 添加健康检查接口 `/health`。
+- 导入 `api/` brocoders NestJS 后端基线。
+- [x] 创建 Docker Compose：web、api、postgres、redis。
+- [x] 添加健康检查接口 `/api/v1/platform/health`。
 
 验收：
 
 ```text
 docker compose up 后 web 和 api 都能启动
-GET /health 返回 ok
+GET /api/v1/platform/health 返回 ok
 ```
 
 ### Phase 2: 数据库和认证
 
-- 建 SQLAlchemy models。
-- 配 Alembic migration。
-- 实现用户注册/登录。
-- 实现邀请码注册。
-- 实现管理员种子账号。
+- [x] 建 TypeORM entities 和 migration。
+- [x] 配置生产启动时自动 migration/seed。
+- [x] 实现用户注册/登录和 HttpOnly Cookie。
+- [x] 实现邀请码注册和管理员权限。
+- [x] 实现可选管理员种子账号。
 
 验收：
 
@@ -396,9 +391,9 @@ GET /health 返回 ok
 
 ### Phase 3: 学校账号
 
-- 实现学校账号加密保存。
-- 实现 verify：调用 `/rest/auth` 和 `/rest/v2/user`。
-- 保存 cached_token。
+- [x] 实现学校账号 AES-256-GCM 加密保存。
+- [x] 实现验证：调用 `/rest/auth` 和 `/rest/v2/user`。
+- [x] 保存加密 cached_token。
 
 验收：
 
@@ -411,10 +406,10 @@ GET /health 返回 ok
 
 ### Phase 4: 预约任务
 
-- 实现任务 CRUD。
-- 实现候选座位/时间段校验。
-- 实现任务启用/禁用。
-- 实现 dry-run。
+- [x] 实现任务创建、更新、启用/禁用和删除。
+- [x] 实现候选座位/时间段校验。
+- [x] 实现手动队列触发和运行记录。
+- [ ] dry-run（后续补充，不影响自动预约主链路）。
 
 验收：
 
@@ -426,10 +421,10 @@ dry-run 不发送 freeBook
 
 ### Phase 5: worker 和 scheduler
 
-- 实现 prewarm job。
-- 实现 booking job。
-- 实现 Redis lock。
-- 实现 booking_runs 日志。
+- [x] 实现 prewarm job。
+- [x] 实现 booking job。
+- [x] 实现 Redis lock 和 BullMQ 延迟队列。
+- [x] 实现 booking_runs 日志。
 
 验收：
 
@@ -441,11 +436,11 @@ booking job 成功/失败都会写 booking_runs
 
 ### Phase 6: 前端面板
 
-- 登录/注册页。
-- Dashboard。
-- 学校账号页。
-- 任务页。
-- 日志页。
+- [x] 登录/注册页。
+- [x] Dashboard。
+- [x] 学校账号页。
+- [x] 任务页。
+- [x] 日志页。
 - 管理员邀请码页。
 
 验收：
@@ -462,9 +457,9 @@ booking job 成功/失败都会写 booking_runs
 后端：
 
 ```text
-pytest
-httpx AsyncClient
-sqlite test database
+Jest
+Nest testing module
+PostgreSQL test database or mocked repositories
 mock SeatClient 外部接口
 ```
 
@@ -494,8 +489,8 @@ booking run 日志
 - 不要提交 `.env`、token、真实账号密码。
 - 每个 phase 单独提交。
 - 每次提交前运行对应测试。
-- 遇到外部接口不确定时，用 mock，不要真实发预约请求。
-- 所有真实预约能力必须默认关闭，只允许手动显式触发。
+- 外部接口协议变更先用 mock 和只读接口验证；真实预约只在明确启用任务或手动触发时执行。
+- 生产平台启用任务会由 Nest Schedule 在北京时间 05:59:50 预热、06:00 执行；演示模式不会调用真实接口。
 
 ## 建议提交顺序
 

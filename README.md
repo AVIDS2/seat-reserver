@@ -14,6 +14,52 @@
 - 支持 Debian 12 / Linux VPS 使用 cron 定时执行。
 - 日志记录预约结果、回执号、时间和座位位置。
 
+## Web 预约控制台
+
+`web/` 是基于 Kiranism Next.js Dashboard Starter 的前端控制台，提供总览、预约任务、账号与授权、运行记录和通知中心页面。生产构建通过同域 `/api/v1` 调用平台 API；只有显式设置 `NEXT_PUBLIC_DEMO_MODE=true` 时才使用 mock 数据。
+
+本地启动：
+
+```bash
+cd web
+bun install
+bun run dev
+```
+
+根目录的 `seat_reserver.py` 和 VPS cron 继续独立运行，平台服务作为新的并行链路部署。
+
+## 平台后端
+
+`api/` 是基于 [brocoders/nestjs-boilerplate](https://github.com/brocoders/nestjs-boilerplate) 的 NestJS 平台后端，负责用户认证、邀请码、学校账号加密、预约任务、Redis/BullMQ 调度和运行记录。它与 `web/` 放在同一个仓库中，真实座位请求只在 API 的队列执行器中发出。
+
+后端使用 NestJS、TypeORM、PostgreSQL、JWT/HttpOnly Cookie、角色权限、Swagger、Redis/BullMQ、Nest Schedule 和 Docker。API 容器内包含 scheduler 与 queue worker，当前规模不需要单独拆进程。
+
+本地验证后端基线：
+
+```bash
+cd api
+npm install
+npm run build
+npm run lint
+```
+
+不要把 `api/.env`、学校账号密码、Token 或 Redis/数据库凭据提交到 Git。
+
+## 平台部署
+
+生产编排文件是 `docker-compose.platform.yml`，配置模板是 `deploy/platform.env.example`。它只将 Web/API 绑定到 VPS 本机端口，公网入口由现有 OpenResty 反向代理提供。
+
+## 仓库结构
+
+```text
+web/                  Kiranism Next.js 管理端和移动端路由
+api/                  brocoders NestJS API 基线
+seat_reserver.py      现有稳定抢座 CLI，继续兼容 VPS cron
+tests/                Python CLI 和抓包工具测试
+tools/                登录/绑定流量捕获和分析工具
+docs/                 产品、架构和部署文档
+```
+
 ## 当前默认策略
 
 默认优先抢 44 号座位，60 号座位作为兜底。
