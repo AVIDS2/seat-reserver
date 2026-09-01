@@ -24,6 +24,9 @@ const baseConfig: NextConfig = {
     ]
   },
   transpilePackages: ['geist'],
+  experimental: {
+    cpus: 1
+  },
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production'
   }
