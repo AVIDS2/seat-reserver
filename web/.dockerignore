@@ -4,6 +4,8 @@ node_modules/
 
 # Build outputs (generated during docker build)
 .next/
+!runtime/
+!runtime/**
 out/
 dist/
 build/

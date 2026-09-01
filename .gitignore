@@ -10,6 +10,7 @@ tools/binding_discovery/captures/
 web/node_modules/
 web/.next/
 web/.playwright-cli/
+web/runtime/
 api/node_modules/
 api/dist/
 api/coverage/

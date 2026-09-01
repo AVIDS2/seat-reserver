@@ -9,6 +9,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "prepare:runtime": "node scripts/prepare-runtime.mjs",
     "start": "next start",
     "cleanup": "node scripts/cleanup.js",
     "typecheck": "tsc --noEmit",

@@ -33,7 +33,10 @@ bun run dev
 bun run typecheck
 bun run lint
 bun run build
+bun run prepare:runtime
 ```
+
+生产 Compose 使用 `Dockerfile.platform-runtime`，它只打包 `runtime/` 中的 standalone 产物；发布前先执行上面两条命令。
 
 ## 目录
 

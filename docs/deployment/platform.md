@@ -61,6 +61,8 @@ python tools/binding_discovery/analyze_capture.py tools/binding_discovery/captur
 部署新版本前先构建并验证 API/Web，再把仓库包上传到新目录。生产更新使用：
 
 ```bash
+# 本地 web/ 发布前先执行 bun run build && bun run prepare:runtime，
+# 将生成的 web/runtime 一并放入发布包。
 cd /app/seat-reservation-platform/repo
 docker compose -p seat-platform -f docker-compose.platform.yml --env-file /app/seat-reservation-platform/platform.env up -d --build
 docker compose -p seat-platform -f docker-compose.platform.yml --env-file /app/seat-reservation-platform/platform.env ps
