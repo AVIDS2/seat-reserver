@@ -17,10 +17,10 @@ export class BookingRunEntity extends EntityRelationalHelper {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ length: 20 })
+  @Column({ type: String, length: 20 })
   runType: 'prewarm' | 'booking';
 
-  @Column({ length: 20, default: 'pending' })
+  @Column({ type: String, length: 20, default: 'pending' })
   status: 'pending' | 'running' | 'success' | 'failed' | 'skipped';
 
   @Column({ type: 'date' })
@@ -35,22 +35,22 @@ export class BookingRunEntity extends EntityRelationalHelper {
   @Column({ type: 'text', nullable: true })
   message: string | null;
 
-  @Column({ length: 120, nullable: true })
+  @Column({ type: String, length: 120, nullable: true })
   receipt: string | null;
 
-  @Column({ length: 255, nullable: true })
+  @Column({ type: String, length: 255, nullable: true })
   location: string | null;
 
-  @Column({ length: 30, nullable: true })
+  @Column({ type: String, length: 30, nullable: true })
   reservedBegin: string | null;
 
-  @Column({ length: 30, nullable: true })
+  @Column({ type: String, length: 30, nullable: true })
   reservedEnd: string | null;
 
   @Column({ nullable: true })
   httpStatus: number | null;
 
-  @Column({ length: 30, nullable: true })
+  @Column({ type: String, length: 30, nullable: true })
   responseCode: string | null;
 
   @Column({ default: 0 })

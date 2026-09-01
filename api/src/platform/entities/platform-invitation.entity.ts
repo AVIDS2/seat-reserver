@@ -27,7 +27,7 @@ export class PlatformInvitationEntity extends EntityRelationalHelper {
   @Column({ type: 'timestamp', nullable: true })
   expiresAt: Date | null;
 
-  @Column({ length: 20, default: 'active' })
+  @Column({ type: String, length: 20, default: 'active' })
   status: 'active' | 'disabled' | 'exhausted';
 
   @ManyToOne(() => UserEntity, { onDelete: 'SET NULL', nullable: true })

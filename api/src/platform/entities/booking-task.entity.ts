@@ -70,6 +70,6 @@ export class BookingTaskEntity extends EntityRelationalHelper {
   @UpdateDateColumn()
   updatedAt: Date;
 
-  @DeleteDateColumn()
+  @DeleteDateColumn({ type: 'timestamp', nullable: true })
   deletedAt: Date | null;
 }
