@@ -60,7 +60,7 @@ export default function SignUpViewPage() {
             <p className='text-muted-foreground mb-3 text-sm'>开始使用</p>
             <h2 className='text-3xl font-semibold tracking-tight'>创建你的工作台</h2>
             <p className='text-muted-foreground mt-2 text-sm leading-6'>
-              首个账号自动获得管理员权限，后续账号使用邀请码加入。
+              先创建本平台账号。登录后再绑定学校学号和密码，系统会自动获取学校 Token；首个账号自动获得管理员权限，后续账号使用邀请码加入。
             </p>
           </div>
           <UserAuthForm mode='sign-up' />

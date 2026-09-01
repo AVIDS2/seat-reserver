@@ -60,7 +60,7 @@ export default function SignInViewPage() {
             <p className='text-muted-foreground mb-3 text-sm'>欢迎回来</p>
             <h2 className='text-3xl font-semibold tracking-tight'>进入预约控制台</h2>
             <p className='text-muted-foreground mt-2 text-sm leading-6'>
-              使用邮箱进入你的任务和运行记录。
+              使用平台注册邮箱进入你的任务和运行记录。
             </p>
           </div>
           <UserAuthForm />
