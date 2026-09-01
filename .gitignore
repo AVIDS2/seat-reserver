@@ -11,6 +11,8 @@ web/node_modules/
 web/.next/
 web/.playwright-cli/
 web/runtime/
+.playwright-cli/
+output/playwright/
 api/node_modules/
 api/dist/
 api/coverage/
