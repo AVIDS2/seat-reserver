@@ -39,7 +39,7 @@ export class PlatformScheduler {
         where: { enabled: true, user: { status: { id: StatusEnum.active } } },
         relations: ['user', 'schoolAccount'],
       });
-      await Promise.all(
+      const results = await Promise.allSettled(
         tasks.map((task) =>
           this.queue.enqueue(
             task,
@@ -51,7 +51,15 @@ export class PlatformScheduler {
           ),
         ),
       );
-      this.logger.log(`Scheduled ${tasks.length} ${runType} tasks for ${date}`);
+      const rejected = results.filter((result) => result.status === 'rejected');
+      if (rejected.length) {
+        this.logger.error(
+          `Failed to schedule ${rejected.length}/${tasks.length} ${runType} tasks for ${date}`,
+        );
+      }
+      this.logger.log(
+        `Scheduled ${tasks.length - rejected.length}/${tasks.length} ${runType} tasks for ${date}`,
+      );
     } finally {
       await this.redis.unlock(lockKey, lock);
     }

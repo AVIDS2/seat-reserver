@@ -4,6 +4,7 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
+  MaxLength,
   MinLength,
 } from 'class-validator';
 
@@ -22,11 +23,13 @@ export class PlatformRegisterDto extends PlatformLoginDto {
   @ApiProperty({ example: '张' })
   @IsString()
   @IsNotEmpty()
+  @MaxLength(100)
   firstName: string;
 
   @ApiProperty({ example: '同学' })
   @IsString()
   @IsNotEmpty()
+  @MaxLength(100)
   lastName: string;
 
   @ApiProperty({
@@ -35,5 +38,6 @@ export class PlatformRegisterDto extends PlatformLoginDto {
   })
   @IsOptional()
   @IsString()
+  @MaxLength(100)
   inviteCode?: string;
 }

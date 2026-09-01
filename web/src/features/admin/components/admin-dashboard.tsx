@@ -12,11 +12,21 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { usePlatformSession } from '@/features/auth/platform-session';
 import {
   createInvitation,
   disableInvitation,
+  getAdminAccounts,
+  getAdminOverview,
+  getAdminRuns,
+  getAdminTasks,
+  getAdminUsers,
+  getInvitations,
+  type AdminAccount,
   setAdminUserEnabled,
+  type AdminRun,
+  type AdminTask,
   type AdminOverview,
   type AdminUser,
   type Invitation
@@ -26,6 +36,9 @@ export type AdminSnapshot = {
   overview: AdminOverview;
   users: AdminUser[];
   invitations: Invitation[];
+  accounts: AdminAccount[];
+  tasks: AdminTask[];
+  runs: AdminRun[];
 };
 
 export default function AdminDashboard({ initialData }: { initialData: AdminSnapshot }) {
@@ -33,12 +46,41 @@ export default function AdminDashboard({ initialData }: { initialData: AdminSnap
   const [overview, setOverview] = useState(initialData.overview);
   const [users, setUsers] = useState(initialData.users);
   const [invitations, setInvitations] = useState(initialData.invitations);
+  const [accounts, setAccounts] = useState(initialData.accounts);
+  const [tasks, setTasks] = useState(initialData.tasks);
+  const [runs, setRuns] = useState(initialData.runs);
   const [createOpen, setCreateOpen] = useState(false);
   const [maxUses, setMaxUses] = useState('1');
   const [validDays, setValidDays] = useState('30');
   const [generatedCode, setGeneratedCode] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [busyUserId, setBusyUserId] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const refreshAdminData = async () => {
+    setRefreshing(true);
+    try {
+      const [nextOverview, nextUsers, nextInvitations, nextAccounts, nextTasks, nextRuns] = await Promise.all([
+        getAdminOverview(),
+        getAdminUsers(),
+        getInvitations(),
+        getAdminAccounts(),
+        getAdminTasks(),
+        getAdminRuns()
+      ]);
+      setOverview(nextOverview);
+      setUsers(nextUsers);
+      setInvitations(nextInvitations);
+      setAccounts(nextAccounts);
+      setTasks(nextTasks);
+      setRuns(nextRuns);
+      toast.success('管理员数据已刷新');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : '刷新管理员数据失败');
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   const submitInvitation = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -98,10 +140,16 @@ export default function AdminDashboard({ initialData }: { initialData: AdminSnap
             <h1 className='text-2xl font-semibold tracking-tight sm:text-3xl'>管理员工作台</h1>
             <p className='text-muted-foreground mt-2 text-sm leading-6'>管理成员、邀请码和全平台预约运行状态。</p>
           </div>
-          <Button onClick={() => setCreateOpen(true)}>
-            <Icons.add data-icon='inline-start' />
-            创建邀请码
-          </Button>
+          <div className='flex flex-wrap gap-2'>
+            <Button variant='outline' onClick={() => void refreshAdminData()} disabled={refreshing}>
+              <Icons.refresh className={refreshing ? 'animate-spin' : ''} data-icon='inline-start' />
+              {refreshing ? '刷新中' : '刷新数据'}
+            </Button>
+            <Button onClick={() => setCreateOpen(true)}>
+              <Icons.add data-icon='inline-start' />
+              创建邀请码
+            </Button>
+          </div>
         </div>
 
         {generatedCode && (
@@ -210,6 +258,100 @@ export default function AdminDashboard({ initialData }: { initialData: AdminSnap
             </CardContent>
           </Card>
         </div>
+
+        <Tabs defaultValue='runs' className='w-full'>
+          <TabsList>
+            <TabsTrigger value='runs'>全局运行记录 ({runs.length})</TabsTrigger>
+            <TabsTrigger value='tasks'>全局任务 ({tasks.length})</TabsTrigger>
+            <TabsTrigger value='accounts'>学校账号 ({accounts.length})</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value='runs' className='mt-4'>
+            <Card className='shadow-none'>
+              <CardHeader className='border-b'>
+                <CardTitle className='text-xl'>全局运行记录</CardTitle>
+                <CardDescription>仅显示运行结果和归属信息，不显示学校密码、Token 或原始敏感请求。</CardDescription>
+              </CardHeader>
+              <CardContent className='overflow-x-auto p-0'>
+                <Table className='min-w-[880px]'>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>开始时间</TableHead>
+                      <TableHead>成员</TableHead>
+                      <TableHead>任务 / 账号</TableHead>
+                      <TableHead>目标日期</TableHead>
+                      <TableHead>结果</TableHead>
+                      <TableHead>状态</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {runs.length === 0 ? <TableRow><TableCell colSpan={6} className='text-muted-foreground py-12 text-center'>暂无运行记录</TableCell></TableRow> : runs.map((run) => (
+                      <TableRow key={run.id}>
+                        <TableCell className='text-muted-foreground text-xs'>{run.startedAt}</TableCell>
+                        <TableCell><p className='text-sm font-medium'>{run.ownerName}</p><p className='text-muted-foreground text-xs'>{run.ownerEmail || '未设置邮箱'}</p></TableCell>
+                        <TableCell><p className='text-sm font-medium'>{run.task}</p><p className='text-muted-foreground text-xs'>{run.account}</p></TableCell>
+                        <TableCell className='text-sm'>{run.targetDate}</TableCell>
+                        <TableCell><p className='text-sm'>{run.result}</p><p className='text-muted-foreground max-w-[240px] truncate text-xs'>{run.detail}</p></TableCell>
+                        <TableCell><Badge variant={run.status === 'success' ? 'outline' : run.status === 'failed' ? 'destructive' : 'secondary'}>{run.statusLabel}</Badge></TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value='tasks' className='mt-4'>
+            <Card className='shadow-none'>
+              <CardHeader className='border-b'>
+                <CardTitle className='text-xl'>全局任务</CardTitle>
+                <CardDescription>管理员可以检查所有成员的任务状态，但任务仍由所属成员独立管理。</CardDescription>
+              </CardHeader>
+              <CardContent className='overflow-x-auto p-0'>
+                <Table className='min-w-[820px]'>
+                  <TableHeader><TableRow><TableHead>任务</TableHead><TableHead>成员</TableHead><TableHead>账号</TableHead><TableHead>策略</TableHead><TableHead>状态</TableHead><TableHead>最近运行</TableHead></TableRow></TableHeader>
+                  <TableBody>
+                    {tasks.length === 0 ? <TableRow><TableCell colSpan={6} className='text-muted-foreground py-12 text-center'>暂无任务</TableCell></TableRow> : tasks.map((task) => (
+                      <TableRow key={task.id}>
+                        <TableCell><p className='text-sm font-medium'>{task.name}</p><p className='text-muted-foreground text-xs'>{task.seat}</p></TableCell>
+                        <TableCell><p className='text-sm'>{task.ownerName}</p><p className='text-muted-foreground text-xs'>{task.ownerEmail || '未设置邮箱'}</p></TableCell>
+                        <TableCell className='text-sm'>{task.account}</TableCell>
+                        <TableCell><p className='text-sm'>{task.time}</p><p className='text-muted-foreground text-xs'>{task.lastMessage}</p></TableCell>
+                        <TableCell><Badge variant={task.status === 'enabled' ? 'outline' : task.status === 'attention' ? 'destructive' : 'secondary'}>{task.status === 'enabled' ? '启用' : task.status === 'paused' ? '暂停' : task.status === 'disabled' ? '用户已禁用' : '需要关注'}</Badge></TableCell>
+                        <TableCell className='text-muted-foreground text-xs'>{task.lastRun ? formatDateTime(task.lastRun) : '尚未运行'}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value='accounts' className='mt-4'>
+            <Card className='shadow-none'>
+              <CardHeader className='border-b'>
+                <CardTitle className='text-xl'>学校账号</CardTitle>
+                <CardDescription>账号标识已脱敏，管理员只查看连接状态和归属，不接触凭据。</CardDescription>
+              </CardHeader>
+              <CardContent className='overflow-x-auto p-0'>
+                <Table className='min-w-[760px]'>
+                  <TableHeader><TableRow><TableHead>账号</TableHead><TableHead>成员</TableHead><TableHead>授权状态</TableHead><TableHead>关联任务</TableHead><TableHead>最近验证</TableHead></TableRow></TableHeader>
+                  <TableBody>
+                    {accounts.length === 0 ? <TableRow><TableCell colSpan={5} className='text-muted-foreground py-12 text-center'>暂无学校账号</TableCell></TableRow> : accounts.map((account) => (
+                      <TableRow key={account.id}>
+                        <TableCell><p className='text-sm font-medium'>{account.label}</p><p className='text-muted-foreground font-mono text-xs'>{account.username}</p></TableCell>
+                        <TableCell><p className='text-sm'>{account.ownerName}</p><p className='text-muted-foreground text-xs'>{account.ownerEmail || '未设置邮箱'}</p></TableCell>
+                        <TableCell><Badge variant={account.status === 'connected' ? 'outline' : 'destructive'}>{account.statusLabel}</Badge><p className='text-muted-foreground mt-1 text-xs'>{account.tokenLabel}</p></TableCell>
+                        <TableCell className='text-sm'>{account.taskCount} 个任务</TableCell>
+                        <TableCell className='text-muted-foreground text-xs'>{account.lastVerifiedAt ? formatDateTime(account.lastVerifiedAt) : '尚未验证'}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
 
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
@@ -257,4 +399,14 @@ function StatCard({ label, value, detail, icon: Icon }: { label: string; value: 
 
 function formatDate(value: string): string {
   return new Date(value).toLocaleDateString('zh-CN', { timeZone: 'Asia/Shanghai', month: 'numeric', day: 'numeric' });
+}
+
+function formatDateTime(value: string): string {
+  return new Date(value).toLocaleString('zh-CN', {
+    timeZone: 'Asia/Shanghai',
+    month: 'numeric',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
 }

@@ -9,7 +9,6 @@ import { UserEntity } from '../users/infrastructure/persistence/relational/entit
 import { PlatformAccountsController } from './platform-accounts.controller';
 import { PlatformAccountsService } from './platform-accounts.service';
 import { PlatformAdminController } from './platform-admin.controller';
-import { PlatformAdminInvitationController } from './platform-admin-invitation.controller';
 import { PlatformAdminGuard } from './platform-admin.guard';
 import { PlatformAdminService } from './platform-admin.service';
 import { PlatformAuthController } from './platform-auth.controller';
@@ -24,6 +23,7 @@ import { PlatformNotificationsService } from './platform-notifications.service';
 import { BookingRunEntity } from './entities/booking-run.entity';
 import { BookingTaskEntity } from './entities/booking-task.entity';
 import { PlatformInvitationEntity } from './entities/platform-invitation.entity';
+import { PlatformInvitationUseEntity } from './entities/platform-invitation-use.entity';
 import { PlatformNotificationEntity } from './entities/platform-notification.entity';
 import { SchoolAccountEntity } from './entities/school-account.entity';
 import { PlatformProcessor } from './platform-processor';
@@ -52,6 +52,7 @@ import { SeatClientService } from './seat-client.service';
       BookingRunEntity,
       BookingTaskEntity,
       PlatformInvitationEntity,
+      PlatformInvitationUseEntity,
       PlatformNotificationEntity,
       SchoolAccountEntity,
       UserEntity,
@@ -60,7 +61,6 @@ import { SeatClientService } from './seat-client.service';
   controllers: [
     PlatformAccountsController,
     PlatformAdminController,
-    PlatformAdminInvitationController,
     PlatformAuthController,
     PlatformDashboardController,
     PlatformHealthController,

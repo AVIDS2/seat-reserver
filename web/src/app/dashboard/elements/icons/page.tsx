@@ -1,9 +1,9 @@
-import IconsViewPage from '@/features/elements/components/icons-view-page';
+import { redirect } from 'next/navigation';
 
 export const metadata = {
   title: 'Dashboard : Icons'
 };
 
-export default function page() {
-  return <IconsViewPage />;
+export default function Page() {
+  redirect('/dashboard/overview');
 }

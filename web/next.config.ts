@@ -4,25 +4,6 @@ import { withSentryConfig } from '@sentry/nextjs';
 // Define the base Next.js configuration
 const baseConfig: NextConfig = {
   output: process.env.BUILD_STANDALONE === 'true' ? 'standalone' : undefined,
-  images: {
-    remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: 'api.slingacademy.com',
-        port: ''
-      },
-      {
-        protocol: 'https',
-        hostname: 'img.clerk.com',
-        port: ''
-      },
-      {
-        protocol: 'https',
-        hostname: 'clerk.com',
-        port: ''
-      }
-    ]
-  },
   transpilePackages: ['geist'],
   experimental: {
     cpus: 1

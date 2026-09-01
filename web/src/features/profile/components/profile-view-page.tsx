@@ -9,11 +9,12 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { usePlatformSession } from '@/features/auth/platform-session';
+import { usePlatformSession, useSetPlatformSession } from '@/features/auth/platform-session';
 import { updatePlatformProfile } from '@/features/booking/api/service';
 
 export default function ProfileViewPage() {
   const user = usePlatformSession();
+  const setUser = useSetPlatformSession();
   const [firstName, setFirstName] = useState(user?.firstName || '');
   const [lastName, setLastName] = useState(user?.lastName || '');
   const [password, setPassword] = useState('');
@@ -24,11 +25,12 @@ export default function ProfileViewPage() {
     event.preventDefault();
     setSaving(true);
     try {
-      await updatePlatformProfile({
+      const updatedUser = await updatePlatformProfile({
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         ...(password ? { password, oldPassword } : {})
       });
+      setUser(updatedUser);
       setPassword('');
       setOldPassword('');
       toast.success('个人资料已更新');

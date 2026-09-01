@@ -51,8 +51,10 @@ export class PlatformAccountsService {
     userId: number,
     dto: CreateSchoolAccountDto,
   ): Promise<SchoolAccountView> {
+    const label = requireText(dto.label, '账号名称');
+    const username = requireText(dto.schoolUsername, '学校账号');
     const authenticated = await this.seatClient.authenticate(
-      dto.schoolUsername,
+      username,
       dto.schoolPassword,
     );
     const verified = await this.seatClient.verifyToken(authenticated.token);
@@ -62,8 +64,8 @@ export class PlatformAccountsService {
     }
 
     const account = this.accounts.create({
-      label: dto.label.trim(),
-      schoolUsername: dto.schoolUsername.trim(),
+      label,
+      schoolUsername: username,
       encryptedSchoolPassword: this.crypto.encrypt(dto.schoolPassword),
       encryptedToken: this.crypto.encrypt(authenticated.token),
       status: 'active',
@@ -106,8 +108,14 @@ export class PlatformAccountsService {
     dto: UpdateSchoolAccountDto,
   ): Promise<SchoolAccountView> {
     const account = await this.findOwned(userId, id);
-    const label = dto.label?.trim() || account.label;
-    const username = dto.schoolUsername?.trim() || account.schoolUsername;
+    const label =
+      dto.label === undefined
+        ? account.label
+        : requireText(dto.label, '账号名称');
+    const username =
+      dto.schoolUsername === undefined
+        ? account.schoolUsername
+        : requireText(dto.schoolUsername, '学校账号');
     const password = dto.schoolPassword
       ? dto.schoolPassword
       : this.crypto.decrypt(account.encryptedSchoolPassword);
@@ -136,7 +144,7 @@ export class PlatformAccountsService {
   async remove(userId: number, id: number): Promise<void> {
     const account = await this.findOwned(userId, id);
     const tasks = await this.tasks.find({
-      where: { schoolAccount: { id: account.id } },
+      where: { schoolAccount: { id: account.id }, user: { id: userId } },
     });
     if (tasks.length) await this.tasks.softRemove(tasks);
     await this.accounts.softRemove(account);
@@ -155,7 +163,10 @@ export class PlatformAccountsService {
 
   async toView(account: SchoolAccountEntity): Promise<SchoolAccountView> {
     const tasks = await this.tasks.count({
-      where: { schoolAccount: { id: account.id } },
+      where: {
+        schoolAccount: { id: account.id },
+        user: { id: account.userId },
+      },
     });
     const username = account.schoolUsername;
     const masked =
@@ -176,6 +187,12 @@ export class PlatformAccountsService {
       tasks,
     };
   }
+}
+
+function requireText(value: string, field: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) throw new UnprocessableEntityException(`${field}不能为空`);
+  return trimmed;
 }
 
 function formatDate(value: Date | null): string {

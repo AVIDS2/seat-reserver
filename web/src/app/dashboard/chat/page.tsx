@@ -1,9 +1,9 @@
-import ChatViewPage from '@/features/chat/components/chat-view-page';
+import { redirect } from 'next/navigation';
 
 export const metadata = {
   title: 'Dashboard: Chat'
 };
 
 export default function Page() {
-  return <ChatViewPage />;
+  redirect('/dashboard/overview');
 }

@@ -4,7 +4,7 @@
 
 ## 当前进度
 
-2026-08-31 已在 `web/` 引入 Kiranism Next.js Dashboard Starter，并完成预约控制台页面。2026-09-01 已将 brocoders NestJS 后端导入 `api/`，完成平台认证、邀请码、学校账号加密、预约任务、运行记录、Redis/BullMQ 队列、Nest Schedule 调度和真实 API 接入；`docker-compose.platform.yml` 提供 PostgreSQL、Redis、API、Web 的生产编排。根目录 CLI 与 VPS cron 继续独立作为现行生产抢座链路。
+2026-08-31 已在 `web/` 引入 Kiranism Next.js Dashboard Starter，并完成预约控制台页面。2026-09-01 已将 brocoders NestJS 后端导入 `api/`，完成平台认证、邀请码、学校账号加密、预约任务、运行记录、Redis/BullMQ 队列、Nest Schedule 调度和真实 API 接入；随后完成最终交付审计：关闭模板遗留公开注册入口，补齐数据库租户复合约束、运行幂等索引、停用任务跳过、管理员全局脱敏视图和服务端刷新并发保护。`docker-compose.platform.yml` 提供 PostgreSQL、Redis、API、Web 的生产编排。根目录 CLI 与 VPS cron 继续独立作为现行生产抢座链路。
 
 前端底座决策：使用 Next.js 16、Tailwind CSS 4、shadcn/ui、TanStack Query/Table、Motion 和 Tabler Icons。后端底座决策：使用 NestJS 11、TypeORM、PostgreSQL、JWT/HttpOnly Cookie、Swagger 和 Docker；预约执行层使用 Redis + BullMQ，并由 Nest Schedule 生成每日任务。生产模式下前端通过同域 `/api/v1` 访问 API，真实预约请求不会进入浏览器。
 
@@ -442,6 +442,10 @@ booking job 成功/失败都会写 booking_runs
 - [x] 任务页。
 - [x] 日志页。
 - [x] 管理员工作台：用户状态、邀请码和全局运行统计。
+- [x] 管理员脱敏查看全局账号、任务和运行记录。
+- [x] 关闭 brocoders 模板遗留的公开注册、社交登录和通用用户管理路由，平台统一走邀请制认证。
+- [x] 数据库复合外键约束任务/运行记录与账号所属用户一致。
+- [x] 运行记录按任务、日期和类型幂等，停用任务不会执行已排队预约。
 
 验收：
 
@@ -451,6 +455,8 @@ booking job 成功/失败都会写 booking_runs
 可以查看运行日志
 管理员可以创建邀请码、查看成员并启用/禁用用户
 ```
+
+真实学校账号 E2E（登录、Token 验证、真实预约提交）不在自动化测试中执行，待运营者使用测试账号完成最后验收。
 
 ## 测试要求
 

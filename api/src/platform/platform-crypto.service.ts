@@ -8,6 +8,18 @@ import {
 
 @Injectable()
 export class PlatformCryptoService {
+  constructor() {
+    const configured = process.env.CREDENTIAL_ENCRYPTION_KEY;
+    if (
+      process.env.NODE_ENV === 'production' &&
+      (!configured || configured.startsWith('replace-with-'))
+    ) {
+      throw new Error(
+        'CREDENTIAL_ENCRYPTION_KEY must be configured with a strong production secret',
+      );
+    }
+  }
+
   private getKey(): Buffer {
     const configured = process.env.CREDENTIAL_ENCRYPTION_KEY;
     if (!configured) {

@@ -1,14 +1,9 @@
-import PageContainer from '@/components/layout/page-container';
-import { AiChatDemo } from '@/features/ai-chat/components/ai-chat-demo';
+import { redirect } from 'next/navigation';
 
 export const metadata = {
   title: 'Dashboard: AI Chat'
 };
 
 export default function Page() {
-  return (
-    <PageContainer>
-      <AiChatDemo />
-    </PageContainer>
-  );
+  redirect('/dashboard/overview');
 }

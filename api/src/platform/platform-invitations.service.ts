@@ -9,6 +9,7 @@ import { EntityManager, Repository } from 'typeorm';
 import { UserEntity } from '../users/infrastructure/persistence/relational/entities/user.entity';
 import { CreateInvitationDto } from './dto/invitation.dto';
 import { PlatformInvitationEntity } from './entities/platform-invitation.entity';
+import { PlatformInvitationUseEntity } from './entities/platform-invitation-use.entity';
 import { PlatformCryptoService } from './platform-crypto.service';
 
 export type InvitationView = {
@@ -56,7 +57,7 @@ export class PlatformInvitationsService {
   async consumeWithinTransaction(
     manager: EntityManager,
     code: string,
-  ): Promise<void> {
+  ): Promise<PlatformInvitationEntity> {
     const repository = manager.getRepository(PlatformInvitationEntity);
     const invitation = await repository
       .createQueryBuilder('invitation')
@@ -81,6 +82,22 @@ export class PlatformInvitationsService {
     if (invitation.usedCount >= invitation.maxUses)
       invitation.status = 'exhausted';
     await repository.save(invitation);
+    return invitation;
+  }
+
+  async recordUseWithinTransaction(
+    manager: EntityManager,
+    invitationId: number,
+    userId: number,
+  ): Promise<void> {
+    await manager.getRepository(PlatformInvitationUseEntity).save(
+      manager.getRepository(PlatformInvitationUseEntity).create({
+        invitation: { id: invitationId },
+        invitationId,
+        user: { id: userId },
+        userId,
+      }),
+    );
   }
 
   async list(): Promise<InvitationView[]> {
@@ -98,11 +115,15 @@ export class PlatformInvitationsService {
   }
 
   private toView(invitation: PlatformInvitationEntity): InvitationView {
+    const expired =
+      invitation.status === 'active' &&
+      invitation.expiresAt !== null &&
+      invitation.expiresAt < new Date();
     return {
       id: String(invitation.id),
       maxUses: invitation.maxUses,
       usedCount: invitation.usedCount,
-      status: invitation.status,
+      status: expired ? 'expired' : invitation.status,
       expiresAt: invitation.expiresAt?.toISOString() ?? null,
       createdAt: invitation.createdAt.toISOString(),
     };

@@ -51,10 +51,15 @@ POST /api/v1/platform/auth/login
 GET  /api/v1/platform/auth/me
 GET  /api/v1/platform/dashboard
 GET  /api/v1/platform/admin/overview
+GET  /api/v1/platform/admin/accounts
+GET  /api/v1/platform/admin/tasks
+GET  /api/v1/platform/admin/runs
 GET  /api/v1/platform/health
 ```
 
 首个注册账号自动成为管理员；后续注册需要管理员在 `/dashboard/admin` 创建的邀请码。学校账号绑定时由后端调用学校登录接口和用户校验接口，密码与 Token 加密后保存。
+
+平台以 `user.id` 作为租户根。普通用户的账号、任务、运行记录和通知查询全部按当前用户过滤，数据库还用复合外键阻止任务或运行记录挂到其他用户的学校账号；管理员只能查看脱敏的全局资源。模板自带的通用公开注册、社交登录和 mock API 路由不参与生产平台。
 
 不要把 `api/.env`、学校账号密码、Token 或 Redis/数据库凭据提交到 Git。
 

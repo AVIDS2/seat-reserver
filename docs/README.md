@@ -2,7 +2,7 @@
 
 | 文档 | 用途 | 状态 |
 |---|---|---|
-| [planning/platform-mvp.md](planning/platform-mvp.md) | 平台 MVP 范围、技术栈、阶段任务和验收标准 | 实施中 |
+| [planning/platform-mvp.md](planning/platform-mvp.md) | 平台 MVP 范围、技术栈、阶段任务和验收标准 | 代码已实现，待真实学校账号验收 |
 | [planning/architecture-proposal.md](planning/architecture-proposal.md) | 平台架构、数据模型、接口和部署取舍 | 已确定，持续更新 |
 | [planning/account-binding-research.md](planning/account-binding-research.md) | 登录、绑定和授权链路的抓包研究边界 | 持续维护 |
 | [deployment/platform.md](deployment/platform.md) | 平台生产部署、使用、自动执行和 Reqable 采集 | 当前部署说明 |

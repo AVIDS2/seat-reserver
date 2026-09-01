@@ -12,6 +12,7 @@ import {
 } from './dto/booking-task.dto';
 import { BookingRunEntity } from './entities/booking-run.entity';
 import { BookingTaskEntity } from './entities/booking-task.entity';
+import { SchoolAccountEntity } from './entities/school-account.entity';
 import { PlatformAccountsService } from './platform-accounts.service';
 import { PlatformCryptoService } from './platform-crypto.service';
 import { PlatformQueueService } from './platform-queue.service';
@@ -81,10 +82,11 @@ export class PlatformTasksService {
   ): Promise<BookingTaskView> {
     validateTimeCandidates(dto.timeCandidates);
     const account = await this.accounts.findOwned(userId, dto.accountId);
+    assertAccountReady(account);
     const task = this.tasks.create({
-      name: dto.name.trim(),
-      primarySeatId: dto.primarySeatId.trim(),
-      backupSeatIds: dto.backupSeatIds ?? [],
+      name: requireText(dto.name, '任务名称'),
+      primarySeatId: requireText(dto.primarySeatId, '主座位'),
+      backupSeatIds: normalizeSeatIds(dto.backupSeatIds ?? []),
       timeCandidates: dto.timeCandidates,
       maxAttempts: dto.maxAttempts ?? 12,
       attemptDelaySeconds: dto.attemptDelaySeconds ?? 1.2,
@@ -106,12 +108,25 @@ export class PlatformTasksService {
   ): Promise<BookingTaskView> {
     const task = await this.findOwned(userId, id);
     if (dto.timeCandidates) validateTimeCandidates(dto.timeCandidates);
-    if (dto.accountId !== undefined)
-      task.schoolAccount = await this.accounts.findOwned(userId, dto.accountId);
+    const account =
+      dto.accountId === undefined
+        ? task.schoolAccount
+        : await this.accounts.findOwned(userId, dto.accountId);
+    const enabled = dto.enabled ?? task.enabled;
+    if (enabled && (dto.enabled === true || dto.accountId !== undefined))
+      assertAccountReady(account);
+    task.schoolAccount = account;
     Object.assign(task, {
-      name: dto.name?.trim() ?? task.name,
-      primarySeatId: dto.primarySeatId?.trim() ?? task.primarySeatId,
-      backupSeatIds: dto.backupSeatIds ?? task.backupSeatIds,
+      name:
+        dto.name === undefined ? task.name : requireText(dto.name, '任务名称'),
+      primarySeatId:
+        dto.primarySeatId === undefined
+          ? task.primarySeatId
+          : requireText(dto.primarySeatId, '主座位'),
+      backupSeatIds:
+        dto.backupSeatIds === undefined
+          ? task.backupSeatIds
+          : normalizeSeatIds(dto.backupSeatIds),
       timeCandidates: dto.timeCandidates ?? task.timeCandidates,
       maxAttempts: dto.maxAttempts ?? task.maxAttempts,
       attemptDelaySeconds: dto.attemptDelaySeconds ?? task.attemptDelaySeconds,
@@ -120,7 +135,7 @@ export class PlatformTasksService {
       prewarmOffsetSeconds:
         dto.prewarmOffsetSeconds ?? task.prewarmOffsetSeconds,
       runOffsetSeconds: dto.runOffsetSeconds ?? task.runOffsetSeconds,
-      enabled: dto.enabled ?? task.enabled,
+      enabled,
     });
     return this.toView(await this.tasks.save(task));
   }
@@ -131,6 +146,7 @@ export class PlatformTasksService {
     enabled: boolean,
   ): Promise<BookingTaskView> {
     const task = await this.findOwned(userId, id);
+    if (enabled) assertAccountReady(task.schoolAccount);
     task.enabled = enabled;
     return this.toView(await this.tasks.save(task));
   }
@@ -207,7 +223,7 @@ export class PlatformTasksService {
 
   async toView(task: BookingTaskEntity): Promise<BookingTaskView> {
     const lastRun = await this.runs.findOne({
-      where: { task: { id: task.id } },
+      where: { task: { id: task.id }, user: { id: task.userId } },
       order: { createdAt: 'DESC' },
     });
     const account = task.schoolAccount;
@@ -225,7 +241,7 @@ export class PlatformTasksService {
       seatId: task.primarySeatId,
       time,
       nextRun: task.enabled
-        ? `明天 06:00:0${Math.min(task.runOffsetSeconds, 9)}`
+        ? `下次开放 ${formatScheduledTime(task.runOffsetSeconds)}`
         : '已暂停',
       status: hasIssue ? 'attention' : task.enabled ? 'enabled' : 'paused',
       enabled: task.enabled,
@@ -249,8 +265,45 @@ function validateTimeCandidates(
 ) {
   if (!candidates.length)
     throw new UnprocessableEntityException('至少配置一个时间段');
-  if (candidates.some(({ start, end }) => end <= start))
+  if (
+    candidates.some(
+      ({ start, end }) =>
+        !Number.isInteger(start) ||
+        !Number.isInteger(end) ||
+        start < 0 ||
+        end > 1440 ||
+        end <= start,
+    )
+  )
     throw new UnprocessableEntityException('结束时间必须晚于开始时间');
+}
+
+function normalizeSeatIds(seats: string[]): string[] {
+  const normalized = seats.map((seat) => seat.trim()).filter(Boolean);
+  if (normalized.some((seat) => seat.length > 30))
+    throw new UnprocessableEntityException('座位 ID 不能超过 30 个字符');
+  return Array.from(new Set(normalized));
+}
+
+function requireText(value: string, field: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) throw new UnprocessableEntityException(`${field}不能为空`);
+  return trimmed;
+}
+
+function assertAccountReady(account: SchoolAccountEntity): void {
+  if (account.status !== 'active' || !account.encryptedToken)
+    throw new UnprocessableEntityException('请先验证学校账号 Token');
+}
+
+function formatScheduledTime(offsetSeconds: number): string {
+  const totalSeconds = 6 * 60 * 60 + Math.max(0, offsetSeconds);
+  const hour = Math.floor(totalSeconds / 3600) % 24;
+  const minute = Math.floor((totalSeconds % 3600) / 60);
+  const second = totalSeconds % 60;
+  return `${hour.toString().padStart(2, '0')}:${minute
+    .toString()
+    .padStart(2, '0')}:${second.toString().padStart(2, '0')}`;
 }
 
 function formatTime(minutes: number): string {

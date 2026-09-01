@@ -1,9 +1,9 @@
-import KanbanViewPage from '@/features/kanban/components/kanban-view-page';
+import { redirect } from 'next/navigation';
 
 export const metadata = {
   title: 'Dashboard : Kanban view'
 };
 
-export default function page() {
-  return <KanbanViewPage />;
+export default function Page() {
+  redirect('/dashboard/tasks');
 }

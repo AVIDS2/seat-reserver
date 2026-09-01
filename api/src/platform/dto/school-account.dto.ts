@@ -18,6 +18,7 @@ export class CreateSchoolAccountDto {
   @IsString()
   @IsNotEmpty()
   @MinLength(1)
+  @MaxLength(200)
   schoolPassword: string;
 }
 

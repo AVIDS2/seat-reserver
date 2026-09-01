@@ -31,7 +31,7 @@ export class PlatformBookingExecutor {
 
   async execute(runId: number): Promise<void> {
     const lockKey = `platform:run:${runId}`;
-    const lock = await this.redis.tryLock(lockKey, 120);
+    const lock = await this.redis.tryLock(lockKey, 300);
     if (!lock) return;
     try {
       const run = await this.runs.findOne({
@@ -44,7 +44,7 @@ export class PlatformBookingExecutor {
       run.startedAt = new Date();
       await this.runs.save(run);
 
-      if (run.user?.status?.id !== StatusEnum.active) {
+      if (Number(run.user?.status?.id) !== StatusEnum.active) {
         run.status = 'skipped';
         run.finishedAt = new Date();
         run.message = '用户账号已禁用，跳过本次执行';
@@ -90,8 +90,24 @@ export class PlatformBookingExecutor {
   private async executeBooking(run: BookingRunEntity): Promise<void> {
     const account = await this.getAccount(run);
     const task = await this.getTask(run);
+    if (
+      Number(account.userId) !== Number(run.userId) ||
+      Number(task.userId) !== Number(run.userId) ||
+      Number(task.schoolAccountId) !== Number(account.id)
+    ) {
+      throw new UnprocessableEntityException('任务账号归属校验失败');
+    }
+    if (!task.enabled) {
+      run.status = 'skipped';
+      run.finishedAt = new Date();
+      run.message = '任务已暂停，跳过本次预约';
+      await this.runs.save(run);
+      return;
+    }
     let token = account.encryptedToken
-      ? this.crypto.decrypt(account.encryptedToken)
+      ? account.status === 'active'
+        ? this.crypto.decrypt(account.encryptedToken)
+        : null
       : null;
 
     if (!token || !(await this.seatClient.verifyToken(token)).success) {

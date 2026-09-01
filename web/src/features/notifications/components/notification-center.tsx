@@ -20,7 +20,20 @@ export function NotificationCenter() {
   const router = useRouter();
 
   useEffect(() => {
-    void getClientNotifications().then(setNotifications).catch(() => undefined);
+    let active = true;
+    const load = () => {
+      void getClientNotifications()
+        .then((nextNotifications) => {
+          if (active) setNotifications(nextNotifications);
+        })
+        .catch(() => undefined);
+    };
+    load();
+    const interval = window.setInterval(load, 30_000);
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+    };
   }, []);
 
   const unreadCount = notifications.filter((notification) => notification.status === 'unread').length;

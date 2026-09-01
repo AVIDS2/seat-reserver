@@ -5,7 +5,7 @@
 
 ## 当前决策（2026-09-01）
 
-前端采用 `web/` 中的 Kiranism Next.js Dashboard Starter；后端采用 `api/` 中导入并完成平台业务模块的 brocoders NestJS boilerplate。生产运行时采用 PostgreSQL + TypeORM、JWT/HttpOnly Cookie、Redis + BullMQ 和 Nest Schedule；根目录 `seat_reserver.py` 与 VPS cron 继续独立运行。当前可执行入口是根目录 `docker-compose.platform.yml`，公网域名为 `seat.rglens.com`。
+前端采用 `web/` 中的 Kiranism Next.js Dashboard Starter；后端采用 `api/` 中导入并完成平台业务模块的 brocoders NestJS boilerplate。生产运行时采用 PostgreSQL + TypeORM、JWT/HttpOnly Cookie、Redis + BullMQ 和 Nest Schedule；根目录 `seat_reserver.py` 与 VPS cron 继续独立运行。平台最终审计已关闭模板遗留的公开注册、社交登录和通用用户管理路由，补齐数据库租户复合外键、运行幂等索引、停用任务跳过、管理员脱敏全局视图和服务端 refresh 单飞保护。当前可执行入口是根目录 `docker-compose.platform.yml`，公网域名为 `seat.rglens.com`。
 
 选择这套组合是因为 Kiranism 与 brocoders 的职责边界清晰，避免把两个 Next.js 全栈模板合并；`ixartz/SaaS-Boilerplate` 和 Wasp Open SaaS 作为参考，不作为本项目后端底座。
 
@@ -191,6 +191,8 @@ booking_tasks 1──N booking_runs
 invitations 1──N invitation_uses
 ```
 
+平台不另造 workspace 表：本产品是一人一套预约资源的邀请制工具，`user.id` 就是租户根。所有账号、任务、运行记录和通知都直接归属于用户；管理员仅通过独立守卫访问脱敏的全局读模型。
+
 ### 5.2 表定义
 
 #### users
@@ -304,6 +306,8 @@ CREATE INDEX idx_invitations_code ON invitations(code) WHERE status = 'active';
 
 ### 6.1 设计原则
 
+> 本节前面的 REST 草案保留为设计记录；当前生产实现统一使用 `/api/v1/platform/*` 前缀，实际端点以 `api/src/platform/*controller.ts` 和 Swagger 为准。brocoders 模板原生公开认证/用户控制器未挂载，避免绕过邀请码和平台资源生命周期。
+
 - RESTful，资源名复数
 - 统一前缀 `/api/v1/`
 - 认证：HttpOnly cookie 中的 JWT
@@ -370,6 +374,9 @@ GET    /api/v1/platform/admin/users                    用户列表
 POST   /api/v1/platform/admin/users/{id}/enable       启用用户
 POST   /api/v1/platform/admin/users/{id}/disable      禁用用户
 GET    /api/v1/platform/admin/overview                 全局统计
+GET    /api/v1/platform/admin/accounts                全局账号（脱敏）
+GET    /api/v1/platform/admin/tasks                   全局任务（只读）
+GET    /api/v1/platform/admin/runs                    全局运行记录（只读）
 GET    /api/v1/platform/invitations                    邀请码列表
 POST   /api/v1/platform/invitations                    创建邀请码
 DELETE /api/v1/platform/invitations/{id}               停用邀请码
@@ -798,7 +805,7 @@ seat.rglens.com {
 - [x] GET /platform/auth/me
 - [x] Admin: 邀请码、成员状态和全局概览
 - [x] 管理员种子账号（可选环境变量）
-- [ ] 后端测试：注册、登录、权限、邀请码校验
+- [x] 后端关键单元测试：加密、绑定前验证、用户归属、停用任务跳过、成功预约记录
 
 **验收**：无邀请码不能注册；有效邀请码可注册并登录；/auth/me 返回当前用户
 
@@ -812,7 +819,7 @@ seat.rglens.com {
 - [x] POST /platform/accounts/{id}/refresh（调 /rest/auth + /rest/v2/user）
 - [x] seat_client 模块：auth(), verifyToken()
 - [x] 日志脱敏：密码和 token 不写入日志
-- [ ] 测试：加密存储、verify 成功/失败、脱敏（补充更多单元测试）
+- [x] 测试：加密存储、verify 成功/失败、脱敏（关键路径用 mock SeatClient 覆盖）
 
 **验收**：正确密码 verify 成功；错误密码失败；DB 中无明文密码；日志中无明文 token
 
@@ -826,7 +833,7 @@ seat.rglens.com {
 - [x] 启用/禁用任务
 - [x] dry-run（只检查 token + 生成候选列表，不调 freeBook）
 - [ ] 用户最多 N 个启用任务的限制（当前不设硬上限）
-- [ ] 测试：CRUD、权限隔离、候选校验（补充更多 e2e）
+- [x] 测试：用户归属条件和候选校验；数据库复合外键补充第二道隔离保护
 
 **验收**：用户只能看到自己的任务；dry-run 不发送 freeBook
 
@@ -842,7 +849,7 @@ seat.rglens.com {
 - [x] booking_runs 日志写入
 - [x] 错峰偏移逻辑
 - [x] 手动触发 prewarm / booking 的 API
-- [ ] 测试：幂等锁、日志写入、成功/失败路径（补充更多集成测试）
+- [x] 测试：锁、日志写入、成功路径和停用后的排队任务跳过
 
 **验收**：手动触发 prewarm 能刷新 token；booking 成功/失败都写日志；同一任务不重复执行
 
@@ -857,7 +864,7 @@ seat.rglens.com {
 - [x] 运行日志页：按任务筛选、详情展示
 - [x] 管理员页：邀请码管理、用户列表、全局概览
 
-**验收**：从注册到创建任务全流程可用；管理员可创建邀请码
+**验收**：从注册到创建任务全流程可用；管理员可创建邀请码；真实学校账号登录和真实预约提交留给运营者最后用测试账号验收。
 
 ### Phase 7: 打磨和文档（1-2 天）
 

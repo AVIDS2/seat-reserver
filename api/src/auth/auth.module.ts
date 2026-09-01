@@ -1,5 +1,4 @@
 import { Module } from '@nestjs/common';
-import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { PassportModule } from '@nestjs/passport';
 import { JwtModule } from '@nestjs/jwt';
@@ -18,7 +17,9 @@ import { UsersModule } from '../users/users.module';
     MailModule,
     JwtModule.register({}),
   ],
-  controllers: [AuthController],
+  // The platform exposes its own invite-gated auth controller. The boilerplate
+  // auth controller is kept as source reference but is not mounted publicly.
+  controllers: [],
   providers: [AuthService, JwtStrategy, JwtRefreshStrategy, AnonymousStrategy],
   exports: [AuthService],
 })

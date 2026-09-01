@@ -58,23 +58,32 @@ export class PlatformAuthController {
       const existing = await users.findOne({ where: { email } });
       if (existing) throw new BadRequestException('邮箱已注册');
       const firstUser = (await users.count()) === 0;
+      let invitationId: number | null = null;
       if (!firstUser) {
         if (!dto.inviteCode) throw new BadRequestException('邀请码不能为空');
-        await this.invitations.consumeWithinTransaction(
+        const invitation = await this.invitations.consumeWithinTransaction(
           manager,
           dto.inviteCode,
         );
+        invitationId = invitation.id;
       }
-      return users.save(
+      const user = await users.save(
         users.create({
           email,
           password: await bcrypt.hash(dto.password, 12),
-          firstName: dto.firstName,
-          lastName: dto.lastName,
+          firstName: dto.firstName.trim(),
+          lastName: dto.lastName.trim(),
           role: { id: firstUser ? RoleEnum.admin : RoleEnum.user },
           status: { id: StatusEnum.active },
         }),
       );
+      if (invitationId !== null)
+        await this.invitations.recordUseWithinTransaction(
+          manager,
+          invitationId,
+          user.id,
+        );
+      return user;
     });
     const login = await this.auth.validateLogin({
       email,

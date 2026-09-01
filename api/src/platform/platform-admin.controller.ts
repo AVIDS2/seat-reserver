@@ -13,7 +13,6 @@ import { JwtPayloadType } from '../auth/strategies/types/jwt-payload.type';
 import { RequestWithUser } from '../utils/types/request-with-user.type';
 import { PlatformAdminGuard } from './platform-admin.guard';
 import { PlatformAdminService } from './platform-admin.service';
-import { PlatformInvitationsService } from './platform-invitations.service';
 import { PlatformRedisService } from './platform-redis.service';
 
 @ApiTags('Platform Admin')
@@ -23,7 +22,6 @@ import { PlatformRedisService } from './platform-redis.service';
 export class PlatformAdminController {
   constructor(
     private readonly admin: PlatformAdminService,
-    private readonly invitations: PlatformInvitationsService,
     private readonly redis: PlatformRedisService,
   ) {}
 
@@ -35,6 +33,21 @@ export class PlatformAdminController {
   @Get('users')
   async users() {
     return { users: await this.admin.listUsers() };
+  }
+
+  @Get('accounts')
+  async accounts() {
+    return { accounts: await this.admin.listAccounts() };
+  }
+
+  @Get('tasks')
+  async tasks() {
+    return { tasks: await this.admin.listTasks() };
+  }
+
+  @Get('runs')
+  async runs() {
+    return { runs: await this.admin.listRuns() };
   }
 
   @Post('users/:id/enable')
@@ -55,10 +68,5 @@ export class PlatformAdminController {
     return {
       user: await this.admin.setStatus(Number(request.user.id), id, 'disabled'),
     };
-  }
-
-  @Get('invitations')
-  async invitationList() {
-    return { invitations: await this.invitations.list() };
   }
 }

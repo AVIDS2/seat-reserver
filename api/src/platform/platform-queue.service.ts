@@ -27,7 +27,7 @@ export class PlatformQueueService {
     delay = 0,
   ): Promise<BookingRunEntity> {
     const lockKey = `platform:enqueue:${task.id}:${runType}:${targetDate}`;
-    const lock = await this.redis.tryLock(lockKey, 15);
+    const lock = await this.redis.tryLock(lockKey, 60);
     if (!lock) {
       const existing = await this.findExisting(task, runType, targetDate);
       if (existing) return existing;
@@ -38,26 +38,38 @@ export class PlatformQueueService {
       const existing = await this.findExisting(task, runType, targetDate);
       if (existing) return existing;
 
-      const run = await this.runs.save(
-        this.runs.create({
-          runType,
-          status: 'pending',
-          targetDate,
+      let run: BookingRunEntity;
+      try {
+        run = await this.runs.save(
+          this.runs.create({
+            runType,
+            status: 'pending',
+            targetDate,
+            task,
+            schoolAccount: task.schoolAccount,
+            user: task.user,
+            startedAt: null,
+            finishedAt: null,
+            message: null,
+            receipt: null,
+            location: null,
+            reservedBegin: null,
+            reservedEnd: null,
+            httpStatus: null,
+            responseCode: null,
+            attemptsUsed: 0,
+          }),
+        );
+      } catch (error: unknown) {
+        if (!isUniqueViolation(error)) throw error;
+        const existingAfterRace = await this.findExisting(
           task,
-          schoolAccount: task.schoolAccount,
-          user: task.user,
-          startedAt: null,
-          finishedAt: null,
-          message: null,
-          receipt: null,
-          location: null,
-          reservedBegin: null,
-          reservedEnd: null,
-          httpStatus: null,
-          responseCode: null,
-          attemptsUsed: 0,
-        }),
-      );
+          runType,
+          targetDate,
+        );
+        if (existingAfterRace) return existingAfterRace;
+        throw error;
+      }
 
       try {
         await this.queue.add(
@@ -97,4 +109,16 @@ export class PlatformQueueService {
       order: { createdAt: 'DESC' },
     });
   }
+}
+
+function isUniqueViolation(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'driverError' in error &&
+    typeof error.driverError === 'object' &&
+    error.driverError !== null &&
+    'code' in error.driverError &&
+    error.driverError.code === '23505'
+  );
 }

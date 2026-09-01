@@ -57,6 +57,49 @@ export type AdminOverview = {
   serverTime: string;
 };
 
+export type AdminAccount = {
+  id: string;
+  label: string;
+  username: string;
+  status: 'connected' | 'attention';
+  statusLabel: string;
+  tokenLabel: string;
+  ownerName: string;
+  ownerEmail: string | null;
+  taskCount: number;
+  lastVerifiedAt: string | null;
+};
+
+export type AdminTask = {
+  id: string;
+  name: string;
+  ownerName: string;
+  ownerEmail: string | null;
+  account: string;
+  seat: string;
+  time: string;
+  enabled: boolean;
+  status: 'enabled' | 'paused' | 'attention' | 'disabled';
+  lastRun: string | null;
+  lastMessage: string;
+};
+
+export type AdminRun = {
+  id: string;
+  runType: 'prewarm' | 'booking';
+  ownerName: string;
+  ownerEmail: string | null;
+  task: string;
+  account: string;
+  targetDate: string;
+  status: 'success' | 'failed' | 'prewarming' | 'running' | 'pending' | 'skipped';
+  statusLabel: string;
+  attempts: number;
+  result: string;
+  detail: string;
+  startedAt: string;
+};
+
 export type AdminUser = {
   id: string;
   email: string | null;
@@ -378,6 +421,21 @@ export async function getAdminOverview(): Promise<AdminOverview> {
 export async function getAdminUsers(): Promise<AdminUser[]> {
   const response = await platformRequest<{ users: AdminUser[] }>('/platform/admin/users');
   return response.users;
+}
+
+export async function getAdminAccounts(): Promise<AdminAccount[]> {
+  const response = await platformRequest<{ accounts: AdminAccount[] }>('/platform/admin/accounts');
+  return response.accounts;
+}
+
+export async function getAdminTasks(): Promise<AdminTask[]> {
+  const response = await platformRequest<{ tasks: AdminTask[] }>('/platform/admin/tasks');
+  return response.tasks;
+}
+
+export async function getAdminRuns(): Promise<AdminRun[]> {
+  const response = await platformRequest<{ runs: AdminRun[] }>('/platform/admin/runs');
+  return response.runs;
 }
 
 export async function setAdminUserEnabled(id: string, enabled: boolean): Promise<AdminUser> {

@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { toast } from 'sonner';
 
 import { Icons } from '@/components/icons';
 import { Button } from '@/components/ui/button';
@@ -17,16 +18,18 @@ import PageContainer from '@/components/layout/page-container';
 
 import type { BookingRun } from '../types';
 import { RunStatusBadge } from './status-badge';
+import { getClientSnapshot, isDemoMode } from '../api/service';
 
 export default function BookingRunsPage({ initialRuns }: { initialRuns: BookingRun[] }) {
-  const [runs] = useState(initialRuns);
+  const [liveRuns, setLiveRuns] = useState(initialRuns);
+  const [refreshing, setRefreshing] = useState(false);
   const [filter, setFilter] = useState<'all' | 'success' | 'failed'>('all');
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<BookingRun | null>(null);
 
   const filteredRuns = useMemo(
     () =>
-      runs.filter((run) => {
+      liveRuns.filter((run) => {
         const matchesFilter = filter === 'all' || run.status === filter;
         const value = search.trim().toLowerCase();
         return (
@@ -34,8 +37,21 @@ export default function BookingRunsPage({ initialRuns }: { initialRuns: BookingR
           (!value || `${run.account} ${run.task} ${run.targetDate}`.toLowerCase().includes(value))
         );
       }),
-    [filter, runs, search]
+    [filter, liveRuns, search]
   );
+
+  const refreshRuns = async () => {
+    if (isDemoMode()) return;
+    setRefreshing(true);
+    try {
+      const snapshot = await getClientSnapshot();
+      setLiveRuns(snapshot.runs);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : '刷新运行记录失败');
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   return (
     <PageContainer>
@@ -46,12 +62,16 @@ export default function BookingRunsPage({ initialRuns }: { initialRuns: BookingR
           <p className='text-muted-foreground mt-2 text-sm leading-6'>
             每一次预热和预约请求都会留下结果，方便确认系统是否按计划工作。
           </p>
+          <Button variant='outline' size='sm' className='mt-4' onClick={() => void refreshRuns()} disabled={refreshing || isDemoMode()}>
+            <Icons.refresh className={refreshing ? 'animate-spin' : ''} />
+            {refreshing ? '刷新中' : '刷新记录'}
+          </Button>
         </div>
 
         <Card className='shadow-none'>
           <CardHeader className='border-b'>
             <div>
-              <CardDescription>{runs.length} 条记录</CardDescription>
+              <CardDescription>{liveRuns.length} 条记录</CardDescription>
               <CardTitle className='text-xl'>执行历史</CardTitle>
             </div>
             <div className='flex flex-col gap-2 sm:flex-row'>

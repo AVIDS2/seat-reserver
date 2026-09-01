@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { motion } from 'motion/react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 import { Icons } from '@/components/icons';
@@ -75,6 +75,23 @@ export default function BookingDashboard({ initialData }: { initialData: Booking
   const [snapshot, setSnapshot] = useState(initialData);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const summary = snapshot.summary;
+
+  useEffect(() => {
+    if (isDemoMode()) return;
+    let active = true;
+    const poll = () => {
+      void getClientSnapshot()
+        .then((nextSnapshot) => {
+          if (active) setSnapshot(nextSnapshot);
+        })
+        .catch(() => undefined);
+    };
+    const interval = window.setInterval(poll, 30_000);
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+    };
+  }, []);
 
   const refreshData = () => {
     setIsRefreshing(true);

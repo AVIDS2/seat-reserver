@@ -9,6 +9,8 @@
 - API：仅绑定 VPS `127.0.0.1:3201`
 - 数据库和 Redis：只加入 Docker 内部网络，不暴露公网
 
+平台资源归属以 `user.id` 为租户根：学校账号、预约任务、运行记录、通知均带 `userId`，普通用户的每个查询和写操作都必须带当前用户条件；数据库额外用复合外键阻止任务或运行记录跨账号归属。管理员接口只提供脱敏的全局只读视图和成员/邀请码管理。
+
 公网入口由 VPS 上已有 OpenResty 提供，配置文件为 `/opt/1panel/www/conf.d/seat.rglens.com.conf`。
 
 ## 首次使用
@@ -31,6 +33,8 @@ API 容器内的 Nest Schedule 使用北京时间：
 - 预约成功立即停止候选尝试；成功、失败、跳过和异常都会写入运行记录并生成通知。
 
 “检查 / dry-run”只调用 Token 验证并生成候选列表，不调用 `freeBook`；“立即运行”会进入真实预约队列。
+
+管理员工作台还提供全局运行记录、任务和学校账号的脱敏查看；不会返回学校密码、缓存 Token 或原始敏感请求。
 
 ## Reqable 自动化采集
 
@@ -71,6 +75,8 @@ docker compose -p seat-platform -f docker-compose.platform.yml --env-file /app/s
 `prepare:runtime` 会为 standalone 产物中 Turbopack 生成的 OpenTelemetry external 别名补齐轻量兼容模块；Web 构建阶段通过 `NEXT_PUBLIC_SENTRY_DISABLED=true` 关闭未配置的 Sentry。
 
 API 容器启动时自动执行 migration 和 platform seed。不要执行 `down -v`，否则会删除平台数据库卷。
+
+生产 Compose 为 Postgres、Redis、API 和 Web 设置了运行时资源上限；发布阶段应在本地生成 `web/runtime`，避免在小规格 VPS 上执行 Next.js 编译。
 
 ## 健康检查
 

@@ -2,6 +2,7 @@ import { ApiProperty, PartialType } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
   ArrayUnique,
+  ArrayMaxSize,
   IsArray,
   IsBoolean,
   IsDateString,
@@ -11,6 +12,7 @@ import {
   IsOptional,
   IsString,
   Max,
+  MaxLength,
   Min,
   ValidateNested,
 } from 'class-validator';
@@ -46,12 +48,15 @@ export class CreateBookingTaskDto {
   @ApiProperty({ example: '197' })
   @IsString()
   @IsNotEmpty()
+  @MaxLength(30)
   primarySeatId: string;
 
   @ApiProperty({ example: ['211'], required: false, default: [] })
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
+  @MaxLength(30, { each: true })
+  @ArrayMaxSize(30)
   @ArrayUnique()
   backupSeatIds?: string[];
 
@@ -60,6 +65,7 @@ export class CreateBookingTaskDto {
     example: [{ start: 840, end: 1320 }],
   })
   @IsArray()
+  @ArrayMaxSize(30)
   @ValidateNested({ each: true })
   @Type(() => TimeCandidateDto)
   timeCandidates: TimeCandidateDto[];
