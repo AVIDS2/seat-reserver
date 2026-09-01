@@ -47,7 +47,7 @@ export class BookingRunEntity extends EntityRelationalHelper {
   @Column({ type: String, length: 30, nullable: true })
   reservedEnd: string | null;
 
-  @Column({ nullable: true })
+  @Column({ type: 'integer', nullable: true })
   httpStatus: number | null;
 
   @Column({ type: String, length: 30, nullable: true })
