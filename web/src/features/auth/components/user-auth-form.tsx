@@ -73,7 +73,7 @@ export default function UserAuthForm({ mode = 'sign-in' }: { mode?: 'sign-in' | 
             name='email'
             children={(field) => (
               <field.TextField
-                label='平台邮箱'
+                label='登录邮箱'
                 type='email'
                 placeholder='name@example.com'
                 disabled={loading}
@@ -84,7 +84,7 @@ export default function UserAuthForm({ mode = 'sign-in' }: { mode?: 'sign-in' | 
             name='password'
             children={(field) => (
               <field.TextField
-                label='平台登录密码'
+                label='登录密码'
                 type='password'
                 placeholder='至少 8 位'
                 disabled={loading}
@@ -102,12 +102,9 @@ export default function UserAuthForm({ mode = 'sign-in' }: { mode?: 'sign-in' | 
               <form.AppField
                 name='inviteCode'
                 children={(field) => (
-                  <field.TextField label='邀请码（首个账号可留空）' placeholder='管理员提供的邀请码' disabled={loading} />
+                  <field.TextField label='邀请码' placeholder='请输入邀请码' disabled={loading} />
                 )}
               />
-              <p className='text-muted-foreground text-xs leading-5'>
-                这里填写的是本平台的登录信息。学校学号和密码请在登录后进入“账号与授权”绑定。
-              </p>
             </>
           )}
         </FieldGroup>

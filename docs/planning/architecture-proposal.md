@@ -815,13 +815,14 @@ seat.rglens.com {
 
 - [x] TypeORM entity: school_accounts
 - [x] AES-256-GCM 加密/解密工具
-- [x] POST /platform/accounts（加密存储密码）
+- [x] POST /platform/accounts（加密存储已有一考即过登录凭据）
 - [x] POST /platform/accounts/{id}/refresh（调 /rest/auth + /rest/v2/user）
 - [x] seat_client 模块：auth(), verifyToken()
 - [x] 日志脱敏：密码和 token 不写入日志
 - [x] 测试：加密存储、verify 成功/失败、脱敏（关键路径用 mock SeatClient 覆盖）
+- [ ] 新账号首次 SSO/验证码/激活链路的真实抓包、数据模型与 AccountBinder 实现
 
-**验收**：正确密码 verify 成功；错误密码失败；DB 中无明文密码；日志中无明文 token
+**验收**：已有一考即过凭据 verify 成功；错误凭据失败；DB 中无明文凭据；日志中无明文 token。全新账号首次绑定尚未闭环，不能默认校园密码等于 `/rest/auth` password。
 
 ### Phase 4: 预约任务管理（2 天）
 
@@ -864,7 +865,7 @@ seat.rglens.com {
 - [x] 运行日志页：按任务筛选、详情展示
 - [x] 管理员页：邀请码管理、用户列表、全局概览
 
-**验收**：从注册到创建任务全流程可用；管理员可创建邀请码；真实学校账号登录和真实预约提交留给运营者最后用测试账号验收。
+**验收**：平台账号注册到创建任务全流程可用；管理员可创建邀请码；已有学校账号的刷新与预约可用。全新学校账号首次 SSO/验证码/绑定仍待运营者完成一次脱敏登录抓包验收。
 
 ### Phase 7: 打磨和文档（1-2 天）
 
