@@ -3,7 +3,6 @@ import { UserEntity } from '../../users/infrastructure/persistence/relational/en
 import {
   CreateDateColumn,
   Entity,
-  Index,
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
@@ -12,13 +11,6 @@ import {
 import { PlatformInvitationEntity } from './platform-invitation.entity';
 
 @Entity({ name: 'platform_invitation_use' })
-@Index(
-  'UQ_platform_invitation_use_invitation_user',
-  ['invitationId', 'userId'],
-  {
-    unique: true,
-  },
-)
 export class PlatformInvitationUseEntity extends EntityRelationalHelper {
   @PrimaryGeneratedColumn()
   id: number;
