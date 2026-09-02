@@ -44,6 +44,8 @@ MVP 只研究并实现 `self_study` 自习室模式。图书馆模式先不做�
 
 Reqable 官方支持 Report Server、Python capture script、HAR 和 MCP。当前推荐使用 Report Server：Reqable 把会话以 HAR POST 到本地接收器，接收器自动转换、脱敏并保存，后续所有账号使用同一套分析规则，不需要重复人工整理请求。
 
+GitHub 上的 [CCZU-OSSA/cczu-vpn-proto](https://github.com/CCZU-OSSA/cczu-vpn-proto) 提供常州大学 WebVPN 的 Linux TUN 客户端，可作为代理规则变化时的备用方案。当前平台不引入常驻隧道：座位系统的 WebVPN HTTPS 代理已经能覆盖认证和业务请求，直接使用网关可以减少 TUN 路由、`CAP_NET_ADMIN` 和额外资源占用。
+
 Reqable 官方内置 MCP 要求 Reqable 3.2.0 或更高版本。MCP 可以直接筛选和读取实时抓包记录，但不能代替用户完成学校验证码、校园统一身份认证或其他需要本人交互的步骤。
 
 启动接收器：
