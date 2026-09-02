@@ -5,5 +5,7 @@ export type {
   BookingSnapshot,
   BookingTask,
   RunStatus,
-  TaskStatus
+  TaskStatus,
+  TimeCandidate,
+  VenueType
 } from '../types';

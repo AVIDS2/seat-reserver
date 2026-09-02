@@ -7,6 +7,7 @@ import {
   IsBoolean,
   IsDateString,
   IsInt,
+  IsIn,
   IsNotEmpty,
   IsNumber,
   IsOptional,
@@ -45,11 +46,38 @@ export class CreateBookingTaskDto {
   @IsNotEmpty()
   name: string;
 
+  @ApiProperty({ enum: ['library', 'study_room', 'other'], required: false })
+  @IsOptional()
+  @IsIn(['library', 'study_room', 'other'])
+  venueType?: 'library' | 'study_room' | 'other';
+
+  @ApiProperty({ example: '5号楼', required: false })
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  building?: string;
+
+  @ApiProperty({ example: '智能自习室', required: false })
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  roomName?: string;
+
   @ApiProperty({ example: '197' })
   @IsString()
   @IsNotEmpty()
   @MaxLength(30)
   primarySeatId: string;
+
+  @ApiProperty({
+    example: '44',
+    required: false,
+    description: 'Human-readable seat number.',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(30)
+  primarySeatLabel?: string | null;
 
   @ApiProperty({ example: ['211'], required: false, default: [] })
   @IsOptional()

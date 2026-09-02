@@ -22,6 +22,10 @@ import { SchoolAuthenticationService } from './school-authentication.service';
 export type BookingTaskView = {
   id: string;
   name: string;
+  venueType: 'library' | 'study_room' | 'other';
+  building: string;
+  roomName: string;
+  seatLabel: string | null;
   account: string;
   accountId: string;
   seat: string;
@@ -87,7 +91,11 @@ export class PlatformTasksService {
     assertAccountReady(account);
     const task = this.tasks.create({
       name: requireText(dto.name, '任务名称'),
+      venueType: dto.venueType ?? 'study_room',
+      building: optionalText(dto.building, '未指定'),
+      roomName: optionalText(dto.roomName, '未指定'),
       primarySeatId: requireText(dto.primarySeatId, '主座位'),
+      primarySeatLabel: nullableText(dto.primarySeatLabel),
       backupSeatIds: normalizeSeatIds(dto.backupSeatIds ?? []),
       timeCandidates: dto.timeCandidates,
       maxAttempts: dto.maxAttempts ?? 12,
@@ -121,10 +129,23 @@ export class PlatformTasksService {
     Object.assign(task, {
       name:
         dto.name === undefined ? task.name : requireText(dto.name, '任务名称'),
+      venueType: dto.venueType ?? task.venueType,
+      building:
+        dto.building === undefined
+          ? task.building
+          : optionalText(dto.building, '未指定'),
+      roomName:
+        dto.roomName === undefined
+          ? task.roomName
+          : optionalText(dto.roomName, '未指定'),
       primarySeatId:
         dto.primarySeatId === undefined
           ? task.primarySeatId
           : requireText(dto.primarySeatId, '主座位'),
+      primarySeatLabel:
+        dto.primarySeatLabel === undefined
+          ? task.primarySeatLabel
+          : nullableText(dto.primarySeatLabel),
       backupSeatIds:
         dto.backupSeatIds === undefined
           ? task.backupSeatIds
@@ -239,15 +260,26 @@ export class PlatformTasksService {
     return {
       id: String(task.id),
       name: task.name,
+      venueType: task.venueType,
+      building: task.building,
+      roomName: task.roomName,
+      seatLabel: task.primarySeatLabel,
       account: account?.label ?? '未关联账号',
       accountId: String(task.schoolAccountId),
-      seat: `${task.primarySeatId} 号`,
+      seat: task.primarySeatLabel
+        ? `${task.primarySeatLabel} 号`
+        : '未设置座位号',
       seatId: task.primarySeatId,
       time,
       nextRun: task.enabled
         ? `下次开放 ${formatScheduledTime(task.runOffsetSeconds)}`
         : '已暂停',
-      status: hasIssue ? 'attention' : task.enabled ? 'enabled' : 'paused',
+      status:
+        hasIssue || lastRun?.status === 'failed'
+          ? 'attention'
+          : task.enabled
+            ? 'enabled'
+            : 'paused',
       enabled: task.enabled,
       backupSeatIds: task.backupSeatIds,
       timeCandidates: task.timeCandidates,
@@ -293,6 +325,16 @@ function requireText(value: string, field: string): string {
   const trimmed = value.trim();
   if (!trimmed) throw new UnprocessableEntityException(`${field}不能为空`);
   return trimmed;
+}
+
+function optionalText(value: string | undefined, fallback: string): string {
+  const trimmed = value?.trim();
+  return trimmed || fallback;
+}
+
+function nullableText(value: string | null | undefined): string | null {
+  const trimmed = value?.trim();
+  return trimmed || null;
 }
 
 function assertAccountReady(account: SchoolAccountEntity): void {

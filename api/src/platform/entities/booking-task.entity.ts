@@ -23,8 +23,20 @@ export class BookingTaskEntity extends EntityRelationalHelper {
   @Column({ length: 100 })
   name: string;
 
+  @Column({ length: 20, default: 'study_room' })
+  venueType: 'library' | 'study_room' | 'other';
+
+  @Column({ length: 50, default: '未指定' })
+  building: string;
+
+  @Column({ length: 120, default: '未指定' })
+  roomName: string;
+
   @Column({ length: 30 })
   primarySeatId: string;
+
+  @Column({ type: String, length: 30, nullable: true })
+  primarySeatLabel: string | null;
 
   @Column({ type: 'jsonb', default: () => "'[]'" })
   backupSeatIds: string[];

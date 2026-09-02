@@ -12,6 +12,15 @@ import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle }
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 
 import {
@@ -25,10 +34,13 @@ import {
   type DryRunResult,
   type TaskPayload
 } from '../api/service';
-import type { BookingAccount, BookingTask } from '../types';
+import type { BookingAccount, BookingTask, TimeCandidate, VenueType } from '../types';
 import { TaskStatusBadge } from './status-badge';
+import { TimeRangePicker } from './time-range-picker';
 
 type EditorPayload = Omit<TaskPayload, 'enabled'>;
+
+const DEFAULT_TIME_CANDIDATES: TimeCandidate[] = [{ start: 840, end: 1320 }];
 
 async function runTask(task: BookingTask) {
   try {
@@ -65,9 +77,13 @@ function TaskEditorDialog({
 }) {
   const [name, setName] = useState('');
   const [accountId, setAccountId] = useState('');
+  const [venueType, setVenueType] = useState<VenueType>('study_room');
+  const [building, setBuilding] = useState('未指定');
+  const [roomName, setRoomName] = useState('未指定');
+  const [seatLabel, setSeatLabel] = useState('');
   const [seat, setSeat] = useState('');
   const [backupSeats, setBackupSeats] = useState('');
-  const [time, setTime] = useState('14:00 - 22:00');
+  const [timeCandidates, setTimeCandidates] = useState<TimeCandidate[]>(DEFAULT_TIME_CANDIDATES);
   const [maxAttempts, setMaxAttempts] = useState('12');
   const [delay, setDelay] = useState('1.2');
   const [windowSeconds, setWindowSeconds] = useState('20');
@@ -79,9 +95,13 @@ function TaskEditorDialog({
     if (!open) return;
     setName(task?.name || '');
     setAccountId(task?.accountId || accounts[0]?.id || '');
+    setVenueType(task?.venueType || 'study_room');
+    setBuilding(task?.building || '未指定');
+    setRoomName(task?.roomName || '未指定');
+    setSeatLabel(task?.seatLabel || '');
     setSeat(task?.seatId || '');
     setBackupSeats(task?.backupSeatIds.join(', ') || '');
-    setTime(task ? task.timeCandidates.map((item) => `${formatTime(item.start)} - ${formatTime(item.end)}`).join(', ') : '14:00 - 22:00');
+    setTimeCandidates(task?.timeCandidates?.length ? task.timeCandidates : DEFAULT_TIME_CANDIDATES);
     setMaxAttempts(String(task?.maxAttempts || 12));
     setDelay(String(task?.attemptDelaySeconds ?? 1.2));
     setWindowSeconds(String(task?.bookingWindowSeconds || 20));
@@ -91,13 +111,12 @@ function TaskEditorDialog({
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const timeCandidates = parseTimeCandidates(time);
     if (!name.trim() || !seat.trim() || !accountId) {
-      toast.error('请填写任务名称、账号和主座位');
+      toast.error('请填写任务名称、账号和系统座位 ID');
       return;
     }
-    if (!timeCandidates.length) {
-      toast.error('时间格式应为 14:00 - 22:00，可用逗号填写多个候选时段');
+    if (!timeCandidates.length || timeCandidates.some((range) => range.end <= range.start)) {
+      toast.error('请至少保留一个有效时间段');
       return;
     }
     setSaving(true);
@@ -105,6 +124,10 @@ function TaskEditorDialog({
       await onSave({
         accountId,
         name: name.trim(),
+        venueType,
+        building: building.trim() || '未指定',
+        roomName: roomName.trim() || '未指定',
+        primarySeatLabel: seatLabel.trim() || null,
         primarySeatId: seat.trim(),
         backupSeatIds: parseSeatIds(backupSeats),
         timeCandidates,
@@ -124,10 +147,10 @@ function TaskEditorDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className='max-h-[90dvh] overflow-y-auto sm:max-w-[620px]'>
+      <DialogContent className='max-h-[calc(100dvh-1rem)] w-[calc(100%-1rem)] overflow-y-auto sm:max-w-[680px]'>
         <DialogHeader>
           <DialogTitle>{task ? '编辑预约任务' : '新建预约任务'}</DialogTitle>
-          <DialogDescription>任务只会使用学校正常接口，并在北京时间开放窗口执行。</DialogDescription>
+          <DialogDescription>设置位置、座位优先级和时间窗口，系统会在北京时间自动执行。</DialogDescription>
         </DialogHeader>
         <form id='booking-task-editor' onSubmit={handleSubmit} className='flex flex-col gap-4'>
           <div className='grid gap-4 sm:grid-cols-2'>
@@ -137,25 +160,76 @@ function TaskEditorDialog({
             </div>
             <div className='flex flex-col gap-2'>
               <Label htmlFor='task-account'>使用账号</Label>
-              <select id='task-account' value={accountId} onChange={(event) => setAccountId(event.target.value)} className='border-input bg-background focus-visible:border-ring focus-visible:ring-ring/50 h-9 w-full rounded-lg border px-2.5 text-sm outline-none focus-visible:ring-3' disabled={accounts.length === 0}>
-                {accounts.map((account) => <option key={account.id} value={account.id}>{account.label}</option>)}
-              </select>
+              <Select value={accountId} onValueChange={(value) => value && setAccountId(value)} disabled={accounts.length === 0}>
+                <SelectTrigger id='task-account' className='w-full'>
+                  <SelectValue placeholder='选择学校账号' />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    <SelectLabel>学校账号</SelectLabel>
+                    {accounts.map((account) => <SelectItem key={account.id} value={account.id}>{account.label}</SelectItem>)}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
             </div>
             <div className='flex flex-col gap-2'>
-              <Label htmlFor='task-seat'>主座位 ID</Label>
-              <Input id='task-seat' value={seat} onChange={(event) => setSeat(event.target.value)} placeholder='例如：197' inputMode='numeric' required />
+              <Label htmlFor='task-venue'>场馆类型</Label>
+              <Select value={venueType} onValueChange={(value) => value && setVenueType(value as VenueType)}>
+                <SelectTrigger id='task-venue' className='w-full'>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    <SelectLabel>场馆</SelectLabel>
+                    <SelectItem value='study_room'>自习室</SelectItem>
+                    <SelectItem value='library'>图书馆</SelectItem>
+                    <SelectItem value='other'>其他</SelectItem>
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className='flex flex-col gap-2'>
+              <Label htmlFor='task-building'>楼栋</Label>
+              <Select value={building} onValueChange={(value) => value && setBuilding(value)}>
+                <SelectTrigger id='task-building' className='w-full'>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    <SelectLabel>楼栋</SelectLabel>
+                    <SelectItem value='未指定'>未指定</SelectItem>
+                    <SelectItem value='4号楼'>4号楼</SelectItem>
+                    <SelectItem value='5号楼'>5号楼</SelectItem>
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className='flex flex-col gap-2'>
+              <Label htmlFor='task-room'>房间 / 自习室</Label>
+              <Input id='task-room' value={roomName} onChange={(event) => setRoomName(event.target.value)} placeholder='例如：智能自习室' />
+            </div>
+            <div className='flex flex-col gap-2'>
+              <Label htmlFor='task-seat-label'>座位号</Label>
+              <Input id='task-seat-label' value={seatLabel} onChange={(event) => setSeatLabel(event.target.value)} placeholder='例如：44' inputMode='numeric' />
+            </div>
+            <div className='flex flex-col gap-2'>
+              <Label htmlFor='task-seat'>系统座位 ID</Label>
+              <Input id='task-seat' value={seat} onChange={(event) => setSeat(event.target.value)} placeholder='座位图接入后自动填充' inputMode='numeric' required />
             </div>
             <div className='flex flex-col gap-2 sm:col-span-2'>
-              <Label htmlFor='task-backup-seats'>备选座位 ID</Label>
+              <Label htmlFor='task-backup-seats'>备选系统座位 ID</Label>
               <Input id='task-backup-seats' value={backupSeats} onChange={(event) => setBackupSeats(event.target.value)} placeholder='例如：211, 212（可留空）' />
             </div>
-            <div className='flex flex-col gap-2 sm:col-span-2'>
-              <Label htmlFor='task-time'>候选时间段</Label>
-              <Input id='task-time' value={time} onChange={(event) => setTime(event.target.value)} placeholder='14:00 - 22:00, 13:00 - 21:00' required />
-              <p className='text-muted-foreground text-xs'>按座位优先级、再按时间顺序尝试。</p>
+            <Alert className='sm:col-span-2'>
+              <Icons.mapPin />
+              <AlertTitle>座位信息分开保存</AlertTitle>
+              <AlertDescription>座位号用于展示，系统座位 ID 用于实际预约。接入真实座位布局后会自动关联楼栋、房间和占用状态。</AlertDescription>
+            </Alert>
+            <div className='sm:col-span-2'>
+              <TimeRangePicker value={timeCandidates} onChange={setTimeCandidates} />
             </div>
           </div>
-          <div className='border-border grid gap-4 rounded-lg border p-4 sm:grid-cols-3'>
+          <div className='border-border grid grid-cols-2 gap-4 rounded-lg border p-4 sm:grid-cols-3'>
             <p className='text-muted-foreground text-xs sm:col-span-3'>执行参数</p>
             <NumberField id='task-attempts' label='最大尝试次数' value={maxAttempts} onChange={setMaxAttempts} min='1' max='100' step='1' />
             <NumberField id='task-delay' label='尝试间隔（秒）' value={delay} onChange={setDelay} min='0' max='30' step='0.1' />
@@ -239,14 +313,14 @@ export default function BookingTasksPage({ initialTasks, initialAccounts }: { in
 
   return (
     <PageContainer>
-      <div className='mx-auto w-full max-w-[1440px] space-y-6'>
+      <div className='mx-auto w-full max-w-[1440px] space-y-5 sm:space-y-6'>
         <div className='flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between'>
           <div>
             <p className='text-muted-foreground mb-2 text-sm'>自动化规则</p>
             <h1 className='text-2xl font-semibold tracking-tight sm:text-3xl'>预约任务</h1>
             <p className='text-muted-foreground mt-2 text-sm leading-6'>管理座位优先级、时间候选和每日自动执行状态。</p>
           </div>
-          <Button onClick={() => { setEditorTask(undefined); setEditorOpen(true); }} disabled={accounts.length === 0}>
+          <Button className='w-full sm:w-auto' onClick={() => { setEditorTask(undefined); setEditorOpen(true); }} disabled={accounts.length === 0}>
             <Icons.add data-icon='inline-start' />
             新建任务
           </Button>
@@ -255,20 +329,25 @@ export default function BookingTasksPage({ initialTasks, initialAccounts }: { in
         {accounts.length === 0 && <Alert><Icons.warning /><AlertTitle>先接入学校账号</AlertTitle><AlertDescription>完成一次正常登录验证后，才能创建预约任务。</AlertDescription></Alert>}
 
         <Card className='shadow-none'>
-          <CardHeader className='border-b'>
+          <CardHeader className='grid-cols-1 border-b sm:grid-cols-[minmax(0,1fr)_auto]'>
             <div><CardDescription>{tasks.length} 个任务</CardDescription><CardTitle className='text-xl'>全部任务</CardTitle></div>
-            <CardAction><div className='relative w-full sm:w-64'><Icons.search className='text-muted-foreground absolute top-1/2 left-2.5 size-4 -translate-y-1/2' /><Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder='搜索任务或座位' className='pl-8' aria-label='搜索任务或座位' /></div></CardAction>
+            <CardAction className='col-start-1 row-auto w-full justify-self-stretch sm:col-start-2 sm:row-span-2 sm:row-start-1 sm:w-auto sm:justify-self-end'>
+              <div className='relative w-full sm:w-64'>
+                <Icons.search className='text-muted-foreground absolute top-1/2 left-2.5 size-4 -translate-y-1/2' />
+                <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder='搜索任务或座位' className='pl-8' aria-label='搜索任务或座位' />
+              </div>
+            </CardAction>
           </CardHeader>
           <CardContent className='pt-0'>
             <div className='hidden grid-cols-[minmax(220px,1.5fr)_minmax(120px,0.8fr)_minmax(150px,1fr)_130px_100px] gap-4 border-b py-3 text-xs font-medium tracking-wide text-muted-foreground uppercase lg:grid'><span>任务</span><span>账号</span><span>策略</span><span>下次执行</span><span className='text-right'>状态</span></div>
             {filteredTasks.length === 0 ? <div className='flex flex-col items-center justify-center gap-2 py-16 text-center'><Icons.search className='text-muted-foreground/50 size-8' /><p className='text-sm font-medium'>没有匹配的任务</p><p className='text-muted-foreground text-xs'>换个关键词试试。</p></div> : filteredTasks.map((task) => (
-              <div key={task.id} className='grid gap-3 border-b py-4 last:border-b-0 lg:grid-cols-[minmax(220px,1.5fr)_minmax(120px,0.8fr)_minmax(150px,1fr)_130px_100px] lg:items-center lg:gap-4'>
-                <div className='flex items-start gap-3'><div className='bg-muted flex size-9 shrink-0 items-center justify-center rounded-lg'><Icons.target className='size-4' /></div><div className='min-w-0'><p className='truncate text-sm font-medium'>{task.name}</p><p className='text-muted-foreground mt-1 text-xs'>主座位 {task.seat} · {task.backupSeatIds.length ? `备选 ${task.backupSeatIds.join(', ')}` : '无备选'}</p></div></div>
+              <div key={task.id} className='grid min-w-0 gap-3 border-b py-4 last:border-b-0 lg:grid-cols-[minmax(220px,1.5fr)_minmax(120px,0.8fr)_minmax(150px,1fr)_130px_100px] lg:items-center lg:gap-4'>
+                <div className='flex min-w-0 items-start gap-3'><div className='bg-muted flex size-9 shrink-0 items-center justify-center rounded-lg'><Icons.target className='size-4' /></div><div className='min-w-0'><p className='truncate text-sm font-medium'>{task.name}</p><p className='text-muted-foreground mt-1 truncate text-xs'>主座位 {task.seat} · {task.backupSeatIds.length ? `备选系统 ID ${task.backupSeatIds.join(', ')}` : '无备选'}</p><p className='text-muted-foreground mt-1 truncate text-xs'>{task.building} · {venueLabel(task.venueType)} · {task.roomName}</p></div></div>
                 <div className='text-muted-foreground pl-12 text-sm lg:pl-0'>{task.account}</div>
-                <div className='text-muted-foreground flex items-start gap-2 pl-12 text-sm lg:pl-0'><Icons.clock className='mt-0.5 size-4 shrink-0' /><span>{task.time}<span className='mt-1 block text-xs'>共 {task.maxAttempts} 次 · {task.bookingWindowSeconds} 秒</span></span></div>
+                <div className='text-muted-foreground flex min-w-0 items-start gap-2 pl-12 text-sm lg:pl-0'><Icons.clock className='mt-0.5 size-4 shrink-0' /><span className='min-w-0'><span className='block break-words'>{task.time}</span><span className='mt-1 block text-xs'>共 {task.maxAttempts} 次 · {task.bookingWindowSeconds} 秒</span></span></div>
                 <div className='pl-12 text-sm lg:pl-0'>{task.nextRun}</div>
                 <div className='flex items-center justify-between gap-3 pl-12 lg:justify-end lg:pl-0'><TaskStatusBadge status={task.status} /><Switch checked={task.enabled} onCheckedChange={(checked) => void toggleTask(task.id, checked)} aria-label={`${task.name}自动执行`} /></div>
-                <div className='flex flex-wrap items-center gap-1 pl-12 lg:col-span-full lg:pl-0'><span className='text-muted-foreground mr-auto text-xs'>{task.lastMessage}</span><Button variant='ghost' size='sm' onClick={() => void inspectTask(task)}><Icons.shield data-icon='inline-start' />检查</Button><Button variant='ghost' size='sm' onClick={() => void prewarmTask(task)}><Icons.refresh data-icon='inline-start' />预热</Button><Button variant='ghost' size='sm' onClick={() => { setEditorTask(task); setEditorOpen(true); }}><Icons.edit data-icon='inline-start' />编辑</Button><Button variant='ghost' size='sm' onClick={() => void runTask(task)}><Icons.play data-icon='inline-start' />立即运行</Button><Button variant='ghost' size='sm' className='text-destructive' onClick={() => setDeleteTarget(task)}><Icons.trash data-icon='inline-start' />删除</Button></div>
+                <div className='flex min-w-0 flex-wrap items-center gap-1 pl-12 lg:col-span-full lg:pl-0'><span className='text-muted-foreground mr-auto min-w-0 basis-full truncate text-xs sm:basis-auto'>{task.lastMessage}</span><Button variant='ghost' size='sm' onClick={() => void inspectTask(task)}><Icons.shield data-icon='inline-start' />检查</Button><Button variant='ghost' size='sm' onClick={() => void prewarmTask(task)}><Icons.refresh data-icon='inline-start' />预热</Button><Button variant='ghost' size='sm' onClick={() => { setEditorTask(task); setEditorOpen(true); }}><Icons.edit data-icon='inline-start' />编辑</Button><Button variant='ghost' size='sm' onClick={() => void runTask(task)}><Icons.play data-icon='inline-start' />立即运行</Button><Button variant='ghost' size='sm' className='text-destructive' onClick={() => setDeleteTarget(task)}><Icons.trash data-icon='inline-start' />删除</Button></div>
               </div>
             ))}
           </CardContent>
@@ -278,9 +357,9 @@ export default function BookingTasksPage({ initialTasks, initialAccounts }: { in
       <TaskEditorDialog open={editorOpen} onOpenChange={setEditorOpen} accounts={accounts} task={editorTask} onSave={saveTask} />
 
       <Dialog open={!!dryRun} onOpenChange={(open) => !open && setDryRun(null)}>
-        <DialogContent className='sm:max-w-[560px]'>
+        <DialogContent className='max-h-[calc(100dvh-1rem)] w-[calc(100%-1rem)] overflow-y-auto sm:max-w-[560px]'>
           <DialogHeader><DialogTitle>任务检查</DialogTitle><DialogDescription>只验证 Token 和生成候选列表，不会调用预约提交接口。</DialogDescription></DialogHeader>
-          {dryRun && <div className='flex flex-col gap-4'><Alert variant={dryRun.tokenStatus === 'valid' ? 'default' : 'destructive'}><Icons.shield /><AlertTitle>{tokenStatusLabel(dryRun.tokenStatus)}</AlertTitle><AlertDescription>{dryRun.message}</AlertDescription></Alert><div className='flex flex-col gap-2'><p className='text-muted-foreground text-xs'>候选顺序</p>{dryRun.candidates.map((candidate) => <div key={`${candidate.order}-${candidate.seatId}-${candidate.startTime}`} className='bg-muted flex items-center justify-between rounded-lg px-3 py-2 text-sm'><span>#{candidate.order} · 座位 {candidate.seatId}</span><span className='text-muted-foreground'>{formatTime(candidate.startTime)} - {formatTime(candidate.endTime)}</span></div>)}</div></div>}
+          {dryRun && <div className='flex flex-col gap-4'><Alert variant={dryRun.tokenStatus === 'valid' ? 'default' : 'destructive'}><Icons.shield /><AlertTitle>{tokenStatusLabel(dryRun.tokenStatus)}</AlertTitle><AlertDescription>{dryRun.message}</AlertDescription></Alert><div className='flex flex-col gap-2'><p className='text-muted-foreground text-xs'>候选顺序</p>{dryRun.candidates.map((candidate) => <div key={`${candidate.order}-${candidate.seatId}-${candidate.startTime}`} className='bg-muted flex flex-col gap-1 rounded-lg px-3 py-2 text-sm sm:flex-row sm:items-center sm:justify-between'><span>#{candidate.order} · 系统座位 ID {candidate.seatId}</span><span className='text-muted-foreground'>{formatTime(candidate.startTime)} - {formatTime(candidate.endTime)}</span></div>)}</div></div>}
         </DialogContent>
       </Dialog>
 
@@ -291,16 +370,6 @@ export default function BookingTasksPage({ initialTasks, initialAccounts }: { in
 
 function parseSeatIds(value: string): string[] {
   return Array.from(new Set(value.split(/[\s,，]+/).map((item) => item.trim()).filter(Boolean)));
-}
-
-function parseTimeCandidates(value: string): Array<{ start: number; end: number }> {
-  return value.split(/[,，]/).flatMap((candidate) => {
-    const match = candidate.trim().match(/^(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})$/);
-    if (!match) return [];
-    const start = Number(match[1]) * 60 + Number(match[2]);
-    const end = Number(match[3]) * 60 + Number(match[4]);
-    return start >= 0 && end > start && end <= 1440 ? [{ start, end }] : [];
-  });
 }
 
 function clampNumber(value: string, min: number, max: number, fallback: number): number {
@@ -314,4 +383,8 @@ function formatTime(minutes: number): string {
 
 function tokenStatusLabel(status: DryRunResult['tokenStatus']): string {
   return { valid: 'Token 有效', missing: '尚未缓存 Token', invalid: 'Token 已失效', unavailable: 'Token 检查暂不可用' }[status];
+}
+
+function venueLabel(venueType: VenueType): string {
+  return { library: '图书馆', study_room: '自习室', other: '其他' }[venueType];
 }

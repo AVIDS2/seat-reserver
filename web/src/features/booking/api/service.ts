@@ -3,7 +3,9 @@ import type {
   BookingRun,
   BookingSnapshot,
   BookingTask,
-  PlatformNotification
+  PlatformNotification,
+  TimeCandidate,
+  VenueType
 } from '../types';
 
 export type CreateAccountPayload = {
@@ -21,9 +23,13 @@ export type UpdateAccountPayload = {
 export type TaskPayload = {
   accountId: string;
   name: string;
+  venueType: VenueType;
+  building: string;
+  roomName: string;
+  primarySeatLabel?: string | null;
   primarySeatId: string;
   backupSeatIds: string[];
-  timeCandidates: Array<{ start: number; end: number }>;
+  timeCandidates: TimeCandidate[];
   maxAttempts: number;
   attemptDelaySeconds: number;
   bookingWindowSeconds: number;
@@ -72,6 +78,10 @@ export type AdminAccount = {
 export type AdminTask = {
   id: string;
   name: string;
+  venueType: VenueType;
+  building: string;
+  roomName: string;
+  seatLabel: string | null;
   ownerName: string;
   ownerEmail: string | null;
   account: string;

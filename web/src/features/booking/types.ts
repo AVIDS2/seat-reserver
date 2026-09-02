@@ -1,10 +1,17 @@
 export type TaskStatus = 'enabled' | 'paused' | 'attention';
 export type RunStatus = 'success' | 'failed' | 'prewarming' | 'running' | 'pending' | 'skipped';
 export type AccountStatus = 'connected' | 'attention';
+export type VenueType = 'library' | 'study_room' | 'other';
+
+export type TimeCandidate = { start: number; end: number };
 
 export type BookingTask = {
   id: string;
   name: string;
+  venueType: VenueType;
+  building: string;
+  roomName: string;
+  seatLabel: string | null;
   account: string;
   accountId: string;
   seat: string;
@@ -14,7 +21,7 @@ export type BookingTask = {
   status: TaskStatus;
   enabled: boolean;
   backupSeatIds: string[];
-  timeCandidates: Array<{ start: number; end: number }>;
+  timeCandidates: TimeCandidate[];
   maxAttempts: number;
   attemptDelaySeconds: number;
   bookingWindowSeconds: number;

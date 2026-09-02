@@ -89,7 +89,7 @@ export class PlatformRunsService {
       result: run.receipt
         ? `${run.reservedBegin ?? ''} - ${run.reservedEnd ?? ''}`.trim()
         : run.status === 'failed'
-          ? '窗口结束'
+          ? (run.message ?? '窗口结束')
           : run.status === 'skipped'
             ? '未执行'
             : '处理中',

@@ -54,7 +54,7 @@ export default function BookingRunsPage({ initialRuns }: { initialRuns: BookingR
 
   return (
     <PageContainer>
-      <div className='mx-auto w-full max-w-[1440px] space-y-6'>
+      <div className='mx-auto flex w-full max-w-[1440px] flex-col gap-5 sm:gap-6'>
         <div>
           <p className='text-muted-foreground mb-2 text-sm'>可追溯的执行历史</p>
           <h1 className='text-2xl font-semibold tracking-tight sm:text-3xl'>运行记录</h1>
@@ -74,13 +74,13 @@ export default function BookingRunsPage({ initialRuns }: { initialRuns: BookingR
               <CardTitle className='text-xl'>执行历史</CardTitle>
             </div>
             <div className='flex flex-col gap-2 sm:flex-row'>
-              <div className='relative'>
+              <div className='relative w-full sm:w-auto'>
                 <Icons.search className='text-muted-foreground absolute top-1/2 left-2.5 size-4 -translate-y-1/2' />
                 <Input
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
                   placeholder='搜索账号或任务'
-                  className='pl-8 sm:w-52'
+                  className='w-full pl-8 sm:w-52'
                   aria-label='搜索运行记录'
                 />
               </div>
@@ -143,7 +143,7 @@ export default function BookingRunsPage({ initialRuns }: { initialRuns: BookingR
         </Card>
       </div>
       <Dialog open={!!selected} onOpenChange={(open) => !open && setSelected(null)}>
-        <DialogContent className='sm:max-w-[460px]'>
+        <DialogContent className='max-h-[calc(100dvh-1rem)] w-[calc(100%-1rem)] overflow-y-auto sm:max-w-[460px]'>
           <DialogHeader>
             <DialogTitle>运行详情</DialogTitle>
             <DialogDescription>
@@ -151,7 +151,7 @@ export default function BookingRunsPage({ initialRuns }: { initialRuns: BookingR
             </DialogDescription>
           </DialogHeader>
           {selected && (
-            <div className='space-y-4'>
+          <div className='flex flex-col gap-4'>
               <div className='flex items-center justify-between'>
                 <span className='text-muted-foreground text-sm'>结果</span>
                 <RunStatusBadge status={selected.status} />

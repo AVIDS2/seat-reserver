@@ -55,6 +55,10 @@ export type AdminAccountView = {
 export type AdminTaskView = {
   id: string;
   name: string;
+  venueType: 'library' | 'study_room' | 'other';
+  building: string;
+  roomName: string;
+  seatLabel: string | null;
   ownerName: string;
   ownerEmail: string | null;
   account: string;
@@ -205,10 +209,16 @@ export class PlatformAdminService {
         return {
           id: String(task.id),
           name: task.name,
+          venueType: task.venueType,
+          building: task.building,
+          roomName: task.roomName,
+          seatLabel: task.primarySeatLabel,
           ownerName: formatUserName(task.user),
           ownerEmail: task.user?.email ?? null,
           account: task.schoolAccount?.label ?? '账号已移除',
-          seat: `${task.primarySeatId} 号`,
+          seat: task.primarySeatLabel
+            ? `${task.primarySeatLabel} 号`
+            : '未设置座位号',
           time: task.timeCandidates
             .map(
               ({ start, end }) => `${formatTime(start)} - ${formatTime(end)}`,
@@ -217,7 +227,7 @@ export class PlatformAdminService {
           enabled: task.enabled,
           status: !userActive
             ? 'disabled'
-            : !accountReady
+            : !accountReady || lastRun?.status === 'failed'
               ? 'attention'
               : task.enabled
                 ? 'enabled'
@@ -264,7 +274,7 @@ export class PlatformAdminService {
         result: run.receipt
           ? `${run.reservedBegin ?? ''} - ${run.reservedEnd ?? ''}`.trim()
           : run.status === 'failed'
-            ? '窗口结束'
+            ? (run.message ?? '窗口结束')
             : run.status === 'skipped'
               ? '未执行'
               : '处理中',

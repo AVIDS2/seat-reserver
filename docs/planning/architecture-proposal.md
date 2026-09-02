@@ -256,7 +256,11 @@ invitations 1──N invitation_uses
 | user_id | UUID FK(users) | 所属用户 |
 | school_account_id | UUID FK(school_accounts) | 关联学校账号 |
 | name | VARCHAR(100) | 任务名称（如"44号下午"） |
-| primary_seat_id | VARCHAR(20) | 主座位 ID |
+| venue_type | VARCHAR(20) | `library`、`study_room` 或 `other` |
+| building | VARCHAR(50) | 楼栋展示名称 |
+| room_name | VARCHAR(120) | 图书馆/自习室名称 |
+| primary_seat_label | VARCHAR(30) NULL | 面向用户展示的座位号 |
+| primary_seat_id | VARCHAR(20) | 发送给学校接口的系统座位 ID |
 | backup_seat_ids | JSON | 备选座位 ID 列表，如 `["211"]` |
 | time_candidates | JSON | 候选时间段，如 `[{"start":840,"end":1320}]` |
 | max_attempts | INT | 最大尝试次数，默认 6 |

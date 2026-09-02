@@ -51,6 +51,9 @@ function TaskRow({ task }: { task: BookingTask }) {
           <p className='text-muted-foreground mt-1 text-xs'>
             {task.account} · {task.seat} · {task.time}
           </p>
+          <p className='text-muted-foreground mt-1 truncate text-xs'>
+            {formatLocation(task.building, task.venueType, task.roomName)}
+          </p>
         </div>
       </div>
       <div className='flex items-center justify-between gap-3 pl-12 sm:justify-end sm:pl-0'>
@@ -105,7 +108,7 @@ export default function BookingDashboard({ initialData }: { initialData: Booking
 
   return (
     <PageContainer>
-      <div className='mx-auto w-full max-w-[1440px] space-y-6'>
+      <div className='mx-auto flex w-full max-w-[1440px] flex-col gap-5 sm:gap-6'>
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
@@ -121,12 +124,12 @@ export default function BookingDashboard({ initialData }: { initialData: Booking
               {summary.enabledTasks > 0 ? `你的 ${summary.enabledTasks} 个启用任务已排程。系统会在开放时间自动预热账号，并按候选策略完成预约。` : '还没有启用任务，先去配置一个明早的预约策略。'}
             </p>
           </div>
-          <div className='flex items-center gap-2'>
-            <Button variant='outline' onClick={refreshData} disabled={isRefreshing}>
+          <div className='grid grid-cols-2 gap-2 sm:flex'>
+            <Button className='w-full sm:w-auto' variant='outline' onClick={refreshData} disabled={isRefreshing}>
               <Icons.refresh className={cn(isRefreshing && 'animate-spin')} />
               {isRefreshing ? '刷新中' : '刷新状态'}
             </Button>
-            <Link href='/dashboard/tasks' className={buttonVariants()} aria-label='新建预约任务'>
+            <Link href='/dashboard/tasks' className={cn(buttonVariants(), 'w-full sm:w-auto')} aria-label='新建预约任务'>
               <Icons.add />
               新建任务
             </Link>
@@ -289,4 +292,9 @@ function formatDateTime(value: string): string {
     second: '2-digit',
     hour12: false
   });
+}
+
+function formatLocation(building: string, venueType: BookingTask['venueType'], roomName: string): string {
+  const venue = { library: '图书馆', study_room: '自习室', other: '其他' }[venueType];
+  return [building, venue, roomName].filter((value) => value && value !== '未指定').join(' · ') || '位置未设置';
 }

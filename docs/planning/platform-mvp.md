@@ -151,6 +151,10 @@ user_id
 school_account_id
 name
 primary_seat_id
+primary_seat_label
+venue_type
+building
+room_name
 backup_seat_ids_json
 time_candidates_json
 max_attempts
@@ -175,6 +179,12 @@ updated_at
   ]
 }
 ```
+
+### 座位图规划
+
+拿到学校真实布局数据后，前端按“楼栋 → 场馆类型 → 房间 → 日期 → 时间段”筛选，再在座位图上选择座位。每个座位同时保存展示号和学校系统 ID；展示号用于用户识别，系统 ID 只作为预约请求参数。
+
+座位图至少需要支持 `available`（可选）、`selected`（当前选择）、`reserved`（学校已预约）、`unavailable`（不可用）和 `unknown`（尚未获取状态）五种状态。`reserved` 必须来自指定日期和时间段的学校接口数据，不能用平台自己的运行记录推断；同一座位在不同时间段可以呈现不同状态。用户自己的已预约记录应单独显示“我的预约”，避免与他人占用混淆。
 
 ### booking_runs
 
