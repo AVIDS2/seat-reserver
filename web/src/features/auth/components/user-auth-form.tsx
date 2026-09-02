@@ -59,8 +59,7 @@ export default function UserAuthForm({ mode = 'sign-in' }: { mode?: 'sign-in' | 
         await signInPlatform(parsed.data.email, parsed.data.password);
       }
       toast.success(mode === 'sign-in' ? '登录成功' : '账号创建成功');
-      router.push('/dashboard/overview');
-      router.refresh();
+      router.replace('/dashboard/overview');
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : '操作失败，请稍后再试');
     } finally {

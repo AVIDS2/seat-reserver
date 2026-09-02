@@ -13,7 +13,7 @@ import {
 } from '@nestjs/common';
 import { ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
-import { Throttle } from '@nestjs/throttler';
+import { SkipThrottle, Throttle } from '@nestjs/throttler';
 import type { Response } from 'express';
 import { AuthService } from '../auth/auth.service';
 import { LoginResponseDto } from '../auth/dto/login-response.dto';
@@ -109,6 +109,7 @@ export class PlatformAuthController {
   }
 
   @Get('me')
+  @SkipThrottle()
   @UseGuards(AuthGuard('jwt'))
   async me(@Request() request: RequestWithUser<JwtPayloadType>) {
     return { user: await this.auth.me(request.user) };
@@ -173,6 +174,15 @@ function setTokenCookies(
 }
 
 function clearAuthCookies(response: Response): void {
-  response.clearCookie('access_token', { path: '/' });
-  response.clearCookie('refresh_token', { path: '/' });
+  const secure = process.env.NODE_ENV === 'production';
+  const cookieOptions = {
+    httpOnly: true,
+    secure,
+    sameSite: 'lax' as const,
+    path: '/',
+    maxAge: 0,
+    expires: new Date(0),
+  };
+  response.cookie('access_token', '', cookieOptions);
+  response.cookie('refresh_token', '', cookieOptions);
 }
