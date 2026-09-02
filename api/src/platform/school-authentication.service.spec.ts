@@ -22,6 +22,30 @@ describe('SchoolAuthenticationService', () => {
     expect(webVpnAuthenticate).toHaveBeenCalledWith('student', 'password');
   });
 
+  it('should prefer direct authentication when credentials are accepted', async () => {
+    const directAuthenticate = jest.fn<
+      (
+        username: string,
+        password: string,
+      ) => Promise<{ token: string; response: object }>
+    >(() => Promise.resolve({ token: 'direct-token', response: {} }));
+    const webVpnAuthenticate =
+      jest.fn<
+        (username: string, password: string) => Promise<{ token: string }>
+      >();
+    const service = new SchoolAuthenticationService(
+      { authenticate: directAuthenticate } as never,
+      { authenticate: webVpnAuthenticate } as never,
+    );
+
+    await expect(service.authenticate('student', 'password')).resolves.toEqual({
+      token: 'direct-token',
+      mode: 'direct',
+    });
+    expect(directAuthenticate).toHaveBeenCalledWith('student', 'password');
+    expect(webVpnAuthenticate).not.toHaveBeenCalled();
+  });
+
   it('should keep direct accounts on the direct authentication path', async () => {
     const directAuthenticate = jest.fn(() =>
       Promise.resolve({ token: 'direct-token', response: {} }),

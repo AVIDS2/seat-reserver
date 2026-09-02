@@ -4,7 +4,7 @@
 
 ## 当前进度
 
-2026-08-31 已在 `web/` 引入 Kiranism Next.js Dashboard Starter，并完成预约控制台页面。2026-09-01 已将 brocoders NestJS 后端导入 `api/`，完成平台认证、邀请码、学校账号加密、预约任务、运行记录、Redis/BullMQ 队列、Nest Schedule 调度和真实 API 接入；随后完成最终交付审计：关闭模板遗留公开注册入口，补齐数据库租户复合约束、运行幂等索引、停用任务跳过、管理员全局脱敏视图和服务端刷新并发保护。2026-09-02 已将 OpenSaaS 的原始落地页组件树直接迁入 `web/src/features/landing/opensaas`，保留 Hero/Orbit、ExamplesCarousel、HighlightedFeature、FeaturesGrid、Roadmap、Testimonials、FAQ 和 Footer 的结构，再适配平台业务、Next.js 路由和认证入口；默认主题定为 `Claude`，产品 UI 资产加入状态动画，FAQ 使用 `grid-template-rows` 平滑收展；认证页保留模板的动态网格视觉，登录后重复访问认证地址会回到控制台。`docker-compose.platform.yml` 提供 PostgreSQL、Redis、API、Web 的生产编排。根目录 CLI 与 VPS cron 继续独立作为现行生产抢座链路。
+2026-08-31 已在 `web/` 引入 Kiranism Next.js Dashboard Starter，并完成预约控制台页面。2026-09-01 已将 brocoders NestJS 后端导入 `api/`，完成平台认证、邀请码、学校账号加密、预约任务、运行记录、Redis/BullMQ 队列、Nest Schedule 调度和真实 API 接入；随后完成最终交付审计：关闭模板遗留公开注册入口，补齐数据库租户复合约束、运行幂等索引、停用任务跳过、管理员全局脱敏视图和服务端刷新并发保护。2026-09-02 已将 OpenSaaS 的原始落地页组件树直接迁入 `web/src/features/landing/opensaas`，保留 Hero/Orbit、ExamplesCarousel、HighlightedFeature、FeaturesGrid、Roadmap、Testimonials、FAQ 和 Footer 的结构，再适配平台业务、Next.js 路由和认证入口；默认主题定为 `Claude`，产品 UI 资产加入状态动画，FAQ 使用 `grid-template-rows` 平滑收展；认证页保留模板的动态网格视觉，登录后重复访问认证地址会回到控制台。平台认证/预约链路随后改为脚本同款 direct 优先、webvpn 回退，账号 1 已在 VPS 完成真实 Token 刷新、用户校验和 `freeBook` 业务请求验证。`docker-compose.platform.yml` 提供 PostgreSQL、Redis、API、Web 的生产编排。根目录 CLI 与 VPS cron 继续独立作为现行生产抢座链路。
 
 前端底座决策：使用 Next.js 16、Tailwind CSS 4、shadcn/ui、TanStack Query/Table、Motion 和 Tabler Icons。后端底座决策：使用 NestJS 11、TypeORM、PostgreSQL、JWT/HttpOnly Cookie、Swagger 和 Docker；预约执行层使用 Redis + BullMQ，并由 Nest Schedule 生成每日任务。生产模式下前端通过同域 `/api/v1` 访问 API，真实预约请求不会进入浏览器。
 
@@ -469,7 +469,7 @@ booking job 成功/失败都会写 booking_runs
 管理员可以创建邀请码、查看成员并启用/禁用用户
 ```
 
-已有账号的 Token 刷新和真实预约已在 VPS 验证成功。全新账号的 WebVPN 网关登录已在 VPS 验证，完整 `ssoAuth`、代理内 Token 验证和预约 POST 仍需运营者用测试任务完成最终业务验收。
+已有账号的 direct Token 刷新、`/rest/v2/user` 校验和真实预约 POST 已在 VPS 验证到达学校接口；本次测试因账号已有有效预约收到业务拒绝，尚未产生新的成功回执。全新账号的 WebVPN 网关登录已在 VPS 验证，完整 `ssoAuth`、代理内 Token 验证和成功预约回执仍需单独验收。
 
 ## 测试要求
 
@@ -508,7 +508,7 @@ booking run 日志
 - 不要提交 `.env`、token、真实账号密码。
 - 每个 phase 单独提交。
 - 每次提交前运行对应测试。
-- 外部接口协议变更先用 mock 和只读接口验证；真实预约只在明确启用任务或手动触发时执行。
+- 外部接口协议变更先用 mock 和只读接口验证；真实预约只在用户明确授权的独立测试任务或启用任务中执行。
 - 生产平台启用任务会由 Nest Schedule 在北京时间 05:59:50 预热、06:00 执行；预约页面只读取真实 API 和数据库。
 
 ## 建议提交顺序

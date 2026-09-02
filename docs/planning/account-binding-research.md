@@ -2,12 +2,12 @@
 
 目标：确认新用户能否使用学校身份完成座位系统首次绑定，并拿到后续可在对应认证模式下验证和预约的业务 token。
 
-截至 2026-09-02，已有账号可在公网 VPS 上调用 `/cczukaoyan/rest/auth` 刷新 token；新账号已在本地完成 WebVPN 到座位系统的完整链路，且 VPS 已确认可以通过 WebVPN 网关直接完成动态 AES 登录。平台会先尝试 direct，凭据不被接受时自动切换为 webvpn，并持久化认证模式；VPS 上完整的 WebVPN Token 验证和预约仍以生产测试账号做最终验收。
+截至 2026-09-02，已有账号可在公网 VPS 上调用 `/cczukaoyan/rest/auth` 刷新 token；新账号已在本地完成 WebVPN 到座位系统的完整链路，且 VPS 已确认可以通过 WebVPN 网关直接完成动态 AES 登录。平台新增、修改、刷新和预约前刷新均先尝试 direct，凭据不被接受时自动切换为 webvpn，并持久化认证模式。脚本账号的 direct Token 刷新、`/rest/v2/user` 校验和一次真实 `freeBook` 请求已在 VPS 验证；WebVPN 回退模式仍需单独的成功回执验收。
 
 ## 边界
 
-- 只研究登录、绑定、token、用户校验。
-- 禁止调用 `/freeBook`，不做真实预约。
+- 只研究登录、绑定、token、用户校验和请求结构。
+- 日常抓包分析不主动调用 `/freeBook`；真实预约只在用户明确授权的测试任务中执行。
 - 不修改 `seat_reserver.py`。
 - 捕获文件只保存在本地 `tools/binding_discovery/captures/`，该目录已被 `.gitignore` 忽略。
 - 捕获结果会脱敏 password、token、cookie、authorization 等字段。
@@ -23,6 +23,8 @@
 → 加密保存凭据和 token
 → 每日预热/预约自动复用或刷新 token
 ```
+
+2026-09-02 的生产验证确认：平台账号 1 通过脚本账号密码获得 `direct` token，并通过 `/rest/v2/user` 校验；真实 `freeBook` 请求收到 HTTP 200、业务码 `1`、“已有1个有效预约，请在使用结束后再次进行选择”。该业务响应说明请求已到达预约接口；它不是交互式验证码失败，也没有产生新的预约回执，因为账号当时已有有效预约。
 
 新账号首次接入链路：
 
@@ -62,7 +64,7 @@ http://<本机局域网地址>:8788/reqable/report
 
 只完成“完全退出或清理会话后，学校登录/验证码、选择学校或系统、可能的激活码绑定，直到进入座位列表”，不点击预约提交。接收器会自动屏蔽敏感字段；如报告中出现 `freeBook`，分析器会把它标为不适合作为绑定捕获结果。
 
-需要更深的协议结构分析时，优先使用官方 Reqable MCP 或 mitmproxy addon；本项目不引入 SSL pinning 绕过、验证码绕过、签名伪造或风控绕过脚本。
+需要更深的协议结构分析时，优先使用官方 Reqable MCP 或 mitmproxy addon；本项目不引入 SSL pinning 绕过、验证码绕过、签名伪造或风控绕过脚本。已有绑定账号不需要为了每日预约重复抓包；只有要自动化“首次激活码绑定”时，才需要单独分析该一次性流程。
 
 ### 安装依赖
 
@@ -101,7 +103,7 @@ python tools/binding_discovery/analyze_capture.py tools/binding_discovery/captur
 
 ## 已确认结论
 
-1. direct 模式继续使用 `/cczukaoyan/rest/auth`，适配现有一考即过凭据。
+1. 平台和脚本都使用 `/cczukaoyan/rest/auth`，平台按 direct 优先、webvpn 回退自动选择；现有一考即过凭据在 VPS 上已验证 direct 刷新和预约请求。
 2. webvpn 模式使用校园账号密码完成 WebVPN 网关动态 AES 登录，不需要 SwordAgent、Windows VM 或校园网出口。
 3. WebVPN 门户动态返回代理地址和座位系统配置；不硬编码代理哈希或签名种子。
 4. WebVPN Cookie 只保存在单次进程内存会话中；数据库只加密保存学校密码、业务 token 和认证模式。
