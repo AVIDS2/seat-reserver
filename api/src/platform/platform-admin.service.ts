@@ -4,7 +4,7 @@ import {
   UnprocessableEntityException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { IsNull, Not, Repository } from 'typeorm';
 import { SessionService } from '../session/session.service';
 import { RoleEnum } from '../roles/roles.enum';
 import { StatusEnum } from '../statuses/statuses.enum';
@@ -114,7 +114,9 @@ export class PlatformAdminService {
       this.users.count(),
       this.users.count({ where: { status: { id: StatusEnum.active } } }),
       this.accounts.count(),
-      this.accounts.count({ where: { status: 'active' } }),
+      this.accounts.count({
+        where: { status: 'active', encryptedToken: Not(IsNull()) },
+      }),
       this.tasks.count(),
       this.tasks.count({
         where: { enabled: true, user: { status: { id: StatusEnum.active } } },

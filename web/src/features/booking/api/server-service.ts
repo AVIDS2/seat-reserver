@@ -1,6 +1,5 @@
 import { cookies } from 'next/headers';
 import { cache } from 'react';
-import { bookingSnapshot } from '../data';
 import type { BookingSnapshot, PlatformNotification } from '../types';
 import type {
   AdminOverview,
@@ -12,7 +11,6 @@ import type {
   PlatformUser
 } from './service';
 
-const demoMode = process.env.NEXT_PUBLIC_DEMO_MODE !== 'false';
 const baseUrl = process.env.INTERNAL_API_URL || 'http://api:3001/api/v1';
 
 export type AdminSnapshot = {
@@ -25,22 +23,10 @@ export type AdminSnapshot = {
 };
 
 export async function getBookingSnapshot(): Promise<BookingSnapshot> {
-  if (demoMode) return copySnapshot();
   return platformServerRequest<BookingSnapshot>('/platform/dashboard');
 }
 
 export async function getPlatformUserServer(): Promise<PlatformUser | null> {
-  if (demoMode) {
-    return {
-      id: 'demo-admin',
-      email: 'admin@example.com',
-      firstName: '平台',
-      lastName: '管理员',
-      displayName: '平台管理员',
-      role: 'admin',
-      status: 'active'
-    };
-  }
   try {
     const response = await platformServerRequest<{ user: Record<string, unknown> }>('/platform/auth/me');
     return toPlatformUser(response.user);
@@ -50,74 +36,11 @@ export async function getPlatformUserServer(): Promise<PlatformUser | null> {
 }
 
 export async function getBookingNotifications(): Promise<PlatformNotification[]> {
-  if (demoMode) return [];
   const response = await platformServerRequest<{ notifications: PlatformNotification[] }>('/platform/notifications');
   return response.notifications;
 }
 
 export async function getAdminSnapshot(): Promise<AdminSnapshot> {
-  if (demoMode) {
-    return {
-      overview: {
-        users: 2,
-        activeUsers: 2,
-        accounts: bookingSnapshot.accounts.length,
-        connectedAccounts: bookingSnapshot.accounts.length,
-        tasks: bookingSnapshot.tasks.length,
-        enabledTasks: bookingSnapshot.tasks.filter((task) => task.enabled).length,
-        runsToday: bookingSnapshot.runs.filter((run) => run.targetDate === bookingSnapshot.summary.executionDate).length,
-        successfulRunsToday: bookingSnapshot.runs.filter((run) => run.status === 'success').length,
-        failedRunsToday: bookingSnapshot.runs.filter((run) => run.status === 'failed').length,
-        queueStatus: 'ok',
-        serverTime: new Date().toISOString()
-      },
-      users: [
-        { id: 'demo-admin', email: 'admin@example.com', displayName: '平台管理员', role: 'admin', status: 'active', accountCount: 1, taskCount: 2, createdAt: new Date().toISOString() },
-        { id: 'demo-user', email: 'member@example.com', displayName: '示例同学', role: 'user', status: 'active', accountCount: 1, taskCount: 1, createdAt: new Date().toISOString() }
-      ],
-      invitations: [],
-      accounts: bookingSnapshot.accounts.map((account, index) => ({
-        id: account.id,
-        label: account.label,
-        username: account.username,
-        status: account.status,
-        statusLabel: account.statusLabel,
-        tokenLabel: account.tokenLabel,
-        ownerName: index === 0 ? '平台管理员' : '示例同学',
-        ownerEmail: index === 0 ? 'admin@example.com' : 'member@example.com',
-        taskCount: account.tasks,
-        lastVerifiedAt: new Date().toISOString()
-      })),
-      tasks: bookingSnapshot.tasks.map((task, index) => ({
-        id: task.id,
-        name: task.name,
-        ownerName: index === 1 ? '示例同学' : '平台管理员',
-        ownerEmail: index === 1 ? 'member@example.com' : 'admin@example.com',
-        account: task.account,
-        seat: task.seat,
-        time: task.time,
-        enabled: task.enabled,
-        status: task.status,
-        lastRun: null,
-        lastMessage: task.lastMessage
-      })),
-      runs: bookingSnapshot.runs.map((run) => ({
-        id: run.id,
-        runType: 'booking',
-        ownerName: run.account === '朋友账号' ? '示例同学' : '平台管理员',
-        ownerEmail: run.account === '朋友账号' ? 'member@example.com' : 'admin@example.com',
-        task: run.task,
-        account: run.account,
-        targetDate: run.targetDate,
-        status: run.status,
-        statusLabel: run.statusLabel,
-        attempts: run.attempts,
-        result: run.result,
-        detail: run.detail,
-        startedAt: new Date().toISOString()
-      }))
-    };
-  }
   const [overview, usersResponse, invitationResponse, accountsResponse, tasksResponse, runsResponse] = await Promise.all([
     platformServerRequest<AdminOverview>('/platform/admin/overview'),
     platformServerRequest<{ users: AdminUser[] }>('/platform/admin/users'),
@@ -197,8 +120,4 @@ function toPlatformUser(value: Record<string, unknown>): PlatformUser {
     role: Number(role?.id) === 1 ? 'admin' : 'user',
     status: Number(status?.id) === 1 ? 'active' : 'disabled'
   };
-}
-
-function copySnapshot(): BookingSnapshot {
-  return JSON.parse(JSON.stringify(bookingSnapshot)) as BookingSnapshot;
 }

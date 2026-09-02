@@ -1,4 +1,3 @@
-import { bookingSnapshot } from '../data';
 import type {
   BookingAccount,
   BookingRun,
@@ -15,7 +14,7 @@ export type CreateAccountPayload = {
 
 export type UpdateAccountPayload = {
   label: string;
-  schoolUsername: string;
+  schoolUsername?: string;
   schoolPassword?: string;
 };
 
@@ -134,13 +133,8 @@ export type DryRunResult = {
   message: string;
 };
 
-const demoMode = process.env.NEXT_PUBLIC_DEMO_MODE !== 'false';
 const apiBase = process.env.NEXT_PUBLIC_API_URL || '/api/v1';
 let refreshPromise: Promise<boolean> | null = null;
-
-function copySnapshot(): BookingSnapshot {
-  return JSON.parse(JSON.stringify(bookingSnapshot)) as BookingSnapshot;
-}
 
 async function refreshSession(): Promise<boolean> {
   if (!refreshPromise) {
@@ -189,28 +183,12 @@ async function platformRequest<T>(
   return response.json() as Promise<T>;
 }
 
-export function isDemoMode(): boolean {
-  return demoMode;
-}
-
 export async function getPlatformUser(): Promise<PlatformUser> {
-  if (demoMode) {
-    return {
-      id: 'demo-admin',
-      email: 'admin@example.com',
-      firstName: '平台',
-      lastName: '管理员',
-      displayName: '平台管理员',
-      role: 'admin',
-      status: 'active'
-    };
-  }
   const response = await platformRequest<{ user: Record<string, unknown> }>('/platform/auth/me');
   return toPlatformUser(response.user);
 }
 
 export async function signOutPlatform(): Promise<void> {
-  if (demoMode) return;
   await platformRequest('/platform/auth/logout', { method: 'POST' }, false);
 }
 
@@ -220,9 +198,6 @@ export async function updatePlatformProfile(payload: {
   password?: string;
   oldPassword?: string;
 }): Promise<PlatformUser> {
-  if (demoMode) {
-    return getPlatformUser();
-  }
   const response = await platformRequest<{ user: Record<string, unknown> }>('/platform/auth/me', {
     method: 'PATCH',
     body: JSON.stringify(payload)
@@ -231,24 +206,10 @@ export async function updatePlatformProfile(payload: {
 }
 
 export async function getClientSnapshot(): Promise<BookingSnapshot> {
-  if (demoMode) return copySnapshot();
   return platformRequest<BookingSnapshot>('/platform/dashboard');
 }
 
 export async function createSchoolAccount(payload: CreateAccountPayload): Promise<BookingAccount> {
-  if (demoMode) {
-    return {
-      id: `account-${Date.now()}`,
-      label: payload.label,
-      username: `${payload.schoolUsername.slice(0, 3)}******${payload.schoolUsername.slice(-2)}`,
-      status: 'connected',
-      statusLabel: '连接正常',
-      tokenLabel: 'Token 已缓存',
-      refreshedAt: '刚刚',
-      lastVerifiedAt: '刚刚',
-      tasks: 0
-    };
-  }
   const response = await platformRequest<{ account: BookingAccount }>('/platform/accounts', {
     method: 'POST',
     body: JSON.stringify(payload)
@@ -257,11 +218,6 @@ export async function createSchoolAccount(payload: CreateAccountPayload): Promis
 }
 
 export async function refreshSchoolAccount(id: string): Promise<BookingAccount> {
-  if (demoMode) {
-    const account = copySnapshot().accounts.find((item) => item.id === id);
-    if (!account) throw new Error('账号不存在');
-    return { ...account, refreshedAt: '刚刚', lastVerifiedAt: '刚刚' };
-  }
   const response = await platformRequest<{ account: BookingAccount }>(`/platform/accounts/${id}/refresh`, {
     method: 'POST'
   });
@@ -269,11 +225,6 @@ export async function refreshSchoolAccount(id: string): Promise<BookingAccount> 
 }
 
 export async function updateSchoolAccount(id: string, payload: UpdateAccountPayload): Promise<BookingAccount> {
-  if (demoMode) {
-    const account = copySnapshot().accounts.find((item) => item.id === id);
-    if (!account) throw new Error('账号不存在');
-    return { ...account, label: payload.label, username: `${payload.schoolUsername.slice(0, 3)}******${payload.schoolUsername.slice(-2)}` };
-  }
   const response = await platformRequest<{ account: BookingAccount }>(`/platform/accounts/${id}`, {
     method: 'PATCH',
     body: JSON.stringify(payload)
@@ -282,34 +233,10 @@ export async function updateSchoolAccount(id: string, payload: UpdateAccountPayl
 }
 
 export async function deleteSchoolAccount(id: string): Promise<void> {
-  if (demoMode) return;
   await platformRequest(`/platform/accounts/${id}`, { method: 'DELETE' });
 }
 
 export async function createBookingTask(payload: TaskPayload): Promise<BookingTask> {
-  if (demoMode) {
-    return {
-      id: `task-${Date.now()}`,
-      name: payload.name,
-      account: '我的账号',
-      accountId: String(payload.accountId),
-      seat: `${payload.primarySeatId} 号`,
-      seatId: payload.primarySeatId,
-      time: payload.timeCandidates.map((item) => `${formatTime(item.start)} - ${formatTime(item.end)}`).join(' / '),
-      nextRun: '明早 06:00:03',
-      status: payload.enabled === false ? 'paused' : 'enabled',
-      enabled: payload.enabled !== false,
-      backupSeatIds: payload.backupSeatIds,
-      timeCandidates: payload.timeCandidates,
-      maxAttempts: payload.maxAttempts,
-      attemptDelaySeconds: payload.attemptDelaySeconds,
-      bookingWindowSeconds: payload.bookingWindowSeconds,
-      prewarmOffsetSeconds: payload.prewarmOffsetSeconds,
-      runOffsetSeconds: payload.runOffsetSeconds,
-      lastRun: '尚未运行',
-      lastMessage: '等待第一次自动执行'
-    };
-  }
   const response = await platformRequest<{ task: BookingTask }>('/platform/tasks', {
     method: 'POST',
     body: JSON.stringify({ ...payload, accountId: Number(payload.accountId) })
@@ -318,11 +245,6 @@ export async function createBookingTask(payload: TaskPayload): Promise<BookingTa
 }
 
 export async function updateBookingTask(id: string, payload: Partial<TaskPayload>): Promise<BookingTask> {
-  if (demoMode) {
-    const task = copySnapshot().tasks.find((item) => item.id === id);
-    if (!task) throw new Error('任务不存在');
-    return { ...task, ...payload, accountId: String(payload.accountId ?? task.accountId) };
-  }
   const body = payload.accountId === undefined ? payload : { ...payload, accountId: Number(payload.accountId) };
   const response = await platformRequest<{ task: BookingTask }>(`/platform/tasks/${id}`, {
     method: 'PATCH',
@@ -332,16 +254,10 @@ export async function updateBookingTask(id: string, payload: Partial<TaskPayload
 }
 
 export async function deleteBookingTask(id: string): Promise<void> {
-  if (demoMode) return;
   await platformRequest(`/platform/tasks/${id}`, { method: 'DELETE' });
 }
 
 export async function setBookingTaskEnabled(id: string, enabled: boolean): Promise<BookingTask> {
-  if (demoMode) {
-    const task = copySnapshot().tasks.find((item) => item.id === id);
-    if (!task) throw new Error('任务不存在');
-    return { ...task, enabled, status: enabled ? 'enabled' : 'paused', nextRun: enabled ? '明早 06:00:03' : '已暂停' };
-  }
   const response = await platformRequest<{ task: BookingTask }>(`/platform/tasks/${id}/${enabled ? 'enable' : 'disable'}`, {
     method: 'POST'
   });
@@ -349,22 +265,6 @@ export async function setBookingTaskEnabled(id: string, enabled: boolean): Promi
 }
 
 export async function runBookingTask(id: string): Promise<BookingRun> {
-  if (demoMode) {
-    const task = copySnapshot().tasks.find((item) => item.id === id);
-    if (!task) throw new Error('任务不存在');
-    return {
-      id: `run-${Date.now()}`,
-      account: task.account,
-      task: task.name,
-      targetDate: new Date().toISOString().slice(0, 10),
-      startedAt: '刚刚',
-      status: 'pending',
-      statusLabel: '排队中',
-      attempts: 0,
-      result: '已加入队列',
-      detail: '演示模式不会调用真实预约接口。'
-    };
-  }
   const response = await platformRequest<{ run: BookingRun }>(`/platform/tasks/${id}/run`, {
     method: 'POST',
     body: JSON.stringify({})
@@ -373,7 +273,6 @@ export async function runBookingTask(id: string): Promise<BookingRun> {
 }
 
 export async function prewarmBookingTask(id: string): Promise<BookingRun> {
-  if (demoMode) return runBookingTask(id);
   const response = await platformRequest<{ run: BookingRun }>(`/platform/tasks/${id}/prewarm`, {
     method: 'POST',
     body: JSON.stringify({})
@@ -382,15 +281,6 @@ export async function prewarmBookingTask(id: string): Promise<BookingRun> {
 }
 
 export async function dryRunBookingTask(id: string): Promise<DryRunResult> {
-  if (demoMode) {
-    return {
-      taskId: id,
-      accountId: 'account-main',
-      tokenStatus: 'valid',
-      candidates: [{ order: 1, seatId: '197', startTime: 840, endTime: 1320 }],
-      message: '演示模式；本次 dry-run 未发送预约请求。'
-    };
-  }
   const response = await platformRequest<{ dryRun: DryRunResult }>(`/platform/tasks/${id}/dry-run`, {
     method: 'POST'
   });
@@ -398,7 +288,6 @@ export async function dryRunBookingTask(id: string): Promise<DryRunResult> {
 }
 
 export async function getClientNotifications(): Promise<PlatformNotification[]> {
-  if (demoMode) return [];
   const response = await platformRequest<{ notifications: PlatformNotification[] }>('/platform/notifications');
   return response.notifications;
 }
@@ -499,8 +388,4 @@ function toPlatformUser(value: Record<string, unknown>): PlatformUser {
     role: Number(role?.id) === 1 ? 'admin' : 'user',
     status: Number(status?.id) === 1 ? 'active' : 'disabled'
   };
-}
-
-function formatTime(minutes: number): string {
-  return `${Math.floor(minutes / 60).toString().padStart(2, '0')}:${(minutes % 60).toString().padStart(2, '0')}`;
 }

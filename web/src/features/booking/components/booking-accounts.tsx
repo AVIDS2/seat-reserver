@@ -15,7 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 
-import { createSchoolAccount, deleteSchoolAccount, isDemoMode, refreshSchoolAccount, updateSchoolAccount, type CreateAccountPayload, type UpdateAccountPayload } from '../api/service';
+import { createSchoolAccount, deleteSchoolAccount, refreshSchoolAccount, updateSchoolAccount, type CreateAccountPayload, type UpdateAccountPayload } from '../api/service';
 import type { BookingAccount } from '../types';
 
 function AccountEditorDialog({ open, onOpenChange, account, onSave }: { open: boolean; onOpenChange: (open: boolean) => void; account?: BookingAccount; onSave: (payload: CreateAccountPayload | UpdateAccountPayload, id?: string) => Promise<void> }) {
@@ -39,7 +39,12 @@ function AccountEditorDialog({ open, onOpenChange, account, onSave }: { open: bo
     }
     setSaving(true);
     try {
-      await onSave({ label: label.trim(), schoolUsername: schoolUsername.trim(), ...(schoolPassword ? { schoolPassword } : {}) }, account?.id);
+      const username = schoolUsername.trim();
+      if (account) {
+        await onSave({ label: label.trim(), ...(username ? { schoolUsername: username } : {}), ...(schoolPassword ? { schoolPassword } : {}) }, account.id);
+      } else {
+        await onSave({ label: label.trim(), schoolUsername: username, schoolPassword }, undefined);
+      }
       setLabel('');
       setSchoolUsername('');
       setSchoolPassword('');
@@ -84,7 +89,7 @@ export default function BookingAccountsPage({ initialAccounts }: { initialAccoun
     } else {
       const created = await createSchoolAccount(payload as CreateAccountPayload);
       setAccounts((current) => [...current, created]);
-      toast.success(isDemoMode() ? '演示账号已添加' : '账号验证并保存成功');
+      toast.success('账号验证并保存成功');
     }
   };
 

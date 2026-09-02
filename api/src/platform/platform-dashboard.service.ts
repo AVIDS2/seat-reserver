@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { MoreThanOrEqual, Repository } from 'typeorm';
+import { IsNull, MoreThanOrEqual, Not, Repository } from 'typeorm';
 import { PlatformAccountsService } from './platform-accounts.service';
 import { PlatformRunsService } from './platform-runs.service';
 import { PlatformTasksService } from './platform-tasks.service';
@@ -35,7 +35,11 @@ export class PlatformDashboardService {
         }),
         this.accountEntities.count({ where: { user: { id: userId } } }),
         this.accountEntities.count({
-          where: { user: { id: userId }, status: 'active' },
+          where: {
+            user: { id: userId },
+            status: 'active',
+            encryptedToken: Not(IsNull()),
+          },
         }),
         this.runEntities.find({
           where: {

@@ -18,7 +18,7 @@ import PageContainer from '@/components/layout/page-container';
 
 import type { BookingRun } from '../types';
 import { RunStatusBadge } from './status-badge';
-import { getClientSnapshot, isDemoMode } from '../api/service';
+import { getClientSnapshot } from '../api/service';
 
 export default function BookingRunsPage({ initialRuns }: { initialRuns: BookingRun[] }) {
   const [liveRuns, setLiveRuns] = useState(initialRuns);
@@ -41,7 +41,6 @@ export default function BookingRunsPage({ initialRuns }: { initialRuns: BookingR
   );
 
   const refreshRuns = async () => {
-    if (isDemoMode()) return;
     setRefreshing(true);
     try {
       const snapshot = await getClientSnapshot();
@@ -62,7 +61,7 @@ export default function BookingRunsPage({ initialRuns }: { initialRuns: BookingR
           <p className='text-muted-foreground mt-2 text-sm leading-6'>
             每一次预热和预约请求都会留下结果，方便确认系统是否按计划工作。
           </p>
-          <Button variant='outline' size='sm' className='mt-4' onClick={() => void refreshRuns()} disabled={refreshing || isDemoMode()}>
+          <Button variant='outline' size='sm' className='mt-4' onClick={() => void refreshRuns()} disabled={refreshing}>
             <Icons.refresh className={refreshing ? 'animate-spin' : ''} />
             {refreshing ? '刷新中' : '刷新记录'}
           </Button>

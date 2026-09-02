@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const production = process.env.NEXT_PUBLIC_DEMO_MODE === 'false';
+const production = process.env.NODE_ENV === 'production';
 const internalApi = process.env.INTERNAL_API_URL || 'http://api:3001/api/v1';
 
 export async function proxy(request: NextRequest): Promise<NextResponse> {

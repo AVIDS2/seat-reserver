@@ -21,7 +21,7 @@ import PageContainer from '@/components/layout/page-container';
 import { cn } from '@/lib/utils';
 
 import type { BookingSnapshot, BookingTask } from '../types';
-import { getClientSnapshot, isDemoMode, runBookingTask } from '../api/service';
+import { getClientSnapshot, runBookingTask } from '../api/service';
 import { MetricCard } from './metric-card';
 import { RunStatusBadge, TaskStatusBadge } from './status-badge';
 
@@ -29,7 +29,7 @@ async function runTask(task: BookingTask) {
   try {
     await runBookingTask(task.id);
     toast.success(`${task.name} 已加入执行队列`, {
-      description: isDemoMode() ? '演示模式不会向真实预约接口发送请求。' : 'Worker 将在后台执行预约。'
+      description: '后台 worker 将按策略执行预约。'
     });
   } catch (error) {
     toast.error(error instanceof Error ? error.message : '运行任务失败');
@@ -77,7 +77,6 @@ export default function BookingDashboard({ initialData }: { initialData: Booking
   const summary = snapshot.summary;
 
   useEffect(() => {
-    if (isDemoMode()) return;
     let active = true;
     const poll = () => {
       void getClientSnapshot()

@@ -18,7 +18,6 @@ import {
   createBookingTask,
   deleteBookingTask,
   dryRunBookingTask,
-  isDemoMode,
   prewarmBookingTask,
   runBookingTask,
   setBookingTaskEnabled,
@@ -35,7 +34,7 @@ async function runTask(task: BookingTask) {
   try {
     await runBookingTask(task.id);
     toast.success(`${task.name} 已加入执行队列`, {
-      description: isDemoMode() ? '演示模式不会向真实预约接口发送请求。' : '后台 worker 将按策略执行。'
+      description: '后台 worker 将按策略执行。'
     });
   } catch (error) {
     toast.error(error instanceof Error ? error.message : '运行任务失败');
