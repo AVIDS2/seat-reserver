@@ -62,7 +62,7 @@ export class WebVpnSeatClientService {
     15_000,
   );
   private readonly userAgent =
-    process.env.SEAT_USER_AGENT ||
+    process.env.SEAT_WEBVPN_USER_AGENT ||
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/132.0.0.0 Safari/537.36';
 
   async authenticate(
