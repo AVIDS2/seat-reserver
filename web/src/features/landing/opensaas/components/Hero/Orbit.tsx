@@ -46,6 +46,7 @@ export function Orbit() {
         @keyframes ring-spin { to { transform: rotate(360deg); } }
         @keyframes orbit-spin { from { transform: rotate(var(--start-angle, 0deg)); } to { transform: rotate(calc(var(--start-angle, 0deg) + 360deg)); } }
         @keyframes orbit-counter-spin { from { transform: rotate(calc(var(--start-angle, 0deg) * -1)); } to { transform: rotate(calc(var(--start-angle, 0deg) * -1 - 360deg)); } }
+        @media (prefers-reduced-motion: reduce) { .orbit-motion { animation: none !important; } }
       `}</style>
 
       <div className='absolute flex flex-col items-center gap-2'>
@@ -58,7 +59,7 @@ export function Orbit() {
       {circles.map((circle, circleIndex) => (
         <div
           key={circleIndex}
-          className='absolute rounded-full'
+          className='orbit-motion absolute rounded-full'
           style={{
             width: circle.radius * 2,
             height: circle.radius * 2,
@@ -77,7 +78,7 @@ export function Orbit() {
         return (
           <div
             key={iconConfig.id}
-            className='absolute top-1/2 left-1/2'
+            className='orbit-motion absolute top-1/2 left-1/2'
             style={
               {
                 width: 0,
@@ -89,7 +90,7 @@ export function Orbit() {
           >
             <div style={{ transform: `translateX(${circle.radius}px)` }}>
               <div
-                className='text-primary z-20 flex items-center justify-center'
+                className='orbit-motion text-primary z-20 flex items-center justify-center'
                 style={{
                   width: iconSize,
                   height: iconSize,

@@ -1,7 +1,7 @@
 import { cn } from '@/lib/utils';
 import type { GithubEpic } from '../operations';
 import { GithubEpicStatus } from '../operations';
-import { RoadmapEpicAddIssueCard, RoadmapEpicCard } from './RoadmapEpicCard';
+import { RoadmapEpicCard } from './RoadmapEpicCard';
 
 type RoadmapStatusColumnProps = {
   status: GithubEpicStatus;
@@ -36,8 +36,6 @@ export function RoadmapStatusColumn({ status, epics }: RoadmapStatusColumnProps)
             暂无项目
           </div>
         )}
-
-        {status === GithubEpicStatus.Ideas && <RoadmapEpicAddIssueCard />}
       </div>
     </div>
   );

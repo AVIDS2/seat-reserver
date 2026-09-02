@@ -1,4 +1,3 @@
-import { IconPlus } from '@tabler/icons-react';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import type { GithubEpic } from '../operations';
@@ -20,40 +19,28 @@ export function RoadmapEpicCard({ epic }: RoadmapEpicCardProps) {
       target={epic.url.startsWith('http') ? '_blank' : undefined}
       rel={epic.url.startsWith('http') ? 'noreferrer' : undefined}
       className={cn(
-        'group flex flex-col gap-3 rounded-xl border border-gray-200 bg-white p-5 transition-all hover:shadow-md dark:border-gray-700 dark:bg-gray-900/50',
+        'group bg-card text-card-foreground border-border flex flex-col gap-3 rounded-xl border p-5 transition-all hover:shadow-md',
         hoverBorderColor
       )}
     >
-      <h4 className='text-base font-semibold leading-tight text-gray-900 transition-opacity dark:text-white'>
+      <h4 className='text-foreground text-base font-semibold leading-tight transition-opacity'>
         {epic.name}
       </h4>
 
       <div className='mt-auto pt-1'>
-        <div className='mb-1.5 flex justify-between text-xs text-gray-500 dark:text-gray-400'>
-          <span>Progress</span>
+        <div className='text-muted-foreground mb-1.5 flex justify-between text-xs'>
+          <span>进度</span>
           <span>
             {progress}% ({epic.doneIssues}/{epic.totalIssues})
           </span>
         </div>
-        <div className='relative h-1.5 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800'>
+        <div className='bg-muted relative h-1.5 w-full overflow-hidden rounded-full'>
           <div
             className={cn('absolute h-full rounded-full', progressColor)}
             style={{ width: `${progress}%` }}
           />
         </div>
       </div>
-    </Link>
-  );
-}
-
-export function RoadmapEpicAddIssueCard() {
-  return (
-    <Link
-      href='/auth/sign-up'
-      className='group flex min-h-[100px] items-center justify-center rounded-xl border border-dashed border-border bg-muted/30 p-5 transition-all hover:border-primary hover:bg-muted'
-      title='开始使用'
-    >
-      <IconPlus className='text-muted-foreground group-hover:text-primary size-8 transition-colors' />
     </Link>
   );
 }

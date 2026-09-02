@@ -163,8 +163,8 @@ function FeaturesGridItem({
     return (
       <a
         href={href}
-        target='_blank'
-        rel='noopener noreferrer'
+        target={href.startsWith('http') ? '_blank' : undefined}
+        rel={href.startsWith('http') ? 'noopener noreferrer' : undefined}
         className={cn(gridFeatureSizeToClasses[size], mobileOrderClass)}
       >
         {gridFeatureCard}

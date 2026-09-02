@@ -74,7 +74,13 @@ function AuthExample({ selectedMode }: { selectedMode: AuthMode }) {
             </div>
             <span className='text-muted-foreground font-mono text-[11px]'>ACTIVE ROUTE</span>
           </div>
-          <Input type='text' name='schoolUsername' placeholder='学号' aria-label='学号' autoComplete='username' />
+          <Input
+            type='text'
+            name='schoolUsername'
+            placeholder='学号'
+            aria-label='学号'
+            autoComplete='username'
+          />
           <Input
             type='password'
             name='schoolPassword'

@@ -4,7 +4,7 @@
 
 ## 当前进度
 
-2026-08-31 已在 `web/` 引入 Kiranism Next.js Dashboard Starter，并完成预约控制台页面。2026-09-01 已将 brocoders NestJS 后端导入 `api/`，完成平台认证、邀请码、学校账号加密、预约任务、运行记录、Redis/BullMQ 队列、Nest Schedule 调度和真实 API 接入；随后完成最终交付审计：关闭模板遗留公开注册入口，补齐数据库租户复合约束、运行幂等索引、停用任务跳过、管理员全局脱敏视图和服务端刷新并发保护。2026-09-02 已将 OpenSaaS 的原始落地页组件树直接迁入 `web/src/features/landing/opensaas`，保留 Hero/Orbit、ExamplesCarousel、HighlightedFeature、FeaturesGrid、Roadmap、Testimonials、FAQ 和 Footer 的结构，再适配平台业务、Next.js 路由和认证入口；认证页保留模板的动态网格视觉，登录后重复访问认证地址会回到控制台。`docker-compose.platform.yml` 提供 PostgreSQL、Redis、API、Web 的生产编排。根目录 CLI 与 VPS cron 继续独立作为现行生产抢座链路。
+2026-08-31 已在 `web/` 引入 Kiranism Next.js Dashboard Starter，并完成预约控制台页面。2026-09-01 已将 brocoders NestJS 后端导入 `api/`，完成平台认证、邀请码、学校账号加密、预约任务、运行记录、Redis/BullMQ 队列、Nest Schedule 调度和真实 API 接入；随后完成最终交付审计：关闭模板遗留公开注册入口，补齐数据库租户复合约束、运行幂等索引、停用任务跳过、管理员全局脱敏视图和服务端刷新并发保护。2026-09-02 已将 OpenSaaS 的原始落地页组件树直接迁入 `web/src/features/landing/opensaas`，保留 Hero/Orbit、ExamplesCarousel、HighlightedFeature、FeaturesGrid、Roadmap、Testimonials、FAQ 和 Footer 的结构，再适配平台业务、Next.js 路由和认证入口；默认主题定为 `Claude`，产品 UI 资产加入状态动画，FAQ 使用 `grid-template-rows` 平滑收展；认证页保留模板的动态网格视觉，登录后重复访问认证地址会回到控制台。`docker-compose.platform.yml` 提供 PostgreSQL、Redis、API、Web 的生产编排。根目录 CLI 与 VPS cron 继续独立作为现行生产抢座链路。
 
 前端底座决策：使用 Next.js 16、Tailwind CSS 4、shadcn/ui、TanStack Query/Table、Motion 和 Tabler Icons。后端底座决策：使用 NestJS 11、TypeORM、PostgreSQL、JWT/HttpOnly Cookie、Swagger 和 Docker；预约执行层使用 Redis + BullMQ，并由 Nest Schedule 生成每日任务。生产模式下前端通过同域 `/api/v1` 访问 API，真实预约请求不会进入浏览器。
 

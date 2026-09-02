@@ -103,6 +103,36 @@
   }
 }
 
+/* OpenSaaS FAQ transition: grid rows interpolate without measuring an auto height. */
+.accordion-grid-panel {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition:
+    grid-template-rows 320ms cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 180ms ease-out;
+}
+
+[data-open] > .accordion-grid-panel {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .accordion-grid-panel {
+    transition: none;
+  }
+}
+
+/* OpenSaaS bento highlight utility, expressed with the app's OKLCH tokens. */
+.bg-radial-gradient {
+  background: radial-gradient(
+    circle at 30% 30%,
+    color-mix(in oklch, var(--accent) 45%, var(--card)),
+    color-mix(in oklch, var(--muted) 82%, var(--card))
+  );
+}
+
 /* ============================================================
    shadcn chat utilities — scroll-fade + shimmer
    Verbatim from shadcn/tailwind.css (shipped by `npx shadcn init`).

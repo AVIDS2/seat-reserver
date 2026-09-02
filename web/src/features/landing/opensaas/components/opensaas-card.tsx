@@ -9,8 +9,9 @@ const cardVariants = cva('rounded-xl border shadow transition-all duration-300',
       default: 'border-border bg-card text-card-foreground hover:shadow-lg',
       faded: 'border-border text-muted-foreground scale-95 opacity-50',
       bento: 'border-none bg-muted/40 text-foreground shadow-none hover:scale-[1.02]',
-      bentoHighlight:
-        'border-none bg-primary text-primary-foreground shadow-none hover:scale-[1.02]'
+      bentoHighlight: 'border-none bg-muted/60 text-foreground shadow-lg hover:scale-[1.02]',
+      outer: 'bg-card text-card-foreground shadow-lg hover:shadow-xl',
+      inner: 'bg-card text-card-foreground shadow-inner hover:shadow-md'
     }
   },
   defaultVariants: {

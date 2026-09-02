@@ -36,6 +36,7 @@ export function Testimonials({ testimonials }: { testimonials: Testimonial[] }) 
                     src={testimonial.avatarSrc}
                     width={40}
                     height={40}
+                    unoptimized
                     loading='lazy'
                     alt={`${testimonial.name}'s avatar`}
                     className='ring-border/20 group-hover:ring-primary/30 h-10 w-10 shrink-0 rounded-full ring-2 transition-all duration-200'

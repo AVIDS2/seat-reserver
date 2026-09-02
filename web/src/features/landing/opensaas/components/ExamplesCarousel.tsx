@@ -2,6 +2,7 @@
 
 import { type Ref, useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
+import { useReducedMotion } from 'motion/react';
 import { Card, CardContent } from './opensaas-card';
 
 const EXAMPLES_CAROUSEL_INTERVAL = 3000;
@@ -22,6 +23,7 @@ export function ExamplesCarousel({ examples }: { examples: ExampleApp[] }) {
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const reduceMotion = useReducedMotion();
 
   useEffect(() => {
     observerRef.current = new IntersectionObserver(([entry]) => setIsInView(entry.isIntersecting), {
@@ -45,7 +47,7 @@ export function ExamplesCarousel({ examples }: { examples: ExampleApp[] }) {
       clearInterval(intervalRef.current);
     }
 
-    if (isInView && examples.length > 1) {
+    if (!reduceMotion && isInView && examples.length > 1) {
       intervalRef.current = setInterval(() => {
         setCurrentExample((prev) => (prev + 1) % examples.length);
       }, EXAMPLES_CAROUSEL_INTERVAL);
@@ -85,7 +87,7 @@ export function ExamplesCarousel({ examples }: { examples: ExampleApp[] }) {
         clearTimeout(scrollTimeoutRef.current);
       }
     };
-  }, [isInView, examples.length, currentExample]);
+  }, [isInView, examples.length, currentExample, reduceMotion]);
 
   const handleMouseEnter = (index: number) => {
     setCurrentExample(index);
@@ -94,7 +96,7 @@ export function ExamplesCarousel({ examples }: { examples: ExampleApp[] }) {
       clearInterval(intervalRef.current);
     }
 
-    if (isInView && examples.length > 1) {
+    if (!reduceMotion && isInView && examples.length > 1) {
       intervalRef.current = setInterval(() => {
         setCurrentExample((prev) => (prev + 1) % examples.length);
       }, EXAMPLES_CAROUSEL_INTERVAL);
@@ -158,6 +160,7 @@ function ExampleCard({ example, index, isCurrent, onMouseEnter, ref }: ExampleCa
               src={example.imageSrc}
               alt={example.name}
               fill
+              unoptimized
               sizes='(max-width: 640px) 280px, (max-width: 1024px) 320px, 350px'
               className='object-cover object-top'
             />

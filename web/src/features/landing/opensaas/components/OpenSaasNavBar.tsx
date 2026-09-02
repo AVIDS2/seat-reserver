@@ -7,8 +7,9 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/co
 import { signOutPlatform } from '@/features/booking/api/service';
 import type { PlatformUser } from '@/features/booking/api/service';
 import { cn } from '@/lib/utils';
+import { useMotionValueEvent, useScroll } from 'motion/react';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { toast } from 'sonner';
 
 const navigationItems = [
@@ -22,13 +23,9 @@ export function OpenSaasNavBar({ user }: { user: PlatformUser | null }) {
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
+  const { scrollY } = useScroll();
 
-  useEffect(() => {
-    const handleScroll = () => setIsScrolled(window.scrollY > 0);
-    handleScroll();
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+  useMotionValueEvent(scrollY, 'change', (latest) => setIsScrolled(latest > 0));
 
   const signOut = async () => {
     setSigningOut(true);
