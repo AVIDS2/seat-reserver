@@ -13,6 +13,8 @@ web/.playwright-cli/
 web/runtime/
 .playwright-cli/
 output/playwright/
+web/output/
+web/public/landing/opensaas-assets/
 api/node_modules/
 api/dist/
 api/coverage/

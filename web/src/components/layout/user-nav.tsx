@@ -33,7 +33,7 @@ export function UserNav() {
     setSigningOut(true);
     try {
       await signOutPlatform();
-      router.push('/auth/sign-in');
+      router.push('/');
       router.refresh();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : '退出登录失败');

@@ -15,6 +15,8 @@
 
 ## 首次使用
 
+首页 `https://seat.rglens.com/` 是面向用户的产品入口：未登录时提供产品说明、登录和注册入口；登录后显示进入控制台和退出登录。登录/注册页面左上角 Logo 始终返回首页，控制台退出后也返回首页。落地页直接迁移 `wasp-lang/open-saas` 的 `template/app/src/landing-page` 组件结构和交互模式，按其 MIT License 在 Next.js 中适配；没有引入 Wasp 运行时、支付模块或远程 Roadmap 查询，业务内容、资产和入口均替换为本平台实现。
+
 1. 打开 `https://seat.rglens.com/auth/sign-up`。
 2. 第一个注册账号自动成为管理员。
 3. 管理员进入“管理员工作台”，创建邀请码并复制给朋友。

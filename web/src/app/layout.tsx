@@ -23,24 +23,24 @@ export const metadata: Metadata = {
   },
   description: '把每一次预约，交给更稳定的自动化。',
   openGraph: {
-    title: '一考即过 · 预约控制台',
-    description: '清晰掌握任务、账号和每一次抢座运行。',
+    title: '一考即过 · 座位预约自动化',
+    description: '把学校账号、候选策略和每日执行结果放进同一个清晰的工作台。',
     siteName: '一考即过',
     type: 'website',
     images: [
       {
-        url: '/shadcn-dashboard.png',
-        width: 3200,
-        height: 1600,
+        url: '/landing/seat-overview.svg',
+        width: 1200,
+        height: 675,
         alt: '一考即过预约控制台'
       }
     ]
   },
   twitter: {
     card: 'summary_large_image',
-    title: '一考即过 · 预约控制台',
-    description: '清晰掌握任务、账号和每一次抢座运行。',
-    images: ['/shadcn-dashboard.png']
+    title: '一考即过 · 座位预约自动化',
+    description: '把学校账号、候选策略和每日执行结果放进同一个清晰的工作台。',
+    images: ['/landing/seat-overview.svg']
   }
 };
 

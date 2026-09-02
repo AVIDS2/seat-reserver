@@ -51,6 +51,7 @@ import {
   IconLayoutDashboard,
   IconLayoutKanban,
   IconLayoutSidebar,
+  IconList,
   IconLoader2,
   IconLock,
   IconLogin,
@@ -64,6 +65,7 @@ import {
   IconPhone,
   IconPhoto,
   IconMapPin,
+  IconMenu2,
   IconPlayerPause,
   IconPlayerPlay,
   IconPizza,
@@ -95,6 +97,7 @@ import {
   IconUserX,
   IconUsers,
   IconVideo,
+  IconWorld,
   IconCrown,
   IconX
 } from '@tabler/icons-react';
@@ -136,6 +139,7 @@ export const Icons = {
   dashboard: IconLayoutDashboard,
   kanban: IconLayoutKanban,
   panelLeft: IconLayoutSidebar,
+  menu: IconMenu2,
 
   // User
   user: IconUser,
@@ -157,7 +161,9 @@ export const Icons = {
   bolt: IconBolt,
   building: IconBuilding,
   history: IconHistory,
+  list: IconList,
   mapPin: IconMapPin,
+  globe: IconWorld,
   pause: IconPlayerPause,
   play: IconPlayerPlay,
   refresh: IconRefresh,
