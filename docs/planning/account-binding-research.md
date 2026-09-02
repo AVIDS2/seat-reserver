@@ -1,6 +1,8 @@
 # 账号绑定自动化研究
 
-目标：验证用户只输入学校账号、学校密码、座位系统激活码后，平台能否自动完成“一考即过”自习室模式绑定，并拿到后续 `/cczukaoyan/rest/auth` 可刷新的凭据或 token。
+目标：确认新用户能否使用学校身份完成座位系统首次绑定，并拿到后续可在对应认证模式下验证和预约的业务 token。
+
+截至 2026-09-02，已有账号可在公网 VPS 上调用 `/cczukaoyan/rest/auth` 刷新 token；新账号已在本地完成 WebVPN 到座位系统的完整链路，且 VPS 已确认可以通过 WebVPN 网关直接完成动态 AES 登录。平台会先尝试 direct，凭据不被接受时自动切换为 webvpn，并持久化认证模式；VPS 上完整的 WebVPN Token 验证和预约仍以生产测试账号做最终验收。
 
 ## 边界
 
@@ -10,22 +12,55 @@
 - 捕获文件只保存在本地 `tools/binding_discovery/captures/`，该目录已被 `.gitignore` 忽略。
 - 捕获结果会脱敏 password、token、cookie、authorization 等字段。
 
-## 当前假设
+## 已验证与待验证链路
 
-当前系统不是单独注册，而是：
+已验证的老账号运行链路：
 
 ```text
-学校统一身份认证 / SSO
-→ 选择自习室或图书馆模式
-→ 学校/系统识别
-→ 激活码绑定
-→ leosys 子系统 token
-→ 一考即过自习室接口
+已配置的一考即过登录凭据
+→ `GET /cczukaoyan/rest/auth`
+→ `GET /cczukaoyan/rest/v2/user` 验证 token
+→ 加密保存凭据和 token
+→ 每日预热/预约自动复用或刷新 token
 ```
+
+新账号首次接入链路：
+
+```text
+学校 WebVPN 网关动态 AES 登录
+→ 门户动态返回“图书馆座位预约”代理地址
+→ 座位系统代理生成 30 秒临时 JWT
+→ `/rest/ssoAuth` 换取业务 token
+→ 经 WebVPN 代理调用 `/rest/v2/user` 验证
+```
+
+不要把校园统一身份认证密码默认等同于 `/cczukaoyan/rest/auth` 的 `password`。webvpn 模式的业务 token 也只能在 WebVPN 代理内使用，不能交给 cczukaoyan 公网租户验证。
 
 MVP 只研究并实现 `self_study` 自习室模式。图书馆模式先不做，但数据模型后续应保留 `service_type`。
 
 ## 工具
+
+### 推荐自动化路径
+
+Reqable 官方支持 Report Server、Python capture script、HAR 和 MCP。当前推荐使用 Report Server：Reqable 把会话以 HAR POST 到本地接收器，接收器自动转换、脱敏并保存，后续所有账号使用同一套分析规则，不需要重复人工整理请求。
+
+Reqable 官方内置 MCP 要求 Reqable 3.2.0 或更高版本。MCP 可以直接筛选和读取实时抓包记录，但不能代替用户完成学校验证码、校园统一身份认证或其他需要本人交互的步骤。
+
+启动接收器：
+
+```powershell
+python tools/binding_discovery/reqable_report_server.py --bind 0.0.0.0 --port 8788 --path /reqable/report
+```
+
+在 Reqable 的 Report Server 中填写：
+
+```text
+http://<本机局域网地址>:8788/reqable/report
+```
+
+只完成“完全退出或清理会话后，学校登录/验证码、选择学校或系统、可能的激活码绑定，直到进入座位列表”，不点击预约提交。接收器会自动屏蔽敏感字段；如报告中出现 `freeBook`，分析器会把它标为不适合作为绑定捕获结果。
+
+需要更深的协议结构分析时，优先使用官方 Reqable MCP 或 mitmproxy addon；本项目不引入 SSL pinning 绕过、验证码绕过、签名伪造或风控绕过脚本。
 
 ### 安装依赖
 
@@ -62,16 +97,13 @@ python tools/binding_discovery/analyze_capture.py tools/binding_discovery/captur
 - 是否出现 `/cczukaoyan/rest/v2/user`
 - 是否误触发 `/freeBook`
 
-## 需要确认的问题
+## 已确认结论
 
-1. `/cczukaoyan/rest/auth` 的 `password` 来源是什么：
-   - 接口响应返回；
-   - 前端 JavaScript 生成；
-   - 客户端缓存携带；
-   - 其他链路。
-2. 激活码绑定后是否可以直接拿到可用 token。
-3. 网页系统和小程序自习室接口的 token 是否完全互通。
-4. 用户后续是否只需保存加密后的学校账号密码，还是必须保存一考即过 auth password。
+1. direct 模式继续使用 `/cczukaoyan/rest/auth`，适配现有一考即过凭据。
+2. webvpn 模式使用校园账号密码完成 WebVPN 网关动态 AES 登录，不需要 SwordAgent、Windows VM 或校园网出口。
+3. WebVPN 门户动态返回代理地址和座位系统配置；不硬编码代理哈希或签名种子。
+4. WebVPN Cookie 只保存在单次进程内存会话中；数据库只加密保存学校密码、业务 token 和认证模式。
+5. 05:59:50 预热会重建 WebVPN 会话，06:00 预约复用该会话；API 重启后会自动重新登录恢复。
 
 ## 后续实现目标
 

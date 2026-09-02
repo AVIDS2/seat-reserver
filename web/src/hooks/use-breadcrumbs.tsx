@@ -1,0 +1,50 @@
+'use client';
+
+import { usePathname } from 'next/navigation';
+import { useMemo } from 'react';
+
+type BreadcrumbItem = {
+  title: string;
+  link: string;
+};
+
+// This allows to add custom title as well
+const routeMapping: Record<string, BreadcrumbItem[]> = {
+  '/dashboard': [{ title: '总览', link: '/dashboard/overview' }],
+  '/dashboard/overview': [{ title: '总览', link: '/dashboard/overview' }],
+  '/dashboard/tasks': [{ title: '预约任务', link: '/dashboard/tasks' }],
+  '/dashboard/accounts': [{ title: '账号与授权', link: '/dashboard/accounts' }],
+  '/dashboard/runs': [{ title: '运行记录', link: '/dashboard/runs' }],
+  '/dashboard/notifications': [{ title: '通知中心', link: '/dashboard/notifications' }]
+};
+
+export function useBreadcrumbs() {
+  const pathname = usePathname();
+
+  const breadcrumbs = useMemo(() => {
+    // Check if we have a custom mapping for this exact path
+    if (routeMapping[pathname]) {
+      return routeMapping[pathname];
+    }
+
+    // If no exact match, fall back to generating breadcrumbs from the path
+    const segments = pathname.split('/').filter(Boolean);
+    return segments.map((segment, index) => {
+      const path = `/${segments.slice(0, index + 1).join('/')}`;
+      const titleMap: Record<string, string> = {
+        dashboard: '工作台',
+        overview: '总览',
+        tasks: '预约任务',
+        accounts: '账号与授权',
+        runs: '运行记录',
+        notifications: '通知中心'
+      };
+      return {
+        title: titleMap[segment] ?? segment,
+        link: path
+      };
+    });
+  }, [pathname]);
+
+  return breadcrumbs;
+}

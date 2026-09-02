@@ -3,6 +3,12 @@
 > 基于现有 `seat_reserver.py` 单账号 CLI 的平台化扩展方案。
 > 前提：现有 CLI + VPS cron 方案必须继续独立运行，平台是平行路径，不是替代。
 
+## 当前决策（2026-09-01）
+
+前端采用 `web/` 中的 Kiranism Next.js Dashboard Starter；后端采用 `api/` 中导入并完成平台业务模块的 brocoders NestJS boilerplate。生产运行时采用 PostgreSQL + TypeORM、JWT/HttpOnly Cookie、Redis + BullMQ 和 Nest Schedule；根目录 `seat_reserver.py` 与 VPS cron 继续独立运行。平台最终审计已关闭模板遗留的公开注册、社交登录和通用用户管理路由，补齐数据库租户复合外键、运行幂等索引、停用任务跳过、管理员脱敏全局视图和服务端 refresh 单飞保护。当前可执行入口是根目录 `docker-compose.platform.yml`，公网域名为 `seat.rglens.com`。
+
+选择这套组合是因为 Kiranism 与 brocoders 的职责边界清晰，避免把两个 Next.js 全栈模板合并；`ixartz/SaaS-Boilerplate` 和 Wasp Open SaaS 作为参考，不作为本项目后端底座。
+
 ---
 
 ## 1. 产品边界和非目标
@@ -85,7 +91,7 @@
 └──────────────────────┬──────────────────────────┘
                        │ HTTP JSON
 ┌──────────────────────▼──────────────────────────┐
-│                   API (FastAPI)                  │
+│                   API (NestJS)                  │
 │  modules: auth / invitations / school_accounts / │
 │           booking_tasks / booking_runs           │
 └──────────────────────┬──────────────────────────┘
@@ -114,7 +120,7 @@
 | **booking_runs** | 运行日志查询（只读，由 worker 写入） | 不触发执行 |
 | **seat_client** | 封装对"一考即过"小程序的 HTTP 请求 | 不缓存、不重试（重试在 worker 层） |
 | **scheduler** | 每日生成预热/预约执行计划 | 不执行任务本身 |
-| **worker** | 从队列取任务、执行 seat_client 调用、写日志 | 不暴露 HTTP 接口 |
+| **worker** | API 容器内的 BullMQ worker，从队列取任务、执行 seat_client 调用、写日志 | 不暴露 HTTP 接口；后续有规模需求时再单独扩容 |
 
 ### 3.3 seat_client 与现有 CLI 的关系
 
@@ -140,11 +146,11 @@ seat_reserver.py (CLI)          seat_client/ (平台模块)
 ```
 前端：  Next.js 14+ (App Router) + TypeScript + shadcn/ui + Tailwind CSS
 数据层：TanStack Query + React Hook Form + Zod
-后端：  FastAPI + Pydantic v2
-ORM：   SQLAlchemy 2.0 + Alembic
+后端：  NestJS 11 + TypeScript
+ORM：   TypeORM 0.3+
 数据库：PostgreSQL 16
-缓存/锁：Redis 7
-调度：  APScheduler (集成在 worker 进程内)
+缓存/锁：Redis 7 + BullMQ
+调度：  Nest Schedule
 部署：  Docker Compose
 ```
 
@@ -152,13 +158,13 @@ ORM：   SQLAlchemy 2.0 + Alembic
 
 | 决策 | 选择 | 理由 | 否决的方案 |
 |---|---|---|---|
-| 后端语言 | Python | 与现有 CLI 同语言，seat_client 逻辑可直接复用 | Node.js — 需重写 HTTP 逻辑 |
-| Web 框架 | FastAPI | async 原生、Pydantic 集成好、自动生成 OpenAPI 文档 | Django — 太重，Admin 不需要；Flask — 无 async，无类型校验 |
+| 后端语言 | TypeScript | 与 Kiranism 前端共享类型生态，适合常驻 API/队列进程 | Python — 继续保留为现有 CLI/Worker |
+| Web 框架 | NestJS | 模块化、依赖注入、Swagger、守卫和常驻进程支持成熟 | FastAPI — 需要额外维护另一套运行时和类型体系 |
 | 前端框架 | Next.js | SSR/SSG 灵活、shadcn/ui 生态成熟 | 纯 SPA (Vite) — 无 SSR，SEO 无所谓但开发体验差 |
 | 数据库 | PostgreSQL | JSON 字段支持好（存候选策略）、够用、成熟 | SQLite — 并发写入锁问题；MySQL — 无特别优势 |
-| 队列 | Redis List + Lock | 轻量、够用、无需额外组件 | Celery + RabbitMQ — 太重；Redis Streams — 过度设计 |
-| 调度 | APScheduler | Python 原生、可嵌入 worker 进程、Cron 表达式支持 | 系统 cron — 无法感知任务状态；Celery Beat — 依赖链太长 |
-| ORM | SQLAlchemy 2.0 | Python 标准、Alembic migration 成熟 | Prisma — Python 支持弱；raw SQL — 维护成本高 |
+| 队列 | Redis + BullMQ | 与 NestJS 集成成熟，支持重试、延迟任务、幂等和队列监控 | Redis List — 需要自己补队列语义 |
+| 调度 | Nest Schedule | 与常驻 NestJS 服务同进程，适合每日生成预热/预约任务 | 系统 cron — 无法感知任务状态 |
+| ORM | TypeORM 0.3+ | 与 brocoders 基线一致，已有实体、迁移和仓库模式 | Prisma — 需要替换后端基线 |
 | 认证 | HttpOnly Cookie + JWT | 安全、简单、前后端同域部署无跨域问题 | Bearer Token — 需前端存 token，XSS 风险；Session — 需服务端状态 |
 
 ### 4.3 不引入的东西
@@ -167,9 +173,8 @@ ORM：   SQLAlchemy 2.0 + Alembic
 |---|---|
 | Kubernetes | 单机部署，Docker Compose 足够 |
 | GraphQL | REST 够用，OpenAPI 自动生成文档 |
-| Message Queue (RabbitMQ/Kafka) | Redis List 足以处理每日几十个任务 |
-| 微服务 | 4 个进程（web/api/scheduler/worker）足够，不需要服务发现 |
-| TypeScript 后端 | Python 可复用现有 HTTP 逻辑 |
+| Message Queue (RabbitMQ/Kafka) | Redis + BullMQ 足以处理每日几十个任务 |
+| 微服务 | 3 个应用进程（web/api/worker）足够，不需要服务发现 |
 
 ---
 
@@ -185,6 +190,8 @@ booking_tasks N──1 school_accounts
 booking_tasks 1──N booking_runs
 invitations 1──N invitation_uses
 ```
+
+平台不另造 workspace 表：本产品是一人一套预约资源的邀请制工具，`user.id` 就是租户根。所有账号、任务、运行记录和通知都直接归属于用户；管理员仅通过独立守卫访问脱敏的全局读模型。
 
 ### 5.2 表定义
 
@@ -233,6 +240,7 @@ invitations 1──N invitation_uses
 | school_username | VARCHAR(100) | 学号（明文，非敏感） |
 | encrypted_school_password | BYTEA | Fernet 加密后的密码 |
 | cached_token | TEXT NULL | 缓存的 API token |
+| auth_mode | VARCHAR(20) | `direct` 或 `webvpn` |
 | token_refreshed_at | TIMESTAMP NULL | 上次 token 刷新时间 |
 | token_expires_at | TIMESTAMP NULL | token 预估过期时间 |
 | last_verified_at | TIMESTAMP NULL | 上次验证成功时间 |
@@ -299,6 +307,8 @@ CREATE INDEX idx_invitations_code ON invitations(code) WHERE status = 'active';
 
 ### 6.1 设计原则
 
+> 本节前面的 REST 草案保留为设计记录；当前生产实现统一使用 `/api/v1/platform/*` 前缀，实际端点以 `api/src/platform/*controller.ts` 和 Swagger 为准。brocoders 模板原生公开认证/用户控制器未挂载，避免绕过邀请码和平台资源生命周期。
+
 - RESTful，资源名复数
 - 统一前缀 `/api/v1/`
 - 认证：HttpOnly cookie 中的 JWT
@@ -361,16 +371,22 @@ GET    /api/v1/booking-runs/latest          各任务最近一次运行
 #### Admin（admin only）
 
 ```
-GET    /api/v1/admin/users                  用户列表
-PATCH  /api/v1/admin/users/{id}             更新用户状态/角色
-GET    /api/v1/admin/stats                  全局统计（今日成功/失败/总任务数）
-GET    /api/v1/admin/booking-runs           全局运行日志
+GET    /api/v1/platform/admin/users                    用户列表
+POST   /api/v1/platform/admin/users/{id}/enable       启用用户
+POST   /api/v1/platform/admin/users/{id}/disable      禁用用户
+GET    /api/v1/platform/admin/overview                 全局统计
+GET    /api/v1/platform/admin/accounts                全局账号（脱敏）
+GET    /api/v1/platform/admin/tasks                   全局任务（只读）
+GET    /api/v1/platform/admin/runs                    全局运行记录（只读）
+GET    /api/v1/platform/invitations                    邀请码列表
+POST   /api/v1/platform/invitations                    创建邀请码
+DELETE /api/v1/platform/invitations/{id}               停用邀请码
 ```
 
 #### Health
 
 ```
-GET    /api/v1/health                       健康检查（DB + Redis 连通性）
+GET    /api/v1/platform/health              健康检查（DB + Redis 连通性）
 ```
 
 ### 6.3 关键请求/响应示例
@@ -425,7 +441,7 @@ GET    /api/v1/health                       健康检查（DB + Redis 连通性�
 ```
                     ┌─────────────────┐
                     │   Scheduler     │
-                    │  (APScheduler)  │
+                    │ (Nest Schedule) │
                     │                 │
                     │  每天 05:30     │
                     │  生成当日任务   │
@@ -632,6 +648,8 @@ SENSITIVE_KEYS = {"password", "token", "school_password", "encrypted_school_pass
 
 ## 9. Docker Compose 部署拓扑
 
+> 当前可执行的生产配置是仓库根目录的 `docker-compose.platform.yml`，配套变量模板是 `deploy/platform.env.example`。下面早期的拓扑草图和 Python Compose 片段保留作设计记录，不要直接照抄；实际端口、环境变量和健康检查以根目录 Compose 文件为准。
+
 ### 9.1 服务拓扑
 
 ```
@@ -672,7 +690,7 @@ SENSITIVE_KEYS = {"password", "token", "school_password", "encrypted_school_pass
 └─────────────────────────────────────────────────────────┘
 ```
 
-### 9.2 docker-compose.yml 结构
+### 9.2 早期 docker-compose.yml 结构（已被生产文件取代）
 
 ```yaml
 services:
@@ -738,17 +756,15 @@ volumes:
   redisdata:
 ```
 
-### 9.3 反向代理（Caddy 示例）
+### 9.3 反向代理（当前 VPS 的 OpenResty）
 
 ```
-your-domain.com {
-    handle /api/* {
-        reverse_proxy api:8000
-    }
-    handle {
-        reverse_proxy web:3000
-    }
+seat.rglens.com {
+    /api/*  -> 127.0.0.1:3201
+    /*      -> 127.0.0.1:3200
 }
+
+数据库和 Redis 不映射公网；OpenResty 负责 HTTPS，Next 前端通过同域 `/api/v1` 访问 Nest API。
 ```
 
 ### 9.4 资源估算
@@ -757,7 +773,7 @@ your-domain.com {
 |---|---|---|---|
 | postgres | 256MB | 0.25 | 小规模够用 |
 | redis | 64MB | 0.1 | 仅锁和队列 |
-| api | 256MB | 0.25 | FastAPI async |
+| api | 256MB | 0.25 | NestJS HTTP API |
 | web | 256MB | 0.25 | Next.js |
 | worker | 128MB | 0.1 | 按需运行 |
 | scheduler | 64MB | 0.1 | 几乎空闲 |
@@ -771,11 +787,11 @@ your-domain.com {
 
 **目标**：所有服务能 `docker compose up` 启动
 
-- [ ] 创建 `web/` Next.js 项目，初始化 shadcn/ui
-- [ ] 创建 `api/` FastAPI 项目
-- [ ] 配置 Docker Compose：web + api + postgres + redis
-- [ ] `GET /api/v1/health` 返回 `{"status": "ok", "db": "ok", "redis": "ok"}`
-- [ ] 项目 `.gitignore` 和 `.env.example`
+- [x] 创建 `web/` Next.js 项目，初始化 shadcn/ui
+- [x] 导入 `api/` brocoders NestJS 后端基线
+- [x] 配置 Docker Compose：web + api + postgres + redis
+- [x] `GET /api/v1/platform/health` 返回数据库和 Redis 状态
+- [x] 项目 `.gitignore` 和 `.env.example`
 
 **验收**：`docker compose up` 后所有容器健康，浏览器能打开 web 和 /api/v1/docs
 
@@ -783,14 +799,14 @@ your-domain.com {
 
 **目标**：用户能注册和登录
 
-- [ ] SQLAlchemy models: users, invitations, invitation_uses
-- [ ] Alembic migration
-- [ ] POST /auth/register（需邀请码）
-- [ ] POST /auth/login（HttpOnly cookie + JWT）
-- [ ] GET /auth/me
-- [ ] Admin: 邀请码 CRUD
-- [ ] 管理员种子账号（首次启动自动创建）
-- [ ] 后端测试：注册、登录、权限、邀请码校验
+- [x] TypeORM entities: users, invitations, school_accounts, booking_tasks, booking_runs, notifications
+- [x] TypeORM migration
+- [x] POST /platform/auth/register（首个账号免邀请码，之后需邀请码）
+- [x] POST /platform/auth/login（HttpOnly cookie + JWT）
+- [x] GET /platform/auth/me
+- [x] Admin: 邀请码、成员状态和全局概览
+- [x] 管理员种子账号（可选环境变量）
+- [x] 后端关键单元测试：加密、绑定前验证、用户归属、停用任务跳过、成功预约记录
 
 **验收**：无邀请码不能注册；有效邀请码可注册并登录；/auth/me 返回当前用户
 
@@ -798,27 +814,28 @@ your-domain.com {
 
 **目标**：用户能添加和验证学校账号
 
-- [ ] SQLAlchemy model: school_accounts
-- [ ] Fernet 加密/解密工具
-- [ ] POST /school-accounts（加密存储密码）
-- [ ] POST /school-accounts/{id}/verify（调 /rest/auth + /rest/v2/user）
-- [ ] seat_client 模块：auth(), get_user()
-- [ ] 日志脱敏：token 只记前缀，密码永不打印
-- [ ] 测试：加密存储、verify 成功/失败、脱敏
+- [x] TypeORM entity: school_accounts
+- [x] AES-256-GCM 加密/解密工具
+- [x] POST /platform/accounts（加密存储已有一考即过登录凭据）
+- [x] POST /platform/accounts/{id}/refresh（调 /rest/auth + /rest/v2/user）
+- [x] seat_client 模块：auth(), verifyToken()
+- [x] 日志脱敏：密码和 token 不写入日志
+- [x] 测试：加密存储、verify 成功/失败、脱敏（关键路径用 mock SeatClient 覆盖）
+- [x] 新账号 WebVPN 网关/ssoAuth 链路实现、`authMode` 数据模型和自动回退；VPS 网关登录已验证，完整生产业务链路待验收
 
-**验收**：正确密码 verify 成功；错误密码失败；DB 中无明文密码；日志中无明文 token
+**验收**：已有一考即过凭据 direct verify 成功；普通校园账号自动回退 WebVPN 并 verify 成功；错误凭据失败；DB 中无明文凭据；日志中无明文 token。校园密码不会被默认视为 `/rest/auth` password。
 
 ### Phase 4: 预约任务管理（2 天）
 
 **目标**：用户能创建和管理预约任务
 
-- [ ] SQLAlchemy model: booking_tasks
-- [ ] 任务 CRUD API
-- [ ] 候选策略校验（seat_id、time_candidates 格式）
-- [ ] 启用/禁用任务
-- [ ] dry-run（只检查 token + 生成候选列表，不调 freeBook）
-- [ ] 用户最多 N 个启用任务的限制
-- [ ] 测试：CRUD、权限隔离、候选校验
+- [x] TypeORM entity: booking_tasks
+- [x] 任务 CRUD API
+- [x] 候选策略校验（seat_id、time_candidates 格式）
+- [x] 启用/禁用任务
+- [x] dry-run（只检查 token + 生成候选列表，不调 freeBook）
+- [ ] 用户最多 N 个启用任务的限制（当前不设硬上限）
+- [x] 测试：用户归属条件和候选校验；数据库复合外键补充第二道隔离保护
 
 **验收**：用户只能看到自己的任务；dry-run 不发送 freeBook
 
@@ -826,15 +843,15 @@ your-domain.com {
 
 **目标**：系统每天自动执行预热和预约
 
-- [ ] seat_client 模块：free_book()
-- [ ] Scheduler：每天 05:30 生成当日任务
-- [ ] Worker：消费 prewarm 队列
-- [ ] Worker：消费 booking 队列
-- [ ] Redis 锁：防重复执行
-- [ ] booking_runs 日志写入
-- [ ] 错峰偏移逻辑
-- [ ] 手动触发 prewarm / booking 的 API
-- [ ] 测试：幂等锁、日志写入、成功/失败路径
+- [x] seat_client 模块：freeBook()
+- [x] Scheduler：每天 05:59:50 预热、06:00 生成预约任务
+- [x] Worker：消费 prewarm 队列
+- [x] Worker：消费 booking 队列
+- [x] Redis 锁：防重复执行
+- [x] booking_runs 日志写入
+- [x] 错峰偏移逻辑
+- [x] 手动触发 prewarm / booking 的 API
+- [x] 测试：锁、日志写入、成功路径和停用后的排队任务跳过
 
 **验收**：手动触发 prewarm 能刷新 token；booking 成功/失败都写日志；同一任务不重复执行
 
@@ -842,22 +859,22 @@ your-domain.com {
 
 **目标**：完整的 Web 管理界面
 
-- [ ] 登录/注册页
-- [ ] Dashboard：今日状态卡片、最近成功/失败
-- [ ] 学校账号页：添加、验证、列表
-- [ ] 预约任务页：创建、编辑、启禁用、dry-run
-- [ ] 运行日志页：按任务筛选、详情展示
-- [ ] 管理员页：邀请码管理、用户列表、全局概览
+- [x] 登录/注册页
+- [x] Dashboard：动态状态卡片、最近成功/失败
+- [x] 学校账号页：添加、验证、编辑、删除、列表
+- [x] 预约任务页：创建、编辑、启禁用、dry-run、预热、手动执行
+- [x] 运行日志页：按任务筛选、详情展示
+- [x] 管理员页：邀请码管理、用户列表、全局概览
 
-**验收**：从注册到创建任务全流程可用；管理员可创建邀请码
+**验收**：平台账号注册到创建任务全流程可用；管理员可创建邀请码；direct 与 webvpn 学校账号均可绑定和刷新。webvpn 预约 POST 仍需运营者使用测试任务完成一次最终业务验收。
 
 ### Phase 7: 打磨和文档（1-2 天）
 
-- [ ] 错误处理和用户提示优化
-- [ ] 加载状态和空状态设计
-- [ ] 部署文档
-- [ ] .env.example 完善
-- [ ] README 更新
+- [x] 错误处理和用户提示优化
+- [x] 加载状态和空状态设计
+- [x] 部署文档
+- [x] .env.example 完善
+- [x] README 更新
 
 **总计预估**：15-20 天（单人开发）
 
