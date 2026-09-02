@@ -39,6 +39,8 @@ import { PlatformScheduler } from './platform-scheduler';
 import { PlatformTasksController } from './platform-tasks.controller';
 import { PlatformTasksService } from './platform-tasks.service';
 import { SeatClientService } from './seat-client.service';
+import { SchoolAuthenticationService } from './school-authentication.service';
+import { WebVpnSeatClientService } from './webvpn-seat-client.service';
 
 @Module({
   imports: [
@@ -84,7 +86,9 @@ import { SeatClientService } from './seat-client.service';
     PlatformRunsService,
     PlatformScheduler,
     PlatformTasksService,
+    SchoolAuthenticationService,
     SeatClientService,
+    WebVpnSeatClientService,
   ],
   exports: [PlatformDashboardService],
 })

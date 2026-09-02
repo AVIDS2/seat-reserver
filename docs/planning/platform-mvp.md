@@ -135,6 +135,7 @@ user_id
 school_username
 encrypted_school_password
 cached_token
+auth_mode: direct | webvpn
 last_token_refresh_at
 last_verified_at
 status: active | invalid_credentials | disabled
@@ -394,14 +395,14 @@ GET /api/v1/platform/health 返回 ok
 - [x] 实现学校账号 AES-256-GCM 加密保存。
 - [x] 实现已有一考即过凭据验证：调用 `/rest/auth` 和 `/rest/v2/user`。
 - [x] 保存加密 cached_token。
-- [ ] 完成全新账号从学校 SSO/验证码/激活流程换取一考即过内部凭据的真实抓包与实现。
+- [x] 完成全新账号通过学校 WebVPN/CAS 换取座位系统业务 token 的真实验证与实现。
 
 验收：
 
 ```text
 已有一考即过凭据 verify 成功
 错误凭据 verify 失败
-全新账号首次绑定需另行完成 SSO/验证码链路验收
+全新账号 direct 失败后自动切换 WebVPN/CAS 并 verify 成功
 数据库不出现明文学校密码
 日志不出现明文 token/password
 ```
@@ -458,7 +459,7 @@ booking job 成功/失败都会写 booking_runs
 管理员可以创建邀请码、查看成员并启用/禁用用户
 ```
 
-已有账号的 Token 刷新和真实预约已在 VPS 验证成功。全新账号首次 SSO/验证码/绑定 E2E 不在自动化测试中执行，仍需一次脱敏登录抓包完成最后验收。
+已有账号的 Token 刷新和真实预约已在 VPS 验证成功。全新账号的 WebVPN/CAS 登录、ssoAuth 和代理内 Token 验证已完成真实 E2E；预约 POST 由同一认证路由和签名实现承载，仍需运营者用测试任务完成一次最终业务验收。
 
 ## 测试要求
 

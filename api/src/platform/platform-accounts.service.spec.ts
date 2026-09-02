@@ -11,11 +11,16 @@ describe('PlatformAccountsService', () => {
         (
           username: string,
           password: string,
-        ) => Promise<{ token: string; response: Record<string, never> }>
+        ) => Promise<{ token: string; mode: 'direct' | 'webvpn' }>
       >();
-    authenticate.mockResolvedValue({ token: 'token-123', response: {} });
+    authenticate.mockResolvedValue({ token: 'token-123', mode: 'direct' });
     const verifyToken =
-      jest.fn<(token: string) => Promise<{ success: boolean }>>();
+      jest.fn<
+        (
+          token: string,
+          mode: 'direct' | 'webvpn',
+        ) => Promise<{ success: boolean }>
+      >();
     verifyToken.mockResolvedValue({ success: true });
     const account = {
       id: 5,
@@ -54,7 +59,7 @@ describe('PlatformAccountsService', () => {
     });
 
     expect(authenticate).toHaveBeenCalledWith('2300906131', 'school-password');
-    expect(verifyToken).toHaveBeenCalledWith('token-123');
+    expect(verifyToken).toHaveBeenCalledWith('token-123', 'direct');
     expect(crypto.encrypt).toHaveBeenCalledWith('school-password');
     expect(crypto.encrypt).toHaveBeenCalledWith('token-123');
     expect(save).toHaveBeenCalled();

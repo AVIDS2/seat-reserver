@@ -48,6 +48,7 @@ function makeRun(enabled: boolean): BookingRunEntity {
 
 type BookMock = (
   token: string,
+  mode: 'direct' | 'webvpn',
   date: string,
   candidate: { seatId: string; startTime: number; endTime: number },
   timeoutMs: number,
@@ -88,16 +89,20 @@ function makeExecutor(
     }),
   };
   const seatClient = {
-    verifyToken: jest.fn<(token: string) => Promise<{ success: boolean }>>(),
     buildCandidates: jest.fn(() => [
       { seatId: '197', startTime: 840, endTime: 1320 },
     ]),
-    book,
   };
   const crypto = {
     decrypt: jest.fn<(value: string) => string>(() => 'school-token'),
   };
-  seatClient.verifyToken.mockResolvedValue({ success: true });
+  const schoolAuth = {
+    authenticate: jest.fn(() =>
+      Promise.resolve({ token: 'school-token', mode: 'direct' as const }),
+    ),
+    verifyToken: jest.fn(() => Promise.resolve({ success: true })),
+    book,
+  };
   return {
     executor: new PlatformBookingExecutor(
       runs,
@@ -105,6 +110,7 @@ function makeExecutor(
       accounts,
       crypto as never,
       seatClient as never,
+      schoolAuth as never,
       notifications as never,
       redis as never,
     ),
@@ -112,20 +118,21 @@ function makeExecutor(
     book,
     notifications,
     seatClient,
+    schoolAuth,
   };
 }
 
 describe('PlatformBookingExecutor', () => {
   it('should skip a booking that was disabled after being queued', async () => {
     const run = makeRun(false);
-    const { executor, book, seatClient } = makeExecutor(run);
+    const { executor, book, schoolAuth } = makeExecutor(run);
 
     await executor.execute(run.id);
 
     expect(run.status).toBe('skipped');
     expect(run.message).toBe('任务已暂停，跳过本次预约');
     expect(book).not.toHaveBeenCalled();
-    expect(seatClient.verifyToken).not.toHaveBeenCalled();
+    expect(schoolAuth.verifyToken).not.toHaveBeenCalled();
   });
 
   it('should record a successful booking and create a notification', async () => {
@@ -154,6 +161,7 @@ describe('PlatformBookingExecutor', () => {
     expect(run.location).toBe('座位 197');
     expect(book).toHaveBeenCalledWith(
       'school-token',
+      'direct',
       '2026-09-02',
       { seatId: '197', startTime: 840, endTime: 1320 },
       expect.any(Number),

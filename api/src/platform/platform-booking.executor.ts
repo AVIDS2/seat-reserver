@@ -10,6 +10,7 @@ import { BookingRunEntity } from './entities/booking-run.entity';
 import { BookingTaskEntity } from './entities/booking-task.entity';
 import { SchoolAccountEntity } from './entities/school-account.entity';
 import { SeatClientService } from './seat-client.service';
+import { SchoolAuthenticationService } from './school-authentication.service';
 import { PlatformNotificationsService } from './platform-notifications.service';
 import { PlatformRedisService } from './platform-redis.service';
 import { StatusEnum } from '../statuses/statuses.enum';
@@ -25,6 +26,7 @@ export class PlatformBookingExecutor {
     private readonly accounts: Repository<SchoolAccountEntity>,
     private readonly crypto: PlatformCryptoService,
     private readonly seatClient: SeatClientService,
+    private readonly schoolAuth: SchoolAuthenticationService,
     private readonly notifications: PlatformNotificationsService,
     private readonly redis: PlatformRedisService,
   ) {}
@@ -110,7 +112,11 @@ export class PlatformBookingExecutor {
         : null
       : null;
 
-    if (!token || !(await this.seatClient.verifyToken(token)).success) {
+    if (
+      !token ||
+      !(await this.schoolAuth.verifyToken(token, account.authMode || 'direct'))
+        .success
+    ) {
       token = await this.refreshAccount(account);
     }
 
@@ -132,8 +138,9 @@ export class PlatformBookingExecutor {
 
       const candidate = candidates[index];
       const timeoutMs = Math.min(3000, remainingMs);
-      const response = await this.seatClient.book(
+      const response = await this.schoolAuth.book(
         token,
+        account.authMode || 'direct',
         run.targetDate,
         candidate,
         timeoutMs,
@@ -207,15 +214,20 @@ export class PlatformBookingExecutor {
   private async refreshAccount(account: SchoolAccountEntity): Promise<string> {
     try {
       const password = this.crypto.decrypt(account.encryptedSchoolPassword);
-      const authenticated = await this.seatClient.authenticate(
+      const authenticated = await this.schoolAuth.authenticate(
         account.schoolUsername,
         password,
+        account.authMode || 'direct',
       );
-      const verified = await this.seatClient.verifyToken(authenticated.token);
+      const verified = await this.schoolAuth.verifyToken(
+        authenticated.token,
+        authenticated.mode,
+      );
       if (!verified.success) {
         throw new UnprocessableEntityException('学校账号 Token 验证失败');
       }
       account.encryptedToken = this.crypto.encrypt(authenticated.token);
+      account.authMode = authenticated.mode;
       account.tokenRefreshedAt = new Date();
       account.lastVerifiedAt = new Date();
       account.status = 'active';

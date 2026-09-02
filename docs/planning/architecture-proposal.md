@@ -240,6 +240,7 @@ invitations 1──N invitation_uses
 | school_username | VARCHAR(100) | 学号（明文，非敏感） |
 | encrypted_school_password | BYTEA | Fernet 加密后的密码 |
 | cached_token | TEXT NULL | 缓存的 API token |
+| auth_mode | VARCHAR(20) | `direct` 或 `webvpn` |
 | token_refreshed_at | TIMESTAMP NULL | 上次 token 刷新时间 |
 | token_expires_at | TIMESTAMP NULL | token 预估过期时间 |
 | last_verified_at | TIMESTAMP NULL | 上次验证成功时间 |
@@ -820,9 +821,9 @@ seat.rglens.com {
 - [x] seat_client 模块：auth(), verifyToken()
 - [x] 日志脱敏：密码和 token 不写入日志
 - [x] 测试：加密存储、verify 成功/失败、脱敏（关键路径用 mock SeatClient 覆盖）
-- [ ] 新账号首次 SSO/验证码/激活链路的真实抓包、数据模型与 AccountBinder 实现
+- [x] 新账号 WebVPN/CAS/ssoAuth 链路的真实验证、`authMode` 数据模型和自动回退实现
 
-**验收**：已有一考即过凭据 verify 成功；错误凭据失败；DB 中无明文凭据；日志中无明文 token。全新账号首次绑定尚未闭环，不能默认校园密码等于 `/rest/auth` password。
+**验收**：已有一考即过凭据 direct verify 成功；普通校园账号自动回退 WebVPN 并 verify 成功；错误凭据失败；DB 中无明文凭据；日志中无明文 token。校园密码不会被默认视为 `/rest/auth` password。
 
 ### Phase 4: 预约任务管理（2 天）
 
@@ -865,7 +866,7 @@ seat.rglens.com {
 - [x] 运行日志页：按任务筛选、详情展示
 - [x] 管理员页：邀请码管理、用户列表、全局概览
 
-**验收**：平台账号注册到创建任务全流程可用；管理员可创建邀请码；已有学校账号的刷新与预约可用。全新学校账号首次 SSO/验证码/绑定仍待运营者完成一次脱敏登录抓包验收。
+**验收**：平台账号注册到创建任务全流程可用；管理员可创建邀请码；direct 与 webvpn 学校账号均可绑定和刷新。webvpn 预约 POST 仍需运营者使用测试任务完成一次最终业务验收。
 
 ### Phase 7: 打磨和文档（1-2 天）
 

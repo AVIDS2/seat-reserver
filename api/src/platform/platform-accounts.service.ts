@@ -13,7 +13,7 @@ import {
 import { SchoolAccountEntity } from './entities/school-account.entity';
 import { BookingTaskEntity } from './entities/booking-task.entity';
 import { PlatformCryptoService } from './platform-crypto.service';
-import { SeatClientService } from './seat-client.service';
+import { SchoolAuthenticationService } from './school-authentication.service';
 
 export type SchoolAccountView = {
   id: string;
@@ -35,7 +35,7 @@ export class PlatformAccountsService {
     @InjectRepository(BookingTaskEntity)
     private readonly tasks: Repository<BookingTaskEntity>,
     private readonly crypto: PlatformCryptoService,
-    private readonly seatClient: SeatClientService,
+    private readonly schoolAuth: SchoolAuthenticationService,
   ) {}
 
   async list(userId: number): Promise<SchoolAccountView[]> {
@@ -53,11 +53,14 @@ export class PlatformAccountsService {
   ): Promise<SchoolAccountView> {
     const label = requireText(dto.label, '账号名称');
     const username = requireText(dto.schoolUsername, '学校账号');
-    const authenticated = await this.seatClient.authenticate(
+    const authenticated = await this.schoolAuth.authenticate(
       username,
       dto.schoolPassword,
     );
-    const verified = await this.seatClient.verifyToken(authenticated.token);
+    const verified = await this.schoolAuth.verifyToken(
+      authenticated.token,
+      authenticated.mode,
+    );
 
     if (!verified.success) {
       throw new UnprocessableEntityException('学校账号验证失败');
@@ -68,6 +71,7 @@ export class PlatformAccountsService {
       schoolUsername: username,
       encryptedSchoolPassword: this.crypto.encrypt(dto.schoolPassword),
       encryptedToken: this.crypto.encrypt(authenticated.token),
+      authMode: authenticated.mode,
       status: 'active',
       tokenRefreshedAt: new Date(),
       lastVerifiedAt: new Date(),
@@ -81,15 +85,20 @@ export class PlatformAccountsService {
     const account = await this.findOwned(userId, id);
     try {
       const password = this.crypto.decrypt(account.encryptedSchoolPassword);
-      const authenticated = await this.seatClient.authenticate(
+      const authenticated = await this.schoolAuth.authenticate(
         account.schoolUsername,
         password,
+        account.authMode || 'direct',
       );
-      const verified = await this.seatClient.verifyToken(authenticated.token);
+      const verified = await this.schoolAuth.verifyToken(
+        authenticated.token,
+        authenticated.mode,
+      );
       if (!verified.success)
         throw new UnprocessableEntityException('学校账号 Token 验证失败');
 
       account.encryptedToken = this.crypto.encrypt(authenticated.token);
+      account.authMode = authenticated.mode;
       account.tokenRefreshedAt = new Date();
       account.lastVerifiedAt = new Date();
       account.status = 'active';
@@ -123,16 +132,23 @@ export class PlatformAccountsService {
       username !== account.schoolUsername || Boolean(dto.schoolPassword);
 
     if (credentialsChanged) {
-      const authenticated = await this.seatClient.authenticate(
+      const authenticated = await this.schoolAuth.authenticate(
         username,
         password,
+        username === account.schoolUsername
+          ? account.authMode || 'direct'
+          : undefined,
       );
-      const verified = await this.seatClient.verifyToken(authenticated.token);
+      const verified = await this.schoolAuth.verifyToken(
+        authenticated.token,
+        authenticated.mode,
+      );
       if (!verified.success)
         throw new UnprocessableEntityException('学校账号验证失败');
       account.schoolUsername = username;
       account.encryptedSchoolPassword = this.crypto.encrypt(password);
       account.encryptedToken = this.crypto.encrypt(authenticated.token);
+      account.authMode = authenticated.mode;
       account.tokenRefreshedAt = new Date();
       account.lastVerifiedAt = new Date();
       account.status = 'active';

@@ -17,6 +17,7 @@ import { PlatformAccountsService } from './platform-accounts.service';
 import { PlatformCryptoService } from './platform-crypto.service';
 import { PlatformQueueService } from './platform-queue.service';
 import { SeatClientService } from './seat-client.service';
+import { SchoolAuthenticationService } from './school-authentication.service';
 
 export type BookingTaskView = {
   id: string;
@@ -64,6 +65,7 @@ export class PlatformTasksService {
     private readonly crypto: PlatformCryptoService,
     private readonly queue: PlatformQueueService,
     private readonly seatClient: SeatClientService,
+    private readonly schoolAuth: SchoolAuthenticationService,
   ) {}
 
   async list(userId: number): Promise<BookingTaskView[]> {
@@ -168,7 +170,9 @@ export class PlatformTasksService {
     if (account?.encryptedToken) {
       try {
         const token = this.crypto.decrypt(account.encryptedToken);
-        tokenStatus = (await this.seatClient.verifyToken(token)).success
+        tokenStatus = (
+          await this.schoolAuth.verifyToken(token, account.authMode || 'direct')
+        ).success
           ? 'valid'
           : 'invalid';
       } catch {

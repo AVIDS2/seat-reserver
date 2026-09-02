@@ -78,10 +78,12 @@
     "apple-signin-auth": "2.0.0",
     "bcryptjs": "3.0.3",
     "bullmq": "^5.81.4",
+    "cheerio": "^1.2.0",
     "class-transformer": "0.5.1",
     "class-validator": "0.15.1",
     "cookie": "^1.1.1",
     "dotenv": "17.3.1",
+    "fetch-cookie": "^3.2.0",
     "google-auth-library": "10.6.2",
     "handlebars": "4.7.9",
     "helmet": "^8.3.0",
@@ -102,6 +104,7 @@
     "rxjs": "7.8.2",
     "source-map-support": "0.5.21",
     "swagger-ui-express": "5.0.1",
+    "tough-cookie": "^6.0.2",
     "typeorm": "0.3.28"
   },
   "devDependencies": {

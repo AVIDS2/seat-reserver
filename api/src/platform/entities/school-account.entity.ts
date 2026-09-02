@@ -29,6 +29,9 @@ export class SchoolAccountEntity extends EntityRelationalHelper {
   @Column({ type: 'text', nullable: true })
   encryptedToken: string | null;
 
+  @Column({ length: 20, default: 'direct' })
+  authMode: 'direct' | 'webvpn';
+
   @Column({ length: 30, default: 'active' })
   status: string;
 

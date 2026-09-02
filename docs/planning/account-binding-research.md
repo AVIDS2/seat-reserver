@@ -1,8 +1,8 @@
 # 账号绑定自动化研究
 
-目标：确认新用户能否使用学校身份完成“一考即过”自习室模式的首次绑定，并拿到后续 `/cczukaoyan/rest/v2/user` 可验证的 token。
+目标：确认新用户能否使用学校身份完成座位系统首次绑定，并拿到后续可在对应认证模式下验证和预约的业务 token。
 
-截至 2026-09-01，已经真实验证的是：已配置账号可在公网 VPS 上调用 `/cczukaoyan/rest/auth` 刷新 token，并继续完成预约。尚未验证的是：全新账号如何从学校 SSO、验证码或激活流程换取 `/cczukaoyan/rest/auth` 实际接受的凭据。平台当前把用户输入的学校密码直接传给该接口，这只是兼容已有账号的实现，不能视为新账号首次绑定已经闭环。
+截至 2026-09-02，两条认证链路均已真实验证：已有账号可在公网 VPS 上调用 `/cczukaoyan/rest/auth` 刷新 token；新账号可通过 `zmvpn.cczu.edu.cn → 常大 CAS → 图书馆座位预约 → /rest/ssoAuth` 获取业务 token，并在 WebVPN 代理内调用 `/rest/v2/user` 验证。平台会先尝试 direct，凭据不被接受时自动切换为 webvpn，并持久化认证模式。
 
 ## 边界
 
@@ -24,18 +24,17 @@
 → 每日预热/预约自动复用或刷新 token
 ```
 
-待抓包确认的新账号首次接入链路：
+新账号首次接入链路：
 
 ```text
-学校统一身份认证 / SSO
-→ 可能的短信或图形验证码
-→ 选择学校与自习室系统
-→ 可能的激活码绑定
-→ 生成或换取一考即过内部凭据 / token
-→ `GET /cczukaoyan/rest/v2/user` 验证
+学校 WebVPN / CAS 统一身份认证
+→ 门户动态返回“图书馆座位预约”代理地址
+→ 座位系统 CAS 回跳生成 30 秒临时 JWT
+→ `/rest/ssoAuth` 换取业务 token
+→ 经 WebVPN 代理调用 `/rest/v2/user` 验证
 ```
 
-不要把校园统一身份认证密码默认等同于 `/cczukaoyan/rest/auth` 的 `password`。必须以一次完整、脱敏的首次登录抓包为准。
+不要把校园统一身份认证密码默认等同于 `/cczukaoyan/rest/auth` 的 `password`。webvpn 模式的业务 token 也只能在 WebVPN 代理内使用，不能交给 cczukaoyan 公网租户验证。
 
 MVP 只研究并实现 `self_study` 自习室模式。图书馆模式先不做，但数据模型后续应保留 `service_type`。
 
@@ -98,17 +97,13 @@ python tools/binding_discovery/analyze_capture.py tools/binding_discovery/captur
 - 是否出现 `/cczukaoyan/rest/v2/user`
 - 是否误触发 `/freeBook`
 
-## 需要确认的问题
+## 已确认结论
 
-1. `/cczukaoyan/rest/auth` 的 `password` 来源是什么：
-   - 接口响应返回；
-   - 前端 JavaScript 生成；
-   - 客户端缓存携带；
-   - 其他链路。
-2. 激活码绑定后是否可以直接拿到可用 token。
-3. 网页系统和小程序自习室接口的 token 是否完全互通。
-4. 用户后续是否只需保存加密后的学校账号密码，还是必须保存一考即过 auth password。
-5. 学校 SSO 首次登录是否只能从校园网或 WEBVPN 访问；如果是，能否只把首次凭据换取放到校内网络，后续 token 刷新和预约继续留在公网 VPS。
+1. direct 模式继续使用 `/cczukaoyan/rest/auth`，适配现有一考即过凭据。
+2. webvpn 模式使用校园账号密码完成 CAS，不需要 SwordAgent、Windows VM 或校园网出口。
+3. WebVPN 门户动态返回代理地址和座位系统配置；不硬编码代理哈希或签名种子。
+4. WebVPN Cookie 只保存在单次进程内存会话中；数据库只加密保存学校密码、业务 token 和认证模式。
+5. 05:59:50 预热会重建 WebVPN 会话，06:00 预约复用该会话；API 重启后会自动重新登录恢复。
 
 ## 后续实现目标
 
