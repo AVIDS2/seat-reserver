@@ -106,7 +106,7 @@ export function ExamplesCarousel({ examples }: { examples: ExampleApp[] }) {
   return (
     <div
       ref={containerRef}
-      className='relative left-1/2 my-16 flex w-screen -translate-x-1/2 flex-col items-center'
+      className='relative my-16 flex w-full max-w-full flex-col items-center overflow-hidden'
     >
       <h2 className='text-muted-foreground mb-6 text-center text-lg font-semibold tracking-wide'>
         一套工作台，覆盖每一次预约
