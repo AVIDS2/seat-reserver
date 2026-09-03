@@ -100,8 +100,8 @@ function AccountEditorDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className='max-h-[calc(100dvh-1rem)] w-[calc(100%-1rem)] overflow-y-auto sm:max-w-[480px]'>
-        <DialogHeader>
+      <DialogContent className='flex h-[calc(100svh-1rem)] max-h-[calc(100svh-1rem)] w-[calc(100%-1rem)] flex-col overflow-hidden overscroll-contain sm:h-auto sm:max-h-[calc(100svh-2rem)] sm:max-w-[480px]'>
+        <DialogHeader className='shrink-0 pr-8'>
           <DialogTitle>{account ? '编辑学校账号' : '添加学校账号'}</DialogTitle>
           <DialogDescription>
             {account
@@ -109,40 +109,42 @@ function AccountEditorDialog({
               : '系统会立即完成一次正常登录验证，验证通过后才会保存账号。'}
           </DialogDescription>
         </DialogHeader>
-        <form id='school-account-editor' onSubmit={submit} className='flex flex-col gap-4'>
-          <div className='flex flex-col gap-2'>
-            <Label htmlFor='account-label'>账号名称</Label>
-            <Input
-              id='account-label'
-              value={label}
-              onChange={(event) => setLabel(event.target.value)}
-              placeholder='例如：我的账号'
-              required
-            />
-          </div>
-          <div className='flex flex-col gap-2'>
-            <Label htmlFor='school-username'>学校账号</Label>
-            <Input
-              id='school-username'
-              value={schoolUsername}
-              onChange={(event) => setSchoolUsername(event.target.value)}
-              placeholder={account ? '留空保持原账号' : '输入学号或系统账号'}
-              required={!account}
-            />
-          </div>
-          <div className='flex flex-col gap-2'>
-            <Label htmlFor='school-password'>学校密码</Label>
-            <Input
-              id='school-password'
-              type='password'
-              value={schoolPassword}
-              onChange={(event) => setSchoolPassword(event.target.value)}
-              placeholder={account ? '留空保持原密码' : '不会在页面中显示'}
-              required={!account}
-            />
-          </div>
-        </form>
-        <DialogFooter>
+        <div className='min-h-0 flex-1 overflow-y-auto overscroll-contain px-0.5'>
+          <form id='school-account-editor' onSubmit={submit} className='flex flex-col gap-4 pb-1'>
+            <div className='flex flex-col gap-2'>
+              <Label htmlFor='account-label'>账号名称</Label>
+              <Input
+                id='account-label'
+                value={label}
+                onChange={(event) => setLabel(event.target.value)}
+                placeholder='例如：我的账号'
+                required
+              />
+            </div>
+            <div className='flex flex-col gap-2'>
+              <Label htmlFor='school-username'>学校账号</Label>
+              <Input
+                id='school-username'
+                value={schoolUsername}
+                onChange={(event) => setSchoolUsername(event.target.value)}
+                placeholder={account ? '留空保持原账号' : '输入学号或系统账号'}
+                required={!account}
+              />
+            </div>
+            <div className='flex flex-col gap-2'>
+              <Label htmlFor='school-password'>学校密码</Label>
+              <Input
+                id='school-password'
+                type='password'
+                value={schoolPassword}
+                onChange={(event) => setSchoolPassword(event.target.value)}
+                placeholder={account ? '留空保持原密码' : '不会在页面中显示'}
+                required={!account}
+              />
+            </div>
+          </form>
+        </div>
+        <DialogFooter className='sticky bottom-0 z-10 shrink-0'>
           <Button type='button' variant='outline' onClick={() => onOpenChange(false)}>
             取消
           </Button>

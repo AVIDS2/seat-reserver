@@ -29,8 +29,9 @@ export type TaskPayload = {
   roomName: string;
   buildingId?: string | null;
   roomId?: string | null;
-  scheduleMode: 'daily' | 'once';
+  scheduleMode: 'daily' | 'weekdays' | 'weekly' | 'once';
   targetDate?: string | null;
+  scheduleWeekdays: number[];
   primarySeatLabel?: string | null;
   primarySeatId: string;
   backupSeatIds: string[];

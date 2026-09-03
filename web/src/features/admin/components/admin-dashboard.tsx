@@ -8,10 +8,24 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { usePlatformSession } from '@/features/auth/platform-session';
 import {
@@ -60,14 +74,15 @@ export default function AdminDashboard({ initialData }: { initialData: AdminSnap
   const refreshAdminData = async () => {
     setRefreshing(true);
     try {
-      const [nextOverview, nextUsers, nextInvitations, nextAccounts, nextTasks, nextRuns] = await Promise.all([
-        getAdminOverview(),
-        getAdminUsers(),
-        getInvitations(),
-        getAdminAccounts(),
-        getAdminTasks(),
-        getAdminRuns()
-      ]);
+      const [nextOverview, nextUsers, nextInvitations, nextAccounts, nextTasks, nextRuns] =
+        await Promise.all([
+          getAdminOverview(),
+          getAdminUsers(),
+          getInvitations(),
+          getAdminAccounts(),
+          getAdminTasks(),
+          getAdminRuns()
+        ]);
       setOverview(nextOverview);
       setUsers(nextUsers);
       setInvitations(nextInvitations);
@@ -138,11 +153,21 @@ export default function AdminDashboard({ initialData }: { initialData: AdminSnap
           <div>
             <p className='text-muted-foreground mb-2 text-sm'>平台运营</p>
             <h1 className='text-2xl font-semibold tracking-tight sm:text-3xl'>管理员工作台</h1>
-            <p className='text-muted-foreground mt-2 text-sm leading-6'>管理成员、邀请码和全平台预约运行状态。</p>
+            <p className='text-muted-foreground mt-2 text-sm leading-6'>
+              管理成员、邀请码和全平台预约运行状态。
+            </p>
           </div>
           <div className='grid grid-cols-2 gap-2 sm:flex'>
-            <Button className='w-full sm:w-auto' variant='outline' onClick={() => void refreshAdminData()} disabled={refreshing}>
-              <Icons.refresh className={refreshing ? 'animate-spin' : ''} data-icon='inline-start' />
+            <Button
+              className='w-full sm:w-auto'
+              variant='outline'
+              onClick={() => void refreshAdminData()}
+              disabled={refreshing}
+            >
+              <Icons.refresh
+                className={refreshing ? 'animate-spin' : ''}
+                data-icon='inline-start'
+              />
               {refreshing ? '刷新中' : '刷新数据'}
             </Button>
             <Button className='w-full sm:w-auto' onClick={() => setCreateOpen(true)}>
@@ -157,8 +182,16 @@ export default function AdminDashboard({ initialData }: { initialData: AdminSnap
             <Icons.badgeCheck />
             <AlertTitle>邀请码已生成</AlertTitle>
             <AlertDescription className='flex flex-col items-stretch gap-3 sm:flex-row sm:items-center'>
-              <code className='bg-muted min-w-0 break-all rounded px-2 py-1 font-mono text-sm'>{generatedCode}</code>
-              <Button className='w-full sm:w-auto' type='button' variant='outline' size='sm' onClick={() => void copyCode()}>
+              <code className='bg-muted min-w-0 break-all rounded px-2 py-1 font-mono text-sm'>
+                {generatedCode}
+              </code>
+              <Button
+                className='w-full sm:w-auto'
+                type='button'
+                variant='outline'
+                size='sm'
+                onClick={() => void copyCode()}
+              >
                 <Icons.share data-icon='inline-start' />
                 复制邀请码
               </Button>
@@ -167,10 +200,30 @@ export default function AdminDashboard({ initialData }: { initialData: AdminSnap
         )}
 
         <div className='grid gap-3 sm:grid-cols-2 xl:grid-cols-4'>
-          <StatCard label='平台用户' value={`${overview.activeUsers} / ${overview.users}`} detail='启用用户 / 总用户' icon={Icons.teams} />
-          <StatCard label='学校账号' value={`${overview.connectedAccounts} / ${overview.accounts}`} detail='连接正常 / 总账号' icon={Icons.shield} />
-          <StatCard label='自动任务' value={`${overview.enabledTasks} / ${overview.tasks}`} detail='启用任务 / 总任务' icon={Icons.target} />
-          <StatCard label='今日运行' value={`${overview.successfulRunsToday} 成功`} detail={`${overview.failedRunsToday} 次未成功 · 队列 ${overview.queueStatus === 'ok' ? '正常' : '异常'}`} icon={Icons.history} />
+          <StatCard
+            label='平台用户'
+            value={`${overview.activeUsers} / ${overview.users}`}
+            detail='启用用户 / 总用户'
+            icon={Icons.teams}
+          />
+          <StatCard
+            label='学校账号'
+            value={`${overview.connectedAccounts} / ${overview.accounts}`}
+            detail='连接正常 / 总账号'
+            icon={Icons.shield}
+          />
+          <StatCard
+            label='自动任务'
+            value={`${overview.enabledTasks} / ${overview.tasks}`}
+            detail='启用任务 / 总任务'
+            icon={Icons.target}
+          />
+          <StatCard
+            label='今日运行'
+            value={`${overview.successfulRunsToday} 成功`}
+            detail={`${overview.failedRunsToday} 次未成功 · 队列 ${overview.queueStatus === 'ok' ? '正常' : '异常'}`}
+            icon={Icons.history}
+          />
         </div>
 
         <div className='grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(360px,0.65fr)]'>
@@ -198,16 +251,27 @@ export default function AdminDashboard({ initialData }: { initialData: AdminSnap
                       <TableRow key={user.id}>
                         <TableCell>
                           <div className='min-w-[180px]'>
-                            <p className='font-medium'>{user.displayName}{isCurrent ? '（你）' : ''}</p>
-                            <p className='text-muted-foreground mt-1 text-xs'>{user.email || '未设置邮箱'}</p>
+                            <p className='font-medium'>
+                              {user.displayName}
+                              {isCurrent ? '（你）' : ''}
+                            </p>
+                            <p className='text-muted-foreground mt-1 text-xs'>
+                              {user.email || '未设置邮箱'}
+                            </p>
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Badge variant={user.role === 'admin' ? 'default' : 'secondary'}>{user.role === 'admin' ? '管理员' : '普通用户'}</Badge>
+                          <Badge variant={user.role === 'admin' ? 'default' : 'secondary'}>
+                            {user.role === 'admin' ? '管理员' : '普通用户'}
+                          </Badge>
                         </TableCell>
-                        <TableCell className='text-muted-foreground text-xs'>{user.accountCount} 账号 · {user.taskCount} 任务</TableCell>
+                        <TableCell className='text-muted-foreground text-xs'>
+                          {user.accountCount} 账号 · {user.taskCount} 任务
+                        </TableCell>
                         <TableCell>
-                          <Badge variant={user.status === 'active' ? 'outline' : 'destructive'}>{user.status === 'active' ? '正常' : '已禁用'}</Badge>
+                          <Badge variant={user.status === 'active' ? 'outline' : 'destructive'}>
+                            {user.status === 'active' ? '正常' : '已禁用'}
+                          </Badge>
                         </TableCell>
                         <TableCell className='text-right'>
                           <Button
@@ -216,7 +280,13 @@ export default function AdminDashboard({ initialData }: { initialData: AdminSnap
                             disabled={isCurrent || isBusy}
                             onClick={() => void toggleUser(user)}
                           >
-                            {isBusy ? <Icons.spinner className='animate-spin' /> : user.status === 'active' ? '禁用' : '启用'}
+                            {isBusy ? (
+                              <Icons.spinner className='animate-spin' />
+                            ) : user.status === 'active' ? (
+                              '禁用'
+                            ) : (
+                              '启用'
+                            )}
                           </Button>
                         </TableCell>
                       </TableRow>
@@ -227,32 +297,54 @@ export default function AdminDashboard({ initialData }: { initialData: AdminSnap
               <div className='divide-border divide-y lg:hidden'>
                 {users.length === 0 ? (
                   <p className='text-muted-foreground py-12 text-center text-sm'>暂无成员</p>
-                ) : users.map((user) => {
-                  const isCurrent = user.id === session?.id;
-                  const isBusy = busyUserId === user.id;
-                  return (
-                    <div key={user.id} className='flex min-w-0 items-start justify-between gap-3 py-4'>
-                      <div className='min-w-0'>
-                        <p className='truncate font-medium'>{user.displayName}{isCurrent ? '（你）' : ''}</p>
-                        <p className='text-muted-foreground mt-1 truncate text-xs'>{user.email || '未设置邮箱'}</p>
-                        <div className='mt-3 flex flex-wrap items-center gap-2'>
-                          <Badge variant={user.role === 'admin' ? 'default' : 'secondary'}>{user.role === 'admin' ? '管理员' : '普通用户'}</Badge>
-                          <Badge variant={user.status === 'active' ? 'outline' : 'destructive'}>{user.status === 'active' ? '正常' : '已禁用'}</Badge>
-                          <span className='text-muted-foreground text-xs'>{user.accountCount} 账号 · {user.taskCount} 任务</span>
-                        </div>
-                      </div>
-                      <Button
-                        className='shrink-0'
-                        variant='ghost'
-                        size='sm'
-                        disabled={isCurrent || isBusy}
-                        onClick={() => void toggleUser(user)}
+                ) : (
+                  users.map((user) => {
+                    const isCurrent = user.id === session?.id;
+                    const isBusy = busyUserId === user.id;
+                    return (
+                      <div
+                        key={user.id}
+                        className='flex min-w-0 items-start justify-between gap-3 py-4'
                       >
-                        {isBusy ? <Icons.spinner className='animate-spin' /> : user.status === 'active' ? '禁用' : '启用'}
-                      </Button>
-                    </div>
-                  );
-                })}
+                        <div className='min-w-0'>
+                          <p className='truncate font-medium'>
+                            {user.displayName}
+                            {isCurrent ? '（你）' : ''}
+                          </p>
+                          <p className='text-muted-foreground mt-1 truncate text-xs'>
+                            {user.email || '未设置邮箱'}
+                          </p>
+                          <div className='mt-3 flex flex-wrap items-center gap-2'>
+                            <Badge variant={user.role === 'admin' ? 'default' : 'secondary'}>
+                              {user.role === 'admin' ? '管理员' : '普通用户'}
+                            </Badge>
+                            <Badge variant={user.status === 'active' ? 'outline' : 'destructive'}>
+                              {user.status === 'active' ? '正常' : '已禁用'}
+                            </Badge>
+                            <span className='text-muted-foreground text-xs'>
+                              {user.accountCount} 账号 · {user.taskCount} 任务
+                            </span>
+                          </div>
+                        </div>
+                        <Button
+                          className='shrink-0'
+                          variant='ghost'
+                          size='sm'
+                          disabled={isCurrent || isBusy}
+                          onClick={() => void toggleUser(user)}
+                        >
+                          {isBusy ? (
+                            <Icons.spinner className='animate-spin' />
+                          ) : user.status === 'active' ? (
+                            '禁用'
+                          ) : (
+                            '启用'
+                          )}
+                        </Button>
+                      </div>
+                    );
+                  })
+                )}
               </div>
             </CardContent>
           </Card>
@@ -268,17 +360,36 @@ export default function AdminDashboard({ initialData }: { initialData: AdminSnap
               ) : (
                 <div className='flex flex-col gap-2'>
                   {invitations.map((invitation) => (
-                    <div key={invitation.id} className='flex items-start justify-between gap-3 border-b py-3 last:border-0 sm:items-center'>
+                    <div
+                      key={invitation.id}
+                      className='flex items-start justify-between gap-3 border-b py-3 last:border-0 sm:items-center'
+                    >
                       <div className='min-w-0'>
-                        <p className='font-mono text-sm'>使用 {invitation.usedCount} / {invitation.maxUses}</p>
+                        <p className='font-mono text-sm'>
+                          使用 {invitation.usedCount} / {invitation.maxUses}
+                        </p>
                         <p className='text-muted-foreground mt-1 text-xs'>
-                          {invitation.expiresAt ? `有效至 ${formatDate(invitation.expiresAt)}` : '长期有效'}
+                          {invitation.expiresAt
+                            ? `有效至 ${formatDate(invitation.expiresAt)}`
+                            : '长期有效'}
                         </p>
                       </div>
                       <div className='flex shrink-0 flex-wrap items-center justify-end gap-2'>
-                        <Badge variant={invitation.status === 'active' ? 'outline' : 'secondary'}>{invitation.status === 'active' ? '可用' : invitation.status === 'exhausted' ? '已用完' : '已停用'}</Badge>
+                        <Badge variant={invitation.status === 'active' ? 'outline' : 'secondary'}>
+                          {invitation.status === 'active'
+                            ? '可用'
+                            : invitation.status === 'exhausted'
+                              ? '已用完'
+                              : '已停用'}
+                        </Badge>
                         {invitation.status === 'active' && (
-                          <Button variant='ghost' size='sm' onClick={() => void revokeInvitation(invitation)}>停用</Button>
+                          <Button
+                            variant='ghost'
+                            size='sm'
+                            onClick={() => void revokeInvitation(invitation)}
+                          >
+                            停用
+                          </Button>
                         )}
                       </div>
                     </div>
@@ -290,7 +401,7 @@ export default function AdminDashboard({ initialData }: { initialData: AdminSnap
         </div>
 
         <Tabs defaultValue='runs' className='w-full'>
-          <TabsList className='w-full max-w-full overflow-x-auto sm:w-fit'>
+          <TabsList className='sticky top-16 z-10 -mx-4 w-[calc(100%+2rem)] max-w-none overflow-x-auto rounded-none border-b bg-background/95 px-4 py-2 backdrop-blur sm:static sm:mx-0 sm:w-fit sm:max-w-full sm:rounded-lg sm:border-0 sm:bg-muted sm:p-[3px]'>
             <TabsTrigger value='runs'>全局运行记录 ({runs.length})</TabsTrigger>
             <TabsTrigger value='tasks'>全局任务 ({tasks.length})</TabsTrigger>
             <TabsTrigger value='accounts'>学校账号 ({accounts.length})</TabsTrigger>
@@ -300,7 +411,9 @@ export default function AdminDashboard({ initialData }: { initialData: AdminSnap
             <Card className='shadow-none'>
               <CardHeader className='border-b'>
                 <CardTitle className='text-xl'>全局运行记录</CardTitle>
-                <CardDescription>仅显示运行结果和归属信息，不显示学校密码、Token 或原始敏感请求。</CardDescription>
+                <CardDescription>
+                  仅显示运行结果和归属信息，不显示学校密码、Token 或原始敏感请求。
+                </CardDescription>
               </CardHeader>
               <CardContent className='overflow-x-auto p-0'>
                 <Table className='hidden min-w-[880px] lg:table'>
@@ -315,39 +428,101 @@ export default function AdminDashboard({ initialData }: { initialData: AdminSnap
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {runs.length === 0 ? <TableRow><TableCell colSpan={6} className='text-muted-foreground py-12 text-center'>暂无运行记录</TableCell></TableRow> : runs.map((run) => (
-                      <TableRow key={run.id}>
-                        <TableCell className='text-muted-foreground text-xs'>{run.startedAt}</TableCell>
-                        <TableCell><p className='text-sm font-medium'>{run.ownerName}</p><p className='text-muted-foreground text-xs'>{run.ownerEmail || '未设置邮箱'}</p></TableCell>
-                        <TableCell><p className='text-sm font-medium'>{run.task}</p><p className='text-muted-foreground text-xs'>{run.account}</p></TableCell>
-                        <TableCell className='text-sm'>{run.targetDate}</TableCell>
-                        <TableCell><p className='text-sm'>{run.result}</p><p className='text-muted-foreground max-w-[240px] truncate text-xs'>{run.detail}</p></TableCell>
-                        <TableCell><Badge variant={run.status === 'success' ? 'outline' : run.status === 'failed' ? 'destructive' : 'secondary'}>{run.statusLabel}</Badge></TableCell>
+                    {runs.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={6} className='text-muted-foreground py-12 text-center'>
+                          暂无运行记录
+                        </TableCell>
                       </TableRow>
-                    ))}
+                    ) : (
+                      runs.map((run) => (
+                        <TableRow key={run.id}>
+                          <TableCell className='text-muted-foreground text-xs'>
+                            {run.startedAt}
+                          </TableCell>
+                          <TableCell>
+                            <p className='text-sm font-medium'>{run.ownerName}</p>
+                            <p className='text-muted-foreground text-xs'>
+                              {run.ownerEmail || '未设置邮箱'}
+                            </p>
+                          </TableCell>
+                          <TableCell>
+                            <p className='text-sm font-medium'>{run.task}</p>
+                            <p className='text-muted-foreground text-xs'>{run.account}</p>
+                          </TableCell>
+                          <TableCell className='text-sm'>{run.targetDate}</TableCell>
+                          <TableCell>
+                            <p className='text-sm'>{run.result}</p>
+                            <p className='text-muted-foreground max-w-[240px] truncate text-xs'>
+                              {run.detail}
+                            </p>
+                          </TableCell>
+                          <TableCell>
+                            <Badge
+                              variant={
+                                run.status === 'success'
+                                  ? 'outline'
+                                  : run.status === 'failed'
+                                    ? 'destructive'
+                                    : 'secondary'
+                              }
+                            >
+                              {run.statusLabel}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
                   </TableBody>
                 </Table>
                 <div className='divide-border divide-y lg:hidden'>
                   {runs.length === 0 ? (
                     <p className='text-muted-foreground py-12 text-center text-sm'>暂无运行记录</p>
-                  ) : runs.map((run) => (
-                    <div key={run.id} className='flex min-w-0 flex-col gap-3 py-4'>
-                      <div className='flex min-w-0 items-start justify-between gap-3'>
-                        <div className='min-w-0'>
-                          <p className='truncate text-sm font-medium'>{run.task}</p>
-                          <p className='text-muted-foreground mt-1 truncate text-xs'>{run.account} · {run.ownerName}</p>
+                  ) : (
+                    runs.map((run) => (
+                      <div key={run.id} className='flex min-w-0 flex-col gap-3 py-4'>
+                        <div className='flex min-w-0 items-start justify-between gap-3'>
+                          <div className='min-w-0'>
+                            <p className='truncate text-sm font-medium'>{run.task}</p>
+                            <p className='text-muted-foreground mt-1 truncate text-xs'>
+                              {run.account} · {run.ownerName}
+                            </p>
+                          </div>
+                          <Badge
+                            className='shrink-0'
+                            variant={
+                              run.status === 'success'
+                                ? 'outline'
+                                : run.status === 'failed'
+                                  ? 'destructive'
+                                  : 'secondary'
+                            }
+                          >
+                            {run.statusLabel}
+                          </Badge>
                         </div>
-                        <Badge className='shrink-0' variant={run.status === 'success' ? 'outline' : run.status === 'failed' ? 'destructive' : 'secondary'}>{run.statusLabel}</Badge>
+                        <div className='grid grid-cols-2 gap-3 text-xs'>
+                          <div>
+                            <p className='text-muted-foreground'>开始时间</p>
+                            <p className='mt-1'>{run.startedAt}</p>
+                          </div>
+                          <div>
+                            <p className='text-muted-foreground'>目标日期</p>
+                            <p className='mt-1'>{run.targetDate}</p>
+                          </div>
+                          <div>
+                            <p className='text-muted-foreground'>结果</p>
+                            <p className='mt-1'>{run.result}</p>
+                          </div>
+                          <div>
+                            <p className='text-muted-foreground'>尝试次数</p>
+                            <p className='mt-1'>{run.attempts} 次</p>
+                          </div>
+                        </div>
+                        <p className='text-muted-foreground line-clamp-2 text-xs'>{run.detail}</p>
                       </div>
-                      <div className='grid grid-cols-2 gap-3 text-xs'>
-                        <div><p className='text-muted-foreground'>开始时间</p><p className='mt-1'>{run.startedAt}</p></div>
-                        <div><p className='text-muted-foreground'>目标日期</p><p className='mt-1'>{run.targetDate}</p></div>
-                        <div><p className='text-muted-foreground'>结果</p><p className='mt-1'>{run.result}</p></div>
-                        <div><p className='text-muted-foreground'>尝试次数</p><p className='mt-1'>{run.attempts} 次</p></div>
-                      </div>
-                      <p className='text-muted-foreground line-clamp-2 text-xs'>{run.detail}</p>
-                    </div>
-                  ))}
+                    ))
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -357,45 +532,137 @@ export default function AdminDashboard({ initialData }: { initialData: AdminSnap
             <Card className='shadow-none'>
               <CardHeader className='border-b'>
                 <CardTitle className='text-xl'>全局任务</CardTitle>
-                <CardDescription>管理员可以检查所有成员的任务状态，但任务仍由所属成员独立管理。</CardDescription>
+                <CardDescription>
+                  管理员可以检查所有成员的任务状态，但任务仍由所属成员独立管理。
+                </CardDescription>
               </CardHeader>
               <CardContent className='overflow-x-auto p-0'>
                 <Table className='hidden min-w-[820px] lg:table'>
-                  <TableHeader><TableRow><TableHead>任务</TableHead><TableHead>成员</TableHead><TableHead>账号</TableHead><TableHead>策略</TableHead><TableHead>状态</TableHead><TableHead>最近运行</TableHead></TableRow></TableHeader>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>任务</TableHead>
+                      <TableHead>成员</TableHead>
+                      <TableHead>账号</TableHead>
+                      <TableHead>策略</TableHead>
+                      <TableHead>状态</TableHead>
+                      <TableHead>最近运行</TableHead>
+                    </TableRow>
+                  </TableHeader>
                   <TableBody>
-                    {tasks.length === 0 ? <TableRow><TableCell colSpan={6} className='text-muted-foreground py-12 text-center'>暂无任务</TableCell></TableRow> : tasks.map((task) => (
-                      <TableRow key={task.id}>
-                        <TableCell><p className='text-sm font-medium'>{task.name}</p><p className='text-muted-foreground text-xs'>{task.seat}</p><p className='text-muted-foreground mt-1 max-w-[220px] truncate text-xs'>{formatLocation(task.building, task.venueType, task.roomName)}</p></TableCell>
-                        <TableCell><p className='text-sm'>{task.ownerName}</p><p className='text-muted-foreground text-xs'>{task.ownerEmail || '未设置邮箱'}</p></TableCell>
-                        <TableCell className='text-sm'>{task.account}</TableCell>
-                        <TableCell><p className='text-sm'>{task.time}</p><p className='text-muted-foreground text-xs'>{task.lastMessage}</p></TableCell>
-                        <TableCell><Badge variant={task.status === 'enabled' ? 'outline' : task.status === 'attention' ? 'destructive' : 'secondary'}>{task.status === 'enabled' ? '启用' : task.status === 'paused' ? '暂停' : task.status === 'disabled' ? '用户已禁用' : '需要关注'}</Badge></TableCell>
-                        <TableCell className='text-muted-foreground text-xs'>{task.lastRun ? formatDateTime(task.lastRun) : '尚未运行'}</TableCell>
+                    {tasks.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={6} className='text-muted-foreground py-12 text-center'>
+                          暂无任务
+                        </TableCell>
                       </TableRow>
-                    ))}
+                    ) : (
+                      tasks.map((task) => (
+                        <TableRow key={task.id}>
+                          <TableCell>
+                            <p className='text-sm font-medium'>{task.name}</p>
+                            <p className='text-muted-foreground text-xs'>{task.seat}</p>
+                            <p className='text-muted-foreground mt-1 max-w-[220px] truncate text-xs'>
+                              {formatLocation(task.building, task.venueType, task.roomName)}
+                            </p>
+                          </TableCell>
+                          <TableCell>
+                            <p className='text-sm'>{task.ownerName}</p>
+                            <p className='text-muted-foreground text-xs'>
+                              {task.ownerEmail || '未设置邮箱'}
+                            </p>
+                          </TableCell>
+                          <TableCell className='text-sm'>{task.account}</TableCell>
+                          <TableCell>
+                            <p className='text-sm'>{task.time}</p>
+                            <p className='text-muted-foreground text-xs'>{task.lastMessage}</p>
+                          </TableCell>
+                          <TableCell>
+                            <Badge
+                              variant={
+                                task.status === 'enabled'
+                                  ? 'outline'
+                                  : task.status === 'attention'
+                                    ? 'destructive'
+                                    : 'secondary'
+                              }
+                            >
+                              {task.status === 'enabled'
+                                ? '启用'
+                                : task.status === 'paused'
+                                  ? '暂停'
+                                  : task.status === 'disabled'
+                                    ? '用户已禁用'
+                                    : '需要关注'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className='text-muted-foreground text-xs'>
+                            {task.lastRun ? formatDateTime(task.lastRun) : '尚未运行'}
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
                   </TableBody>
                 </Table>
                 <div className='divide-border divide-y lg:hidden'>
                   {tasks.length === 0 ? (
                     <p className='text-muted-foreground py-12 text-center text-sm'>暂无任务</p>
-                  ) : tasks.map((task) => (
-                    <div key={task.id} className='flex min-w-0 flex-col gap-3 py-4'>
-                      <div className='flex min-w-0 items-start justify-between gap-3'>
-                        <div className='min-w-0'>
-                          <p className='truncate text-sm font-medium'>{task.name}</p>
-                          <p className='text-muted-foreground mt-1 truncate text-xs'>{task.ownerName} · {task.account}</p>
+                  ) : (
+                    tasks.map((task) => (
+                      <div key={task.id} className='flex min-w-0 flex-col gap-3 py-4'>
+                        <div className='flex min-w-0 items-start justify-between gap-3'>
+                          <div className='min-w-0'>
+                            <p className='truncate text-sm font-medium'>{task.name}</p>
+                            <p className='text-muted-foreground mt-1 truncate text-xs'>
+                              {task.ownerName} · {task.account}
+                            </p>
+                          </div>
+                          <Badge
+                            className='shrink-0'
+                            variant={
+                              task.status === 'enabled'
+                                ? 'outline'
+                                : task.status === 'attention'
+                                  ? 'destructive'
+                                  : 'secondary'
+                            }
+                          >
+                            {task.status === 'enabled'
+                              ? '启用'
+                              : task.status === 'paused'
+                                ? '暂停'
+                                : task.status === 'disabled'
+                                  ? '用户已禁用'
+                                  : '需要关注'}
+                          </Badge>
                         </div>
-                        <Badge className='shrink-0' variant={task.status === 'enabled' ? 'outline' : task.status === 'attention' ? 'destructive' : 'secondary'}>{task.status === 'enabled' ? '启用' : task.status === 'paused' ? '暂停' : task.status === 'disabled' ? '用户已禁用' : '需要关注'}</Badge>
+                        <div className='grid grid-cols-2 gap-3 text-xs'>
+                          <div>
+                            <p className='text-muted-foreground'>座位</p>
+                            <p className='mt-1'>{task.seat}</p>
+                          </div>
+                          <div>
+                            <p className='text-muted-foreground'>位置</p>
+                            <p className='mt-1'>
+                              {formatLocation(task.building, task.venueType, task.roomName)}
+                            </p>
+                          </div>
+                          <div>
+                            <p className='text-muted-foreground'>时间</p>
+                            <p className='mt-1'>{task.time}</p>
+                          </div>
+                          <div>
+                            <p className='text-muted-foreground'>最近运行</p>
+                            <p className='mt-1'>
+                              {task.lastRun ? formatDateTime(task.lastRun) : '尚未运行'}
+                            </p>
+                          </div>
+                        </div>
+                        <p className='text-muted-foreground line-clamp-2 text-xs'>
+                          {task.lastMessage}
+                        </p>
                       </div>
-                      <div className='grid grid-cols-2 gap-3 text-xs'>
-                        <div><p className='text-muted-foreground'>座位</p><p className='mt-1'>{task.seat}</p></div>
-                        <div><p className='text-muted-foreground'>位置</p><p className='mt-1'>{formatLocation(task.building, task.venueType, task.roomName)}</p></div>
-                        <div><p className='text-muted-foreground'>时间</p><p className='mt-1'>{task.time}</p></div>
-                        <div><p className='text-muted-foreground'>最近运行</p><p className='mt-1'>{task.lastRun ? formatDateTime(task.lastRun) : '尚未运行'}</p></div>
-                      </div>
-                      <p className='text-muted-foreground line-clamp-2 text-xs'>{task.lastMessage}</p>
-                    </div>
-                  ))}
+                    ))
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -405,43 +672,109 @@ export default function AdminDashboard({ initialData }: { initialData: AdminSnap
             <Card className='shadow-none'>
               <CardHeader className='border-b'>
                 <CardTitle className='text-xl'>学校账号</CardTitle>
-                <CardDescription>账号标识已脱敏，管理员只查看连接状态和归属，不接触凭据。</CardDescription>
+                <CardDescription>
+                  账号标识已脱敏，管理员只查看连接状态和归属，不接触凭据。
+                </CardDescription>
               </CardHeader>
               <CardContent className='overflow-x-auto p-0'>
                 <Table className='hidden min-w-[760px] lg:table'>
-                  <TableHeader><TableRow><TableHead>账号</TableHead><TableHead>成员</TableHead><TableHead>授权状态</TableHead><TableHead>关联任务</TableHead><TableHead>最近验证</TableHead></TableRow></TableHeader>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>账号</TableHead>
+                      <TableHead>成员</TableHead>
+                      <TableHead>授权状态</TableHead>
+                      <TableHead>关联任务</TableHead>
+                      <TableHead>最近验证</TableHead>
+                    </TableRow>
+                  </TableHeader>
                   <TableBody>
-                    {accounts.length === 0 ? <TableRow><TableCell colSpan={5} className='text-muted-foreground py-12 text-center'>暂无学校账号</TableCell></TableRow> : accounts.map((account) => (
-                      <TableRow key={account.id}>
-                        <TableCell><p className='text-sm font-medium'>{account.label}</p><p className='text-muted-foreground font-mono text-xs'>{account.username}</p></TableCell>
-                        <TableCell><p className='text-sm'>{account.ownerName}</p><p className='text-muted-foreground text-xs'>{account.ownerEmail || '未设置邮箱'}</p></TableCell>
-                        <TableCell><Badge variant={account.status === 'connected' ? 'outline' : 'destructive'}>{account.statusLabel}</Badge><p className='text-muted-foreground mt-1 text-xs'>{account.tokenLabel}</p></TableCell>
-                        <TableCell className='text-sm'>{account.taskCount} 个任务</TableCell>
-                        <TableCell className='text-muted-foreground text-xs'>{account.lastVerifiedAt ? formatDateTime(account.lastVerifiedAt) : '尚未验证'}</TableCell>
+                    {accounts.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={5} className='text-muted-foreground py-12 text-center'>
+                          暂无学校账号
+                        </TableCell>
                       </TableRow>
-                    ))}
+                    ) : (
+                      accounts.map((account) => (
+                        <TableRow key={account.id}>
+                          <TableCell>
+                            <p className='text-sm font-medium'>{account.label}</p>
+                            <p className='text-muted-foreground font-mono text-xs'>
+                              {account.username}
+                            </p>
+                          </TableCell>
+                          <TableCell>
+                            <p className='text-sm'>{account.ownerName}</p>
+                            <p className='text-muted-foreground text-xs'>
+                              {account.ownerEmail || '未设置邮箱'}
+                            </p>
+                          </TableCell>
+                          <TableCell>
+                            <Badge
+                              variant={account.status === 'connected' ? 'outline' : 'destructive'}
+                            >
+                              {account.statusLabel}
+                            </Badge>
+                            <p className='text-muted-foreground mt-1 text-xs'>
+                              {account.tokenLabel}
+                            </p>
+                          </TableCell>
+                          <TableCell className='text-sm'>{account.taskCount} 个任务</TableCell>
+                          <TableCell className='text-muted-foreground text-xs'>
+                            {account.lastVerifiedAt
+                              ? formatDateTime(account.lastVerifiedAt)
+                              : '尚未验证'}
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
                   </TableBody>
                 </Table>
                 <div className='divide-border divide-y lg:hidden'>
                   {accounts.length === 0 ? (
                     <p className='text-muted-foreground py-12 text-center text-sm'>暂无学校账号</p>
-                  ) : accounts.map((account) => (
-                    <div key={account.id} className='flex min-w-0 flex-col gap-3 py-4'>
-                      <div className='flex min-w-0 items-start justify-between gap-3'>
-                        <div className='min-w-0'>
-                          <p className='truncate text-sm font-medium'>{account.label}</p>
-                          <p className='text-muted-foreground mt-1 truncate font-mono text-xs'>{account.username}</p>
+                  ) : (
+                    accounts.map((account) => (
+                      <div key={account.id} className='flex min-w-0 flex-col gap-3 py-4'>
+                        <div className='flex min-w-0 items-start justify-between gap-3'>
+                          <div className='min-w-0'>
+                            <p className='truncate text-sm font-medium'>{account.label}</p>
+                            <p className='text-muted-foreground mt-1 truncate font-mono text-xs'>
+                              {account.username}
+                            </p>
+                          </div>
+                          <Badge
+                            className='shrink-0'
+                            variant={account.status === 'connected' ? 'outline' : 'destructive'}
+                          >
+                            {account.statusLabel}
+                          </Badge>
                         </div>
-                        <Badge className='shrink-0' variant={account.status === 'connected' ? 'outline' : 'destructive'}>{account.statusLabel}</Badge>
+                        <div className='grid grid-cols-2 gap-3 text-xs'>
+                          <div>
+                            <p className='text-muted-foreground'>归属成员</p>
+                            <p className='mt-1 truncate'>{account.ownerName}</p>
+                          </div>
+                          <div>
+                            <p className='text-muted-foreground'>关联任务</p>
+                            <p className='mt-1'>{account.taskCount} 个</p>
+                          </div>
+                          <div>
+                            <p className='text-muted-foreground'>授权状态</p>
+                            <p className='mt-1'>{account.tokenLabel}</p>
+                          </div>
+                          <div>
+                            <p className='text-muted-foreground'>最近验证</p>
+                            <p className='mt-1'>
+                              {account.lastVerifiedAt
+                                ? formatDateTime(account.lastVerifiedAt)
+                                : '尚未验证'}
+                            </p>
+                          </div>
+                        </div>
                       </div>
-                      <div className='grid grid-cols-2 gap-3 text-xs'>
-                        <div><p className='text-muted-foreground'>归属成员</p><p className='mt-1 truncate'>{account.ownerName}</p></div>
-                        <div><p className='text-muted-foreground'>关联任务</p><p className='mt-1'>{account.taskCount} 个</p></div>
-                        <div><p className='text-muted-foreground'>授权状态</p><p className='mt-1'>{account.tokenLabel}</p></div>
-                        <div><p className='text-muted-foreground'>最近验证</p><p className='mt-1'>{account.lastVerifiedAt ? formatDateTime(account.lastVerifiedAt) : '尚未验证'}</p></div>
-                      </div>
-                    </div>
-                  ))}
+                    ))
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -450,24 +783,62 @@ export default function AdminDashboard({ initialData }: { initialData: AdminSnap
       </div>
 
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className='max-h-[calc(100dvh-1rem)] w-[calc(100%-1rem)] overflow-y-auto sm:max-w-[420px]'>
-          <DialogHeader>
+        <DialogContent className='flex h-[calc(100svh-1rem)] max-h-[calc(100svh-1rem)] w-[calc(100%-1rem)] flex-col overflow-hidden overscroll-contain sm:h-auto sm:max-h-[calc(100svh-2rem)] sm:max-w-[420px]'>
+          <DialogHeader className='shrink-0 pr-8'>
             <DialogTitle>创建邀请码</DialogTitle>
             <DialogDescription>生成后只显示一次，建议立即复制并发给指定成员。</DialogDescription>
           </DialogHeader>
-          <form id='create-platform-invitation' onSubmit={submitInvitation} className='flex flex-col gap-4'>
-            <div className='flex flex-col gap-2'>
-              <Label htmlFor='invitation-max-uses'>可使用次数</Label>
-              <Input id='invitation-max-uses' type='number' inputMode='numeric' min='1' max='100' value={maxUses} onChange={(event) => setMaxUses(event.target.value)} required />
-            </div>
-            <div className='flex flex-col gap-2'>
-              <Label htmlFor='invitation-valid-days'>有效天数</Label>
-              <Input id='invitation-valid-days' type='number' inputMode='numeric' min='1' max='365' value={validDays} onChange={(event) => setValidDays(event.target.value)} required />
-            </div>
-          </form>
-          <DialogFooter className='sm:flex-row'>
-            <Button className='w-full sm:w-auto' type='button' variant='outline' onClick={() => setCreateOpen(false)}>取消</Button>
-            <Button className='w-full sm:w-auto' type='submit' form='create-platform-invitation' disabled={saving}>{saving ? '生成中' : '生成邀请码'}</Button>
+          <div className='min-h-0 flex-1 overflow-y-auto overscroll-contain px-0.5'>
+            <form
+              id='create-platform-invitation'
+              onSubmit={submitInvitation}
+              className='flex flex-col gap-4 pb-1'
+            >
+              <div className='flex flex-col gap-2'>
+                <Label htmlFor='invitation-max-uses'>可使用次数</Label>
+                <Input
+                  id='invitation-max-uses'
+                  type='number'
+                  inputMode='numeric'
+                  min='1'
+                  max='100'
+                  value={maxUses}
+                  onChange={(event) => setMaxUses(event.target.value)}
+                  required
+                />
+              </div>
+              <div className='flex flex-col gap-2'>
+                <Label htmlFor='invitation-valid-days'>有效天数</Label>
+                <Input
+                  id='invitation-valid-days'
+                  type='number'
+                  inputMode='numeric'
+                  min='1'
+                  max='365'
+                  value={validDays}
+                  onChange={(event) => setValidDays(event.target.value)}
+                  required
+                />
+              </div>
+            </form>
+          </div>
+          <DialogFooter className='sticky bottom-0 z-10 shrink-0 sm:flex-row'>
+            <Button
+              className='w-full sm:w-auto'
+              type='button'
+              variant='outline'
+              onClick={() => setCreateOpen(false)}
+            >
+              取消
+            </Button>
+            <Button
+              className='w-full sm:w-auto'
+              type='submit'
+              form='create-platform-invitation'
+              disabled={saving}
+            >
+              {saving ? '生成中' : '生成邀请码'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -475,13 +846,25 @@ export default function AdminDashboard({ initialData }: { initialData: AdminSnap
   );
 }
 
-function StatCard({ label, value, detail, icon: Icon }: { label: string; value: string; detail: string; icon: React.ComponentType<{ className?: string }> }) {
+function StatCard({
+  label,
+  value,
+  detail,
+  icon: Icon
+}: {
+  label: string;
+  value: string;
+  detail: string;
+  icon: React.ComponentType<{ className?: string }>;
+}) {
   return (
     <Card className='gap-3 py-4 shadow-none'>
       <CardHeader className='px-4'>
         <div className='flex items-start justify-between gap-3'>
           <CardDescription>{label}</CardDescription>
-          <div className='bg-muted flex size-8 items-center justify-center rounded-lg'><Icon className='size-4' /></div>
+          <div className='bg-muted flex size-8 items-center justify-center rounded-lg'>
+            <Icon className='size-4' />
+          </div>
         </div>
       </CardHeader>
       <CardContent className='px-4'>
@@ -493,7 +876,11 @@ function StatCard({ label, value, detail, icon: Icon }: { label: string; value: 
 }
 
 function formatDate(value: string): string {
-  return new Date(value).toLocaleDateString('zh-CN', { timeZone: 'Asia/Shanghai', month: 'numeric', day: 'numeric' });
+  return new Date(value).toLocaleDateString('zh-CN', {
+    timeZone: 'Asia/Shanghai',
+    month: 'numeric',
+    day: 'numeric'
+  });
 }
 
 function formatDateTime(value: string): string {
@@ -506,7 +893,14 @@ function formatDateTime(value: string): string {
   });
 }
 
-function formatLocation(building: string, venueType: AdminTask['venueType'], roomName: string): string {
+function formatLocation(
+  building: string,
+  venueType: AdminTask['venueType'],
+  roomName: string
+): string {
   const venue = { library: '图书馆', study_room: '自习室', other: '其他' }[venueType];
-  return [building, venue, roomName].filter((value) => value && value !== '未指定').join(' · ') || '位置未设置';
+  return (
+    [building, venue, roomName].filter((value) => value && value !== '未指定').join(' · ') ||
+    '位置未设置'
+  );
 }

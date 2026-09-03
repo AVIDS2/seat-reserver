@@ -30,11 +30,11 @@ export class PlatformSeatCatalogService {
       serviceType,
       buildings: tuples(data.buildings).map((item) => ({
         id: String(item[0]),
-        name: String(item[1] ?? ''),
+        name: String(item[1] || '未命名馆区'),
       })),
       rooms: tuples(data.rooms).map((item) => ({
         id: String(item[0]),
-        name: String(item[1] ?? ''),
+        name: String(item[1] || '未命名空间'),
         buildingId: String(item[2] ?? ''),
         floor: Number(item[3] ?? 0),
       })),

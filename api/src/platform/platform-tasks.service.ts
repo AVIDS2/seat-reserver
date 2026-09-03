@@ -25,7 +25,8 @@ export type BookingTaskView = {
   roomName: string;
   buildingId: string | null;
   roomId: string | null;
-  scheduleMode: 'daily' | 'once';
+  scheduleMode: 'daily' | 'weekdays' | 'weekly' | 'once';
+  scheduleWeekdays: number[];
   targetDate: string | null;
   seatLabel: string | null;
   account: string;
@@ -90,7 +91,9 @@ export class PlatformTasksService {
     dto: CreateBookingTaskDto,
   ): Promise<BookingTaskView> {
     validateTimeCandidates(dto.timeCandidates);
-    validateSchedule(dto.scheduleMode ?? 'daily', dto.targetDate);
+    const scheduleMode = dto.scheduleMode ?? 'daily';
+    const scheduleWeekdays = normalizeWeekdays(dto.scheduleWeekdays);
+    validateSchedule(scheduleMode, dto.targetDate, scheduleWeekdays);
     const account = await this.accounts.findOwned(userId, dto.accountId);
     await this.serviceConnections.ensureReady(
       account,
@@ -103,8 +106,9 @@ export class PlatformTasksService {
       roomName: optionalText(dto.roomName, '未指定'),
       buildingId: nullableText(dto.buildingId),
       roomId: nullableText(dto.roomId),
-      scheduleMode: dto.scheduleMode ?? 'daily',
-      targetDate: dto.scheduleMode === 'once' ? (dto.targetDate ?? null) : null,
+      scheduleMode,
+      scheduleWeekdays,
+      targetDate: scheduleMode === 'once' ? (dto.targetDate ?? null) : null,
       primarySeatId: requireText(dto.primarySeatId, '主座位'),
       primarySeatLabel: nullableText(dto.primarySeatLabel),
       backupSeatIds: normalizeSeatIds(dto.backupSeatIds ?? []),
@@ -133,9 +137,16 @@ export class PlatformTasksService {
   ): Promise<BookingTaskView> {
     const task = await this.findOwned(userId, id);
     if (dto.timeCandidates) validateTimeCandidates(dto.timeCandidates);
+    const scheduleMode = dto.scheduleMode ?? task.scheduleMode;
+    const scheduleWeekdays = normalizeWeekdays(
+      dto.scheduleWeekdays === undefined
+        ? task.scheduleWeekdays
+        : dto.scheduleWeekdays,
+    );
     validateSchedule(
-      dto.scheduleMode ?? task.scheduleMode,
+      scheduleMode,
       dto.targetDate === undefined ? task.targetDate : dto.targetDate,
+      scheduleWeekdays,
     );
     const account =
       dto.accountId === undefined
@@ -168,9 +179,10 @@ export class PlatformTasksService {
           ? task.buildingId
           : nullableText(dto.buildingId),
       roomId: dto.roomId === undefined ? task.roomId : nullableText(dto.roomId),
-      scheduleMode: dto.scheduleMode ?? task.scheduleMode,
+      scheduleMode,
+      scheduleWeekdays,
       targetDate:
-        (dto.scheduleMode ?? task.scheduleMode) === 'once'
+        scheduleMode === 'once'
           ? dto.targetDate === undefined
             ? task.targetDate
             : dto.targetDate
@@ -339,6 +351,7 @@ export class PlatformTasksService {
       buildingId: task.buildingId,
       roomId: task.roomId,
       scheduleMode: task.scheduleMode,
+      scheduleWeekdays: task.scheduleWeekdays,
       targetDate: task.targetDate,
       seatLabel: task.primarySeatLabel,
       account: account?.label ?? '未关联账号',
@@ -349,7 +362,7 @@ export class PlatformTasksService {
       seatId: task.primarySeatId,
       time,
       nextRun: task.enabled
-        ? `${task.scheduleMode === 'once' && task.targetDate ? task.targetDate : '每日'} ${formatScheduledTime(task.runOffsetSeconds)}`
+        ? `${scheduleLabel(task)} ${formatScheduledTime(task.runOffsetSeconds)}`
         : requiresLibraryVerification
           ? '完成验证后可预约'
           : '已暂停',
@@ -381,12 +394,35 @@ export class PlatformTasksService {
 }
 
 function validateSchedule(
-  mode: 'daily' | 'once',
+  mode: 'daily' | 'weekdays' | 'weekly' | 'once',
   targetDate: string | null | undefined,
+  weekdays: number[],
 ) {
   if (mode === 'once' && !targetDate) {
     throw new UnprocessableEntityException('单次预约必须选择日期');
   }
+  if (mode === 'weekly' && !weekdays.length) {
+    throw new UnprocessableEntityException('自定义周期至少选择一天');
+  }
+}
+
+function normalizeWeekdays(value: number[] | undefined): number[] {
+  const weekdays = (value ?? [1, 2, 3, 4, 5]).filter(
+    (day) => Number.isInteger(day) && day >= 0 && day <= 6,
+  );
+  return Array.from(new Set(weekdays)).sort((a, b) => a - b);
+}
+
+function scheduleLabel(task: BookingTaskEntity): string {
+  if (task.scheduleMode === 'once' && task.targetDate) return task.targetDate;
+  if (task.scheduleMode === 'weekdays') return '工作日';
+  if (task.scheduleMode === 'weekly') {
+    const labels = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+    return (
+      task.scheduleWeekdays.map((day) => labels[day]).join('、') || '自定义周期'
+    );
+  }
+  return '每天';
 }
 
 function validateTimeCandidates(

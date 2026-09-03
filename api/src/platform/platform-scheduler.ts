@@ -39,9 +39,7 @@ export class PlatformScheduler {
         where: { enabled: true, user: { status: { id: StatusEnum.active } } },
         relations: ['user', 'schoolAccount'],
       });
-      const runnableTasks = tasks.filter(
-        (task) => task.scheduleMode === 'daily' || task.targetDate === date,
-      );
+      const runnableTasks = tasks.filter((task) => isTaskDue(task, date));
       const results = await Promise.allSettled(
         runnableTasks.map((task) =>
           this.queue.enqueue(
@@ -67,6 +65,14 @@ export class PlatformScheduler {
       await this.redis.unlock(lockKey, lock);
     }
   }
+}
+
+export function isTaskDue(task: BookingTaskEntity, date: string): boolean {
+  if (task.scheduleMode === 'once') return task.targetDate === date;
+  if (task.scheduleMode === 'daily') return true;
+  const weekday = new Date(`${date}T12:00:00+08:00`).getUTCDay();
+  if (task.scheduleMode === 'weekdays') return weekday >= 1 && weekday <= 5;
+  return task.scheduleWeekdays.includes(weekday);
 }
 
 function getShanghaiDate(): string {

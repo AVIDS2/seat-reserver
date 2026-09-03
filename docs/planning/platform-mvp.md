@@ -4,7 +4,7 @@
 
 ## 当前进度
 
-2026-09-03 平台加入统一实时场馆目录和可视化座位图：楼栋、空间、日期、座位号、占用状态均来自学校接口，系统 ID 不再暴露给普通用户。一个校园账号可建立彼此独立的自习室与图书馆服务连接，任务支持每日或指定日期执行。自习室自动预约链路保持生产可用；图书馆目录、布局和时间数据已经接通，但学校当前开启预约验证码，因此图书馆任务在完成人工验证流程前保存为暂停状态，不宣称无人值守执行。
+2026-09-03 平台加入统一实时场馆目录和可视化座位图：楼栋、空间、日期、座位号、占用状态均来自学校接口，系统 ID 不再暴露给普通用户。一个校园账号可建立彼此独立的自习室与图书馆服务连接，任务支持每天、工作日、自定义星期和单次执行。长表单使用稳定小视口和内部滚动，避免移动浏览器地址栏或选择弹层造成整页回流。自习室自动预约链路保持生产可用；图书馆目录、布局和时间数据已经接通，但学校当前开启预约验证码，因此图书馆任务在完成人工验证流程前保存为暂停状态，不宣称无人值守执行。
 
 前端底座决策：使用 Next.js 16、Tailwind CSS 4、shadcn/ui、TanStack Query/Table、Motion 和 Tabler Icons。后端底座决策：使用 NestJS 11、TypeORM、PostgreSQL、JWT/HttpOnly Cookie、Swagger 和 Docker；预约执行层使用 Redis + BullMQ，并由 Nest Schedule 生成每日任务。生产模式下前端通过同域 `/api/v1` 访问 API，真实预约请求不会进入浏览器。
 
@@ -159,6 +159,11 @@ primary_seat_label
 venue_type
 building
 room_name
+building_id
+room_id
+schedule_mode: daily | weekdays | weekly | once
+schedule_weekdays: 0..6[]  # weekly 自定义星期；0=周日
+target_date
 backup_seat_ids_json
 time_candidates_json
 max_attempts

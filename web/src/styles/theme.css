@@ -14,6 +14,18 @@ body {
   @apply overscroll-none;
 }
 
+html {
+  scrollbar-gutter: stable;
+}
+
+@media (pointer: coarse) {
+  button,
+  [role='button'],
+  select {
+    touch-action: manipulation;
+  }
+}
+
 :root {
   --header-height: calc(var(--spacing, 0.25rem) * 12 + 1px);
 }

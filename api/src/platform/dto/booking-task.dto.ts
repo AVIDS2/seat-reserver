@@ -75,10 +75,23 @@ export class CreateBookingTaskDto {
   @MaxLength(30)
   roomId?: string | null;
 
-  @ApiProperty({ enum: ['daily', 'once'], required: false })
+  @ApiProperty({
+    enum: ['daily', 'weekdays', 'weekly', 'once'],
+    required: false,
+  })
   @IsOptional()
-  @IsIn(['daily', 'once'])
-  scheduleMode?: 'daily' | 'once';
+  @IsIn(['daily', 'weekdays', 'weekly', 'once'])
+  scheduleMode?: 'daily' | 'weekdays' | 'weekly' | 'once';
+
+  @ApiProperty({ example: [1, 2, 3, 4, 5], required: false })
+  @IsOptional()
+  @IsArray()
+  @IsInt({ each: true })
+  @Min(0, { each: true })
+  @Max(6, { each: true })
+  @ArrayMaxSize(7)
+  @ArrayUnique()
+  scheduleWeekdays?: number[];
 
   @ApiProperty({ required: false })
   @IsOptional()

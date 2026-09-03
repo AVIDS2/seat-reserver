@@ -14,6 +14,7 @@ import {
   DialogTitle
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import PageContainer from '@/components/layout/page-container';
 
 import type { BookingRun } from '../types';
@@ -61,7 +62,13 @@ export default function BookingRunsPage({ initialRuns }: { initialRuns: BookingR
           <p className='text-muted-foreground mt-2 text-sm leading-6'>
             每一次预热和预约请求都会留下结果，方便确认系统是否按计划工作。
           </p>
-          <Button variant='outline' size='sm' className='mt-4' onClick={() => void refreshRuns()} disabled={refreshing}>
+          <Button
+            variant='outline'
+            size='sm'
+            className='mt-4'
+            onClick={() => void refreshRuns()}
+            disabled={refreshing}
+          >
             <Icons.refresh className={refreshing ? 'animate-spin' : ''} />
             {refreshing ? '刷新中' : '刷新记录'}
           </Button>
@@ -84,23 +91,18 @@ export default function BookingRunsPage({ initialRuns }: { initialRuns: BookingR
                   aria-label='搜索运行记录'
                 />
               </div>
-              <div
-                className='bg-muted flex h-8 items-center rounded-lg p-0.5'
-                role='group'
+              <ToggleGroup
+                value={[filter]}
+                onValueChange={(value) => value[0] && setFilter(value[0] as typeof filter)}
+                variant='outline'
+                spacing={0}
+                className='bg-muted w-full sm:w-fit'
                 aria-label='运行状态筛选'
               >
-                {(['all', 'success', 'failed'] as const).map((item) => (
-                  <Button
-                    key={item}
-                    variant={filter === item ? 'default' : 'ghost'}
-                    size='sm'
-                    className='h-7 px-2.5 text-xs'
-                    onClick={() => setFilter(item)}
-                  >
-                    {item === 'all' ? '全部' : item === 'success' ? '成功' : '未抢到'}
-                  </Button>
-                ))}
-              </div>
+                <ToggleGroupItem value='all'>全部</ToggleGroupItem>
+                <ToggleGroupItem value='success'>成功</ToggleGroupItem>
+                <ToggleGroupItem value='failed'>未抢到</ToggleGroupItem>
+              </ToggleGroup>
             </div>
           </CardHeader>
           <CardContent className='pt-0'>
@@ -143,40 +145,42 @@ export default function BookingRunsPage({ initialRuns }: { initialRuns: BookingR
         </Card>
       </div>
       <Dialog open={!!selected} onOpenChange={(open) => !open && setSelected(null)}>
-        <DialogContent className='max-h-[calc(100dvh-1rem)] w-[calc(100%-1rem)] overflow-y-auto sm:max-w-[460px]'>
-          <DialogHeader>
+        <DialogContent className='flex h-[calc(100svh-1rem)] max-h-[calc(100svh-1rem)] w-[calc(100%-1rem)] flex-col overflow-hidden overscroll-contain sm:h-auto sm:max-h-[calc(100svh-2rem)] sm:max-w-[460px]'>
+          <DialogHeader className='shrink-0 pr-8'>
             <DialogTitle>运行详情</DialogTitle>
             <DialogDescription>
               {selected?.startedAt} · {selected?.account}
             </DialogDescription>
           </DialogHeader>
           {selected && (
-          <div className='flex flex-col gap-4'>
-              <div className='flex items-center justify-between'>
-                <span className='text-muted-foreground text-sm'>结果</span>
-                <RunStatusBadge status={selected.status} />
-              </div>
-              <div className='grid grid-cols-2 gap-4 rounded-lg bg-muted/50 p-4'>
-                <div>
-                  <p className='text-muted-foreground text-xs'>任务</p>
-                  <p className='mt-1 text-sm font-medium'>{selected.task}</p>
+            <div className='min-h-0 flex-1 overflow-y-auto overscroll-contain px-0.5'>
+              <div className='flex flex-col gap-4 pb-1'>
+                <div className='flex items-center justify-between'>
+                  <span className='text-muted-foreground text-sm'>结果</span>
+                  <RunStatusBadge status={selected.status} />
+                </div>
+                <div className='grid grid-cols-2 gap-4 rounded-lg bg-muted/50 p-4'>
+                  <div>
+                    <p className='text-muted-foreground text-xs'>任务</p>
+                    <p className='mt-1 text-sm font-medium'>{selected.task}</p>
+                  </div>
+                  <div>
+                    <p className='text-muted-foreground text-xs'>目标日期</p>
+                    <p className='mt-1 text-sm font-medium'>{selected.targetDate}</p>
+                  </div>
+                  <div>
+                    <p className='text-muted-foreground text-xs'>请求次数</p>
+                    <p className='mt-1 text-sm font-medium'>{selected.attempts} 次</p>
+                  </div>
+                  <div>
+                    <p className='text-muted-foreground text-xs'>最终结果</p>
+                    <p className='mt-1 text-sm font-medium'>{selected.result}</p>
+                  </div>
                 </div>
                 <div>
-                  <p className='text-muted-foreground text-xs'>目标日期</p>
-                  <p className='mt-1 text-sm font-medium'>{selected.targetDate}</p>
+                  <p className='text-muted-foreground mb-1 text-xs'>说明</p>
+                  <p className='text-sm leading-6'>{selected.detail}</p>
                 </div>
-                <div>
-                  <p className='text-muted-foreground text-xs'>请求次数</p>
-                  <p className='mt-1 text-sm font-medium'>{selected.attempts} 次</p>
-                </div>
-                <div>
-                  <p className='text-muted-foreground text-xs'>最终结果</p>
-                  <p className='mt-1 text-sm font-medium'>{selected.result}</p>
-                </div>
-              </div>
-              <div>
-                <p className='text-muted-foreground mb-1 text-xs'>说明</p>
-                <p className='text-sm leading-6'>{selected.detail}</p>
               </div>
             </div>
           )}

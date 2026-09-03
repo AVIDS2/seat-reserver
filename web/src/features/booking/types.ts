@@ -13,7 +13,8 @@ export type BookingTask = {
   roomName: string;
   buildingId: string | null;
   roomId: string | null;
-  scheduleMode: 'daily' | 'once';
+  scheduleMode: 'daily' | 'weekdays' | 'weekly' | 'once';
+  scheduleWeekdays: number[];
   targetDate: string | null;
   seatLabel: string | null;
   account: string;
