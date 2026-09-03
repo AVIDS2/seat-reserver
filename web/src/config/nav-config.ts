@@ -19,6 +19,13 @@ export const navGroups: NavGroup[] = [
         items: []
       },
       {
+        title: '座位图',
+        url: '/dashboard/seats',
+        icon: 'mapPin',
+        shortcut: ['s', 's'],
+        items: []
+      },
+      {
         title: '账号与授权',
         url: '/dashboard/accounts',
         icon: 'shield',
