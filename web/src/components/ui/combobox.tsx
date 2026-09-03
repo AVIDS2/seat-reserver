@@ -13,7 +13,11 @@ import {
 } from '@/components/ui/input-group';
 import { IconChevronDown, IconX, IconCheck } from '@tabler/icons-react';
 
-const Combobox = ComboboxPrimitive.Root;
+function Combobox<Value, Multiple extends boolean | undefined = false>(
+  props: ComboboxPrimitive.Root.Props<Value, Multiple>
+) {
+  return <ComboboxPrimitive.Root {...props} modal={props.modal ?? false} />;
+}
 
 function ComboboxValue({ ...props }: ComboboxPrimitive.Value.Props) {
   return <ComboboxPrimitive.Value data-slot='combobox-value' {...props} />;

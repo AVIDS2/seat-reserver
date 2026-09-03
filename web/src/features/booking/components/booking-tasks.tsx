@@ -256,6 +256,14 @@ function TaskEditorDialog({
   const selectedRoom = catalog?.rooms.find((room) => room.id === roomId);
   const selectedBuilding = catalog?.buildings.find((building) => building.id === buildingId);
   const selectedNodes = selectedSeatIds.map((id) => layout?.nodes.find((node) => node.id === id));
+  const resetLocationSelection = () => {
+    setCatalog(null);
+    setLayout(null);
+    setBuildingId('');
+    setRoomId('');
+    setSelectedSeatIds([]);
+    setAvailableStartTimes([]);
+  };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -336,10 +344,14 @@ function TaskEditorDialog({
                   />
                 </div>
                 <div className='flex flex-col gap-2'>
-                  <Label htmlFor='task-account'>使用账号</Label>
+                  <Label htmlFor='task-account'>绑定账号</Label>
                   <Select
                     value={accountId}
-                    onValueChange={(value) => value && setAccountId(value)}
+                    onValueChange={(value) => {
+                      if (!value || value === accountId) return;
+                      setAccountId(value);
+                      resetLocationSelection();
+                    }}
                     disabled={accounts.length === 0}
                   >
                     <SelectTrigger id='task-account' className='w-full'>
@@ -356,12 +368,19 @@ function TaskEditorDialog({
                       </SelectGroup>
                     </SelectContent>
                   </Select>
+                  <p className='text-muted-foreground text-xs'>
+                    每个任务绑定一个校园账号；需要多个账号时分别创建任务。
+                  </p>
                 </div>
                 <div className='flex flex-col gap-2'>
                   <Label>预约系统</Label>
                   <ToggleGroup
                     value={[venueType]}
-                    onValueChange={(value) => value[0] && setVenueType(value[0] as VenueType)}
+                    onValueChange={(value) => {
+                      if (!value[0] || value[0] === venueType) return;
+                      setVenueType(value[0] as VenueType);
+                      resetLocationSelection();
+                    }}
                     variant='outline'
                     spacing={0}
                     className='grid w-full grid-cols-2'
@@ -478,22 +497,19 @@ function TaskEditorDialog({
                     </ToggleGroup>
                   </div>
                 )}
-                <div className='flex flex-col gap-2'>
-                  <Label>{scheduleMode === 'once' ? '执行日期' : '查看可用日期'}</Label>
-                  <DatePicker
-                    value={date}
-                    dates={catalog?.dates || []}
-                    onChange={(value) => {
-                      setDate(value);
-                      setSelectedSeatIds([]);
-                    }}
-                  />
-                  {scheduleMode !== 'once' && (
-                    <p className='text-muted-foreground text-xs'>
-                      周期任务不绑定某一天；这里的日期只用于查看当天的座位状态。
-                    </p>
-                  )}
-                </div>
+                {scheduleMode === 'once' && (
+                  <div className='flex flex-col gap-2'>
+                    <Label>执行日期</Label>
+                    <DatePicker
+                      value={date}
+                      dates={catalog?.dates || []}
+                      onChange={(value) => {
+                        setDate(value);
+                        setSelectedSeatIds([]);
+                      }}
+                    />
+                  </div>
+                )}
                 {catalog?.captchaRequired && (
                   <Alert>
                     <Icons.shield />
