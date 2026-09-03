@@ -46,8 +46,12 @@ type SeatAuthResponse = {
 type WebVpnSession = {
   client: CookieFetch;
   proxyBase: string;
+  targetOrigin: string;
+  targetReferer: string;
   signingSecret: string;
   expiresAt: number;
+  userId?: string;
+  username?: string;
 };
 
 @Injectable()
@@ -60,6 +64,9 @@ export class WebVpnSeatClientService {
     process.env.SEAT_WEBVPN_APP_NAME || '图书馆座位预约';
   private readonly seatAppPath = normalizeAppPath(
     process.env.SEAT_WEBVPN_APP_PATH || '/libseat/',
+  );
+  private readonly seatTargetUrl = new URL(
+    process.env.SEAT_WEBVPN_TARGET_URL || 'http://202.195.100.14',
   );
   private readonly timeoutMs = numberSetting(
     process.env.SEAT_WEBVPN_TIMEOUT_MS,
@@ -78,15 +85,22 @@ export class WebVpnSeatClientService {
 
     try {
       const userId = await this.loginToGateway(client, jar, username, password);
-      const seatProxy = await this.resolveSeatProxy(client, userId);
-      const proxyBase = seatProxy.baseUrl;
+      const portalSeatProxy = await this.resolveSeatProxy(client, userId);
       const seatEntry = await this.fetchFollowing(
         client,
-        proxyUrl(proxyBase, this.seatAppPath),
+        proxyUrl(portalSeatProxy.baseUrl, this.seatAppPath),
       );
       const seatPage = seatEntry.fragmentToken
         ? seatEntry
-        : await this.startSeatCas(client, seatProxy, username, password);
+        : await this.startSeatCas(
+            client,
+            {
+              ...portalSeatProxy,
+              serverUrl: this.seatTargetUrl.origin,
+            },
+            username,
+            password,
+          );
       const ssoToken = seatPage.fragmentToken;
       if (!ssoToken) {
         throw new UnprocessableEntityException(
@@ -94,16 +108,27 @@ export class WebVpnSeatClientService {
         );
       }
 
+      const proxyBase = extractProxyBase(
+        seatPage.url,
+        this.gateway,
+        this.seatAppPath,
+      );
+      const seatProxy = {
+        baseUrl: proxyBase,
+        serverUrl: this.seatTargetUrl.origin,
+      };
       const signingSecret = await this.loadSigningSecret(client, proxyBase);
       const businessToken = await this.exchangeSsoToken(
         client,
-        proxyBase,
+        seatProxy,
         ssoToken,
         signingSecret,
       );
       this.sessions.set(businessToken, {
         client,
         proxyBase,
+        targetOrigin: new URL(seatProxy.serverUrl).origin,
+        targetReferer: `${seatProxy.serverUrl}${this.seatAppPath}`,
         signingSecret,
         expiresAt: Date.now() + 30 * 60 * 1000,
       });
@@ -121,7 +146,26 @@ export class WebVpnSeatClientService {
   }
 
   async verifyToken(token: string): Promise<SeatResponse> {
-    return this.signedSeatRequest(token, 'GET', '/rest/v2/user');
+    const response = await this.signedSeatRequest(
+      token,
+      'GET',
+      '/rest/v2/user',
+    );
+    if (response.success) {
+      const session = this.sessions.get(token);
+      const data = isRecord(response.payload?.data)
+        ? response.payload.data
+        : null;
+      if (session && data) {
+        if (data.id !== undefined && data.id !== null) {
+          session.userId = String(data.id);
+        }
+        if (typeof data.username === 'string' && data.username) {
+          session.username = data.username;
+        }
+      }
+    }
+    return response;
   }
 
   async book(
@@ -130,13 +174,21 @@ export class WebVpnSeatClientService {
     candidate: SeatCandidate,
     timeoutMs: number,
   ): Promise<SeatResponse> {
-    const body = new URLSearchParams({
-      seat: candidate.seatId,
-      date,
-      startTime: String(candidate.startTime),
-      endTime: String(candidate.endTime),
-      authid: '',
-    });
+    let session = this.sessions.get(token);
+    if (!session?.userId || !session.username) {
+      const verified = await this.verifyToken(token);
+      if (!verified.success) return verified;
+      session = this.sessions.get(token);
+    }
+
+    const body = new FormData();
+    body.set('startTime', String(candidate.startTime));
+    body.set('endTime', String(candidate.endTime));
+    body.set('seat', candidate.seatId);
+    body.set('date', date);
+    body.set('userId', session?.userId || '');
+    body.set('username', session?.username || '');
+    body.set('authid', '');
     return this.signedSeatRequest(
       token,
       'POST',
@@ -371,7 +423,7 @@ export class WebVpnSeatClientService {
 
   private async exchangeSsoToken(
     client: CookieFetch,
-    proxyBase: string,
+    seatProxy: SeatProxy,
     ssoToken: string,
     signingSecret: string,
   ): Promise<string> {
@@ -380,7 +432,7 @@ export class WebVpnSeatClientService {
     const requestKey = createHmac('sha256', signingSecret)
       .update(`seat::${requestId}::${requestDate}::POST`)
       .digest('hex');
-    const url = proxyApiUrl(proxyBase, '/rest/ssoAuth', ssoToken);
+    const url = proxyApiUrl(seatProxy.baseUrl, '/rest/ssoAuth', ssoToken);
 
     const result = await this.fetchFollowing(client, url, {
       method: 'POST',
@@ -389,8 +441,8 @@ export class WebVpnSeatClientService {
         Authorization: 'null',
         'Content-Type': 'application/json',
         loginType: 'PC',
-        Origin: this.gateway.origin,
-        Referer: `${proxyBase}${this.seatAppPath}`,
+        Origin: new URL(seatProxy.serverUrl).origin,
+        Referer: `${seatProxy.serverUrl}${this.seatAppPath}`,
         'X-hmac-request-key': requestKey,
         'X-request-date': requestDate,
         'X-request-id': requestId,
@@ -420,7 +472,7 @@ export class WebVpnSeatClientService {
     token: string,
     method: 'GET' | 'POST',
     path: string,
-    body?: URLSearchParams,
+    body?: URLSearchParams | FormData,
     timeoutMs?: number,
   ): Promise<SeatResponse> {
     const session = this.sessions.get(token);
@@ -445,15 +497,17 @@ export class WebVpnSeatClientService {
       Accept: 'application/json, text/plain, */*',
       Authorization: token,
       loginType: 'PC',
-      Referer: `${session.proxyBase}${this.seatAppPath}`,
+      Referer: session.targetReferer,
       'X-hmac-request-key': requestKey,
       'X-request-date': requestDate,
       'X-request-id': requestId,
     };
     if (body) {
-      (headers as Record<string, string>)['Content-Type'] =
-        'application/x-www-form-urlencoded;charset=UTF-8';
-      (headers as Record<string, string>).Origin = this.gateway.origin;
+      (headers as Record<string, string>).Origin = session.targetOrigin;
+      if (body instanceof URLSearchParams) {
+        (headers as Record<string, string>)['Content-Type'] =
+          'application/x-www-form-urlencoded;charset=UTF-8';
+      }
     }
 
     try {
@@ -620,6 +674,21 @@ function proxyApiUrl(proxyBase: string, path: string, token: string): URL {
   const url = proxyUrl(proxyBase, path);
   url.search = `?token=${encodeURIComponent(token)}&enlink-vpn`;
   return url;
+}
+
+function extractProxyBase(pageUrl: URL, gateway: URL, appPath: string): string {
+  const normalizedPath = normalizeAppPath(appPath);
+  if (
+    pageUrl.origin !== gateway.origin ||
+    !pageUrl.pathname.startsWith('/http/webvpn') ||
+    !pageUrl.pathname.endsWith(normalizedPath)
+  ) {
+    throw new ServiceUnavailableException('学校 WebVPN 未返回自习室代理入口');
+  }
+
+  return new URL(pageUrl.pathname.slice(0, -normalizedPath.length), gateway)
+    .toString()
+    .replace(/\/$/, '');
 }
 
 function numberSetting(value: string | undefined, fallback: number): number {

@@ -2,7 +2,7 @@
 
 目标：确认新用户能否使用学校身份完成座位系统首次绑定，并拿到后续可在对应认证模式下验证和预约的业务 token。
 
-截至 2026-09-02，已有账号可在公网 VPS 上调用 `/cczukaoyan/rest/auth` 刷新 token；新账号已在本地完成 WebVPN 到座位系统的完整链路，且 VPS 已确认可以通过 WebVPN 网关直接完成动态 AES 登录。平台新增、修改、刷新和预约前刷新均先尝试 direct，凭据不被接受时自动切换为 webvpn，并持久化认证模式。脚本账号的 direct Token 刷新、`/rest/v2/user` 校验和一次真实 `freeBook` 请求已在 VPS 验证；WebVPN 回退模式仍需单独的成功回执验收。
+截至 2026-09-03，自习室两条认证路线都已在 VPS 完成真实预约验证。平台新增、修改、刷新和预约前刷新均先尝试 direct，凭据不被接受时自动切换为 webvpn，并持久化认证模式。WebVPN 路线通过网关完成校园 SSO，从 CAS 回跳动态提取 `202.195.100.14` 的代理入口，再交换、验证和使用业务 Token；用户端只填写学号和密码。
 
 ## 边界
 
@@ -30,13 +30,15 @@
 
 ```text
 学校 WebVPN 网关动态 AES 登录
-→ 门户动态返回“图书馆座位预约”代理地址
-→ 座位系统代理生成 30 秒临时 JWT
+→ 通过门户入口触发校园 SSO
+→ CAS 回跳到 `202.195.100.14` 并由 WebVPN 动态生成自习室代理入口
+→ 座位系统生成短期 SSO 授权票据
 → `/rest/ssoAuth` 换取业务 token
 → 经 WebVPN 代理调用 `/rest/v2/user` 验证
+→ 使用七字段 `multipart/form-data` 调用 `/rest/v2/freeBook`
 ```
 
-不要把校园统一身份认证密码默认等同于 `/cczukaoyan/rest/auth` 的 `password`。webvpn 模式的业务 token 也只能在 WebVPN 代理内使用，不能交给 cczukaoyan 公网租户验证。
+不要把校园统一身份认证密码默认等同于 `/cczukaoyan/rest/auth` 的 `password`。webvpn 模式的业务 Token 只能在 `202.195.100.14` 对应的 WebVPN 代理入口使用；实测将它交给 `leosys.cn/cczukaoyan` 的 PC 或 APPLET 请求都会返回业务码 `12`。
 
 MVP 只研究并实现 `self_study` 自习室模式。图书馆模式先不做，但数据模型后续应保留 `service_type`。
 
@@ -104,10 +106,11 @@ python tools/binding_discovery/analyze_capture.py tools/binding_discovery/captur
 ## 已确认结论
 
 1. 平台和脚本都使用 `/cczukaoyan/rest/auth`，平台按 direct 优先、webvpn 回退自动选择；现有一考即过凭据在 VPS 上已验证 direct 刷新和预约请求。
-2. webvpn 模式使用校园账号密码完成 WebVPN 网关动态 AES 登录，不需要 SwordAgent、Windows VM 或校园网出口。
-3. WebVPN 门户动态返回代理地址和座位系统配置；不硬编码代理哈希或签名种子。
+2. webvpn 模式使用校园账号密码完成网关登录和校园 SSO，不需要 SwordAgent、Windows VM、TUN 或修改 VPS 路由。
+3. 自习室目标固定为学校当前服务 `202.195.100.14`，WebVPN 代理哈希由 CAS 最终回跳动态提取；不硬编码代理哈希或签名种子。
 4. WebVPN Cookie 只保存在单次进程内存会话中；数据库只加密保存学校密码、业务 token 和认证模式。
 5. 05:59:50 预热会重建 WebVPN 会话，06:00 预约复用该会话；API 重启后会自动重新登录恢复。
+6. 2026-09-03 生产测试账号通过该路线在第一次尝试成功预约 5 号楼智能自习室 148 号，学校接口返回 HTTP 200、业务码 `0` 和真实回执。
 
 ## 后续实现目标
 

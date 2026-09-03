@@ -405,7 +405,7 @@ GET /api/v1/platform/health 返回 ok
 - [x] 实现学校账号 AES-256-GCM 加密保存。
 - [x] 实现已有一考即过凭据验证：调用 `/rest/auth` 和 `/rest/v2/user`。
 - [x] 保存加密 cached_token。
-- [x] 完成全新账号通过学校 WebVPN 网关换取座位系统业务 token 的实现；VPS 网关登录已验证，生产 Token 链路待最终验收。
+- [x] 完成普通校园账号通过 WebVPN 网关、校园 SSO 和动态自习室代理入口换取业务 Token；VPS 真实预约已成功。
 
 验收：
 
@@ -469,7 +469,7 @@ booking job 成功/失败都会写 booking_runs
 管理员可以创建邀请码、查看成员并启用/禁用用户
 ```
 
-已有账号的 direct Token 刷新、`/rest/v2/user` 校验和真实预约 POST 已在 VPS 验证到达学校接口；本次测试因账号已有有效预约收到业务拒绝，尚未产生新的成功回执。全新账号的 WebVPN 网关登录已在 VPS 验证，完整 `ssoAuth`、代理内 Token 验证和成功预约回执仍需单独验收。
+已有账号的 direct Token 刷新、`/rest/v2/user` 校验和真实预约 POST 已在 VPS 验证。普通校园账号的 WebVPN 网关登录、校园 SSO、动态自习室代理、`ssoAuth`、Token 验证和七字段 FormData 预约也已完成生产验收：生产测试账号在第一次尝试获得 HTTP 200、业务码 `0` 和真实预约回执。
 
 ## 测试要求
 

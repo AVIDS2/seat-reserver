@@ -825,7 +825,7 @@ seat.rglens.com {
 - [x] seat_client 模块：auth(), verifyToken()
 - [x] 日志脱敏：密码和 token 不写入日志
 - [x] 测试：加密存储、verify 成功/失败、脱敏（关键路径用 mock SeatClient 覆盖）
-- [x] 新账号 WebVPN 网关/ssoAuth 链路实现、`authMode` 数据模型和自动回退；VPS 网关登录已验证，完整生产业务链路待验收
+- [x] 普通校园账号 WebVPN 网关、校园 SSO、动态自习室代理、ssoAuth 和真实预约链路已在 VPS 验证
 
 **验收**：已有一考即过凭据 direct verify 成功；普通校园账号自动回退 WebVPN 并 verify 成功；错误凭据失败；DB 中无明文凭据；日志中无明文 token。校园密码不会被默认视为 `/rest/auth` password。
 
@@ -870,7 +870,7 @@ seat.rglens.com {
 - [x] 运行日志页：按任务筛选、详情展示
 - [x] 管理员页：邀请码管理、用户列表、全局概览
 
-**验收**：平台账号注册到创建任务全流程可用；管理员可创建邀请码；direct 与 webvpn 学校账号均可绑定和刷新。webvpn 预约 POST 仍需运营者使用测试任务完成一次最终业务验收。
+**验收**：平台账号注册到创建任务全流程可用；管理员可创建邀请码；direct 与 webvpn 学校账号均可绑定、刷新并完成真实预约。2026-09-03 的 webvpn 生产测试在第一次尝试成功并获得学校回执。
 
 ### Phase 7: 打磨和文档（1-2 天）
 
