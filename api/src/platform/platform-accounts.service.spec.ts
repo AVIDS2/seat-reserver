@@ -44,12 +44,17 @@ describe('PlatformAccountsService', () => {
     const crypto = {
       encrypt: jest.fn((value: string) => `encrypted:${value}`),
     };
+    const serviceConnections = {
+      saveAuthenticated: jest.fn(() => Promise.resolve({})),
+      listForAccount: jest.fn(() => Promise.resolve([])),
+    };
 
     const service = new PlatformAccountsService(
       accounts,
       tasks,
       crypto as never,
       { authenticate, verifyToken } as never,
+      serviceConnections as never,
     );
 
     await service.create(7, {
@@ -76,6 +81,7 @@ describe('PlatformAccountsService', () => {
     const service = new PlatformAccountsService(
       accounts,
       tasks,
+      {} as never,
       {} as never,
       {} as never,
     );

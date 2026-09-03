@@ -14,6 +14,7 @@ import { SchoolAccountEntity } from './entities/school-account.entity';
 import { BookingTaskEntity } from './entities/booking-task.entity';
 import { PlatformCryptoService } from './platform-crypto.service';
 import { SchoolAuthenticationService } from './school-authentication.service';
+import { PlatformServiceConnectionsService } from './platform-service-connections.service';
 
 export type SchoolAccountView = {
   id: string;
@@ -25,6 +26,11 @@ export type SchoolAccountView = {
   refreshedAt: string;
   lastVerifiedAt: string;
   tasks: number;
+  services: Array<{
+    type: 'study_room' | 'library';
+    status: 'connected' | 'attention' | 'not_connected';
+    label: string;
+  }>;
 };
 
 @Injectable()
@@ -36,6 +42,7 @@ export class PlatformAccountsService {
     private readonly tasks: Repository<BookingTaskEntity>,
     private readonly crypto: PlatformCryptoService,
     private readonly schoolAuth: SchoolAuthenticationService,
+    private readonly serviceConnections: PlatformServiceConnectionsService,
   ) {}
 
   async list(userId: number): Promise<SchoolAccountView[]> {
@@ -78,7 +85,14 @@ export class PlatformAccountsService {
       user: { id: userId } as UserEntity,
     });
 
-    return this.toView(await this.accounts.save(account));
+    const saved = await this.accounts.save(account);
+    await this.serviceConnections.saveAuthenticated(
+      saved,
+      'study_room',
+      authenticated.token,
+      authenticated.mode,
+    );
+    return this.toView(saved);
   }
 
   async refresh(userId: number, id: number): Promise<SchoolAccountView> {
@@ -101,7 +115,14 @@ export class PlatformAccountsService {
       account.tokenRefreshedAt = new Date();
       account.lastVerifiedAt = new Date();
       account.status = 'active';
-      return this.toView(await this.accounts.save(account));
+      const saved = await this.accounts.save(account);
+      await this.serviceConnections.saveAuthenticated(
+        saved,
+        'study_room',
+        authenticated.token,
+        authenticated.mode,
+      );
+      return this.toView(saved);
     } catch (error: unknown) {
       account.encryptedToken = null;
       account.status = 'attention';
@@ -148,6 +169,12 @@ export class PlatformAccountsService {
       account.tokenRefreshedAt = new Date();
       account.lastVerifiedAt = new Date();
       account.status = 'active';
+      await this.serviceConnections.saveAuthenticated(
+        account,
+        'study_room',
+        authenticated.token,
+        authenticated.mode,
+      );
     }
     account.label = label;
     return this.toView(await this.accounts.save(account));
@@ -186,6 +213,16 @@ export class PlatformAccountsService {
         ? `${username.slice(0, 3)}******${username.slice(-2)}`
         : '******';
     const connected = account.status === 'active' && !!account.encryptedToken;
+    const connections = await this.serviceConnections.listForAccount(
+      account.id,
+    );
+    const serviceStatus = (type: 'study_room' | 'library') => {
+      const connection = connections.find((item) => item.serviceType === type);
+      if (!connection) return 'not_connected' as const;
+      return connection.status === 'active' && connection.encryptedToken
+        ? ('connected' as const)
+        : ('attention' as const);
+    };
 
     return {
       id: String(account.id),
@@ -193,10 +230,22 @@ export class PlatformAccountsService {
       username: masked,
       status: connected ? 'connected' : 'attention',
       statusLabel: connected ? '连接正常' : '需要关注',
-      tokenLabel: connected ? 'Token 已缓存' : 'Token 不可用',
+      tokenLabel: connected ? '连接可用' : '需要重新连接',
       refreshedAt: formatDate(account.tokenRefreshedAt),
       lastVerifiedAt: formatDate(account.lastVerifiedAt),
       tasks,
+      services: [
+        {
+          type: 'study_room',
+          status: serviceStatus('study_room'),
+          label: '自习室',
+        },
+        {
+          type: 'library',
+          status: serviceStatus('library'),
+          label: '图书馆',
+        },
+      ],
     };
   }
 }

@@ -2,8 +2,8 @@
 
 | 文档 | 用途 | 状态 |
 |---|---|---|
-| [planning/platform-mvp.md](planning/platform-mvp.md) | 平台 MVP 范围、技术栈、阶段任务和验收标准 | direct 与 WebVPN 自习室链路均已真实预约验证 |
-| [planning/architecture-proposal.md](planning/architecture-proposal.md) | 平台架构、数据模型、接口和部署取舍 | 已确定，持续更新 |
+| [planning/platform-mvp.md](planning/platform-mvp.md) | 平台范围、技术栈、阶段任务和验收标准 | 自习室生产可用，图书馆实时目录已接入 |
+| [planning/architecture-proposal.md](planning/architecture-proposal.md) | 平台架构、数据模型、接口和部署取舍 | 多服务连接与实时座位图已落地 |
 | [planning/account-binding-research.md](planning/account-binding-research.md) | 登录、绑定和授权链路的协议结论与安全边界 | 自习室双认证链路已确认并投产 |
 | [deployment/platform.md](deployment/platform.md) | 平台生产部署、使用、自动执行和 Reqable 采集 | 当前部署说明 |
 | [superpowers/specs/2026-06-09-vps-telegram-bot-design.md](superpowers/specs/2026-06-09-vps-telegram-bot-design.md) | VPS Telegram bot V1 设计 | 设计稿 |

@@ -4,36 +4,36 @@ import type { GridFeature } from './components/FeaturesGrid';
 
 export const features: GridFeature[] = [
   {
-    name: '授权自动保持',
-    description: '每天开放前先验证缓存授权，失效时用已保存的学校账号重新完成登录。',
+    name: '持续在线',
+    description: '连接一次校园账号，平台持续维护可用状态，不必每天重复操作。',
     icon: <Icons.shield className='size-7' />,
     href: '#account-feature',
     size: 'medium'
   },
   {
     name: '候选策略',
-    description: '主座位、备选座位和多个时间段按你设定的顺序尝试。',
+    description: '在可视化座位图中安排偏好，让每次预约都按你的选择执行。',
     icon: <Icons.target className='size-7' />,
     href: '#strategy-feature',
     size: 'medium'
   },
   {
-    name: '北京时间调度',
-    description: '固定窗口自动预热，预约开放后进入短时策略执行。',
+    name: '准时执行',
+    description: '紧贴各场馆开放时间，在关键窗口自动完成准备与提交。',
     icon: <Icons.clock className='size-7' />,
     href: '#flow',
     size: 'medium'
   },
   {
-    name: 'WebVPN 兼容',
-    description: '支持校园网网关链路，正常完成学校账号授权与业务 Token 交换。',
+    name: '多场馆连接',
+    description: '同一校园账号连接不同预约服务，在一个工作台统一管理。',
     icon: <Icons.globe className='size-7' />,
     href: '#account-feature',
     size: 'medium'
   },
   {
-    name: '个人数据隔离',
-    description: '账号、任务、运行记录和通知只属于当前用户，管理员也只看到脱敏视图。',
+    name: '只属于你的空间',
+    description: '账号、偏好、任务和运行结果彼此隔离，敏感信息始终受到保护。',
     icon: <Icons.lock className='size-7' />,
     href: '#account-feature',
     size: 'medium',
@@ -41,35 +41,35 @@ export const features: GridFeature[] = [
   },
   {
     name: '运行日志',
-    description: '成功、失败、跳过和异常都留下可追踪的运行记录。',
+    description: '从准备到回执完整记录，任何结果都有清晰的时间线。',
     icon: <Icons.history className='size-7' />,
     href: '#runs-feature',
     size: 'medium'
   },
   {
-    name: '候选顺序明确',
-    description: '每个任务的尝试顺序和时间窗口都可以单独调整。',
+    name: '灵活偏好',
+    description: '座位、空间、日期和时间都可自由组合，满足不同学习安排。',
     icon: <Icons.list className='size-7' />,
     href: '#strategy-feature',
     size: 'medium'
   },
   {
-    name: '失败可解释',
-    description: '失败原因、接口回执和最终状态不会藏在脚本输出里。',
+    name: '状态清晰',
+    description: '无需翻找记录，关键状态与下一步处理直接呈现在界面中。',
     icon: <Icons.info className='size-7' />,
     href: '#runs-feature',
     size: 'small'
   },
   {
-    name: '一键验证',
-    description: '只验证账号和候选配置，不发送真实预约请求。',
+    name: '安心检查',
+    description: '正式执行前检查账号与预约偏好，提前发现需要处理的问题。',
     icon: <Icons.refresh className='size-7' />,
     href: '#account-feature',
     size: 'small'
   },
   {
-    name: '管理员工作台',
-    description: '邀请码、成员状态和全局运行健康度集中查看。',
+    name: '统一工作台',
+    description: '从账号连接到预约回执，所有重要信息都集中在同一处。',
     icon: <Icons.dashboard className='size-7' />,
     href: '#admin-feature',
     size: 'medium'
@@ -91,7 +91,7 @@ export const examples = [
   },
   {
     name: '任务策略',
-    description: '主座位、备选座位和时间候选顺序',
+    description: '在实时座位图中安排你的首选与备选',
     imageSrc: '/landing/seat-strategy.svg',
     href: '#strategy-feature'
   },
@@ -109,7 +109,7 @@ export const testimonials = [
     role: '先验证，再执行',
     avatarSrc: '/landing/seat-accounts.svg',
     socialUrl: '#account-feature',
-    quote: '学校账号只在服务端完成认证，浏览器端只展示连接状态和最后验证时间。'
+    quote: '连接校园账号后，预约所需的准备工作交给平台，重要状态始终清晰可见。'
   },
   {
     name: '候选策略',
@@ -123,7 +123,7 @@ export const testimonials = [
     role: '每次都有回执',
     avatarSrc: '/landing/seat-runs.svg',
     socialUrl: '#runs-feature',
-    quote: '预约成功、Token 预热、失败原因和最终回执都集中在运行记录中，结果清楚可核对。'
+    quote: '预约准备、提交结果和最终回执集中在时间线中，每一次执行都清楚可核对。'
   }
 ];
 
@@ -138,13 +138,13 @@ export const faqs = [
     id: 2,
     question: '学校账号密码会展示在浏览器或日志里吗？',
     answer:
-      '不会。学校密码和业务 Token 在服务端加密保存，浏览器只显示脱敏后的账号状态，运行日志也不会记录敏感值。'
+      '不会。学校密码和授权凭证加密保存在服务端，浏览器只显示脱敏后的连接状态，运行记录也不会保存敏感值。'
   },
   {
     id: 3,
-    question: 'Token 失效后需要手动处理吗？',
+    question: '连接失效后需要每天重新登录吗？',
     answer:
-      '不需要。预约前系统会先验证缓存授权；失效时使用已保存的学校账号重新登录，并重新建立必要的校园网网关会话。'
+      '通常不需要。平台会在预约前检查连接状态，并在需要时使用已保存的校园账号重新建立授权。遇到学校要求人工验证时，控制台会明确提醒。'
   },
   {
     id: 4,

@@ -4,7 +4,7 @@
 
 ## 当前进度
 
-2026-08-31 已在 `web/` 引入 Kiranism Next.js Dashboard Starter，并完成预约控制台页面。2026-09-01 已将 brocoders NestJS 后端导入 `api/`，完成平台认证、邀请码、学校账号加密、预约任务、运行记录、Redis/BullMQ 队列、Nest Schedule 调度和真实 API 接入；随后完成最终交付审计：关闭模板遗留公开注册入口，补齐数据库租户复合约束、运行幂等索引、停用任务跳过、管理员全局脱敏视图和服务端刷新并发保护。2026-09-02 已将 OpenSaaS 的原始落地页组件树直接迁入 `web/src/features/landing/opensaas`，保留 Hero/Orbit、ExamplesCarousel、HighlightedFeature、FeaturesGrid、Roadmap、Testimonials、FAQ 和 Footer 的结构，再适配平台业务、Next.js 路由和认证入口；默认主题定为 `Claude`，产品 UI 资产加入状态动画，FAQ 使用 `grid-template-rows` 平滑收展；认证页保留模板的动态网格视觉，登录后重复访问认证地址会回到控制台。平台认证/预约链路随后改为脚本同款 direct 优先、webvpn 回退，账号 1 已在 VPS 完成真实 Token 刷新、用户校验和 `freeBook` 业务请求验证。`docker-compose.platform.yml` 提供 PostgreSQL、Redis、API、Web 的生产编排。根目录 CLI 与 VPS cron 继续独立作为现行生产抢座链路。
+2026-09-03 平台加入统一实时场馆目录和可视化座位图：楼栋、空间、日期、座位号、占用状态均来自学校接口，系统 ID 不再暴露给普通用户。一个校园账号可建立彼此独立的自习室与图书馆服务连接，任务支持每日或指定日期执行。自习室自动预约链路保持生产可用；图书馆目录、布局和时间数据已经接通，但学校当前开启预约验证码，因此图书馆任务在完成人工验证流程前保存为暂停状态，不宣称无人值守执行。
 
 前端底座决策：使用 Next.js 16、Tailwind CSS 4、shadcn/ui、TanStack Query/Table、Motion 和 Tabler Icons。后端底座决策：使用 NestJS 11、TypeORM、PostgreSQL、JWT/HttpOnly Cookie、Swagger 和 Docker；预约执行层使用 Redis + BullMQ，并由 Nest Schedule 生成每日任务。生产模式下前端通过同域 `/api/v1` 访问 API，真实预约请求不会进入浏览器。
 
@@ -12,19 +12,23 @@
 
 构建一个邀请制抢座任务管理平台，让用户通过平台账号登录后，配置自己的学校账号、目标座位、时间段和备选策略。系统每天自动预热 token，并在预约开放时间执行任务。
 
-首版只支持当前“一考即过座位预约”小程序接口：
+当前支持两套彼此独立的校园座位服务：
 
 ```text
 GET  /cczukaoyan/rest/auth?username=...&password=...
 GET  /cczukaoyan/rest/v2/user
 POST /cczukaoyan/rest/v2/freeBook
+
+GET  /cczu/rest/v2/free/filters
+GET  /cczu/rest/v2/room/layoutByDate/{room}/{date}
+GET  /cczu/rest/v2/startTimesForSeat/{seat}/{date}
 ```
 
 ## 非目标
 
 - 不做验证码绕过、风控绕过、签名逆向或高频刷接口。
 - 不做公开注册，必须邀请码注册。
-- 不做多学校通用适配，首版只支持当前学校/场馆链路。
+- 不做多学校通用适配，当前先覆盖本校自习室与图书馆两套服务。
 - 不替换当前 VPS cron 版，平台先独立开发和部署。
 
 ## 推荐技术栈
@@ -182,7 +186,7 @@ updated_at
 
 ### 座位图规划
 
-拿到学校真实布局数据后，前端按“楼栋 → 场馆类型 → 房间 → 日期 → 时间段”筛选，再在座位图上选择座位。每个座位同时保存展示号和学校系统 ID；展示号用于用户识别，系统 ID 只作为预约请求参数。
+前端按“预约系统 → 楼栋 → 空间 → 日期 → 时间段”读取学校实时目录，再在座位图上选择座位。每个座位同时保存展示号和学校系统 ID；展示号用于用户识别，系统 ID 只作为预约请求参数。
 
 座位图至少需要支持 `available`（可选）、`selected`（当前选择）、`reserved`（学校已预约）、`unavailable`（不可用）和 `unknown`（尚未获取状态）五种状态。`reserved` 必须来自指定日期和时间段的学校接口数据，不能用平台自己的运行记录推断；同一座位在不同时间段可以呈现不同状态。用户自己的已预约记录应单独显示“我的预约”，避免与他人占用混淆。
 

@@ -7,7 +7,7 @@ export function Runs() {
     <HighlightedFeature
       id='runs-feature'
       name='每一次运行，都有清楚的结果。'
-      description='Token 预热、预约尝试、成功回执和失败原因都会写进运行记录。你不需要翻脚本日志，就能知道系统做了什么。'
+      description='连接准备、预约尝试、成功回执和失败原因都会写进运行记录。打开工作台，就能知道每一步发生了什么。'
       highlightedComponent={<RunsExample />}
       direction='row-reverse'
     />
@@ -37,7 +37,7 @@ function RunsExample() {
         <RunRow
           icon={<Icons.shield />}
           title='授权预热'
-          detail='缓存 Token 验证通过，未触发重新登录'
+          detail='校园账号连接正常，预约准备完成'
           time='05:59:50'
           tone='active'
         />

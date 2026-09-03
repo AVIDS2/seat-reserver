@@ -1,7 +1,7 @@
 export type TaskStatus = 'enabled' | 'paused' | 'attention';
 export type RunStatus = 'success' | 'failed' | 'prewarming' | 'running' | 'pending' | 'skipped';
 export type AccountStatus = 'connected' | 'attention';
-export type VenueType = 'library' | 'study_room' | 'other';
+export type VenueType = 'library' | 'study_room';
 
 export type TimeCandidate = { start: number; end: number };
 
@@ -11,6 +11,10 @@ export type BookingTask = {
   venueType: VenueType;
   building: string;
   roomName: string;
+  buildingId: string | null;
+  roomId: string | null;
+  scheduleMode: 'daily' | 'once';
+  targetDate: string | null;
   seatLabel: string | null;
   account: string;
   accountId: string;
@@ -21,6 +25,7 @@ export type BookingTask = {
   status: TaskStatus;
   enabled: boolean;
   backupSeatIds: string[];
+  backupSeatLabels: string[];
   timeCandidates: TimeCandidate[];
   maxAttempts: number;
   attemptDelaySeconds: number;
@@ -41,6 +46,49 @@ export type BookingAccount = {
   refreshedAt: string;
   lastVerifiedAt: string;
   tasks: number;
+  services: Array<{
+    type: VenueType;
+    status: 'connected' | 'attention' | 'not_connected';
+    label: string;
+  }>;
+};
+
+export type SeatCatalog = {
+  serviceType: VenueType;
+  buildings: Array<{ id: string; name: string }>;
+  rooms: Array<{ id: string; name: string; buildingId: string; floor: number }>;
+  dates: string[];
+  captchaRequired: boolean;
+  hours: number;
+};
+
+export type SeatNode = {
+  key: string;
+  row: number;
+  col: number;
+  kind: string;
+  id: string | null;
+  label: string | null;
+  status: 'available' | 'reserved' | 'away' | 'unavailable' | 'mine' | 'unknown';
+  power: boolean;
+  window: boolean;
+  computer: boolean;
+  enabled: boolean;
+  direction: number;
+};
+
+export type SeatLayout = {
+  serviceType: VenueType;
+  room: { id: string; name: string | null };
+  rows: number;
+  cols: number;
+  nodes: SeatNode[];
+  refreshedAt: string;
+};
+
+export type SeatTimes = {
+  startTimes: Array<{ id: string; label: string }>;
+  endTimes: Array<{ id: string; label: string }>;
 };
 
 export type BookingRun = {

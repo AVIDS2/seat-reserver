@@ -22,6 +22,8 @@ export type SeatCandidate = {
   endTime: number;
 };
 
+export type SeatServiceType = 'study_room' | 'library';
+
 @Injectable()
 export class SeatClientService {
   private readonly apiUrl =
@@ -90,6 +92,10 @@ export class SeatClientService {
       body,
       timeoutMs,
     });
+  }
+
+  async get(token: string, path: string): Promise<SeatResponse> {
+    return this.request(new URL(path, this.userUrl), { token });
   }
 
   buildCandidates(

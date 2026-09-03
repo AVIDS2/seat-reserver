@@ -5,12 +5,12 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { PlatformCryptoService } from './platform-crypto.service';
 import { BookingRunEntity } from './entities/booking-run.entity';
 import { BookingTaskEntity } from './entities/booking-task.entity';
 import { SchoolAccountEntity } from './entities/school-account.entity';
 import { SeatClientService } from './seat-client.service';
 import { SchoolAuthenticationService } from './school-authentication.service';
+import { PlatformServiceConnectionsService } from './platform-service-connections.service';
 import { PlatformNotificationsService } from './platform-notifications.service';
 import { PlatformRedisService } from './platform-redis.service';
 import { StatusEnum } from '../statuses/statuses.enum';
@@ -24,9 +24,9 @@ export class PlatformBookingExecutor {
     private readonly tasks: Repository<BookingTaskEntity>,
     @InjectRepository(SchoolAccountEntity)
     private readonly accounts: Repository<SchoolAccountEntity>,
-    private readonly crypto: PlatformCryptoService,
     private readonly seatClient: SeatClientService,
     private readonly schoolAuth: SchoolAuthenticationService,
+    private readonly serviceConnections: PlatformServiceConnectionsService,
     private readonly notifications: PlatformNotificationsService,
     private readonly redis: PlatformRedisService,
   ) {}
@@ -74,7 +74,12 @@ export class PlatformBookingExecutor {
 
   private async executePrewarm(run: BookingRunEntity): Promise<void> {
     const account = await this.getAccount(run);
-    await this.refreshAccount(account);
+    const task = await this.getTask(run);
+    await this.serviceConnections.ensureReady(
+      account,
+      serviceType(task.venueType),
+      true,
+    );
     run.status = 'success';
     run.finishedAt = new Date();
     run.attemptsUsed = 1;
@@ -106,19 +111,16 @@ export class PlatformBookingExecutor {
       await this.runs.save(run);
       return;
     }
-    let token = account.encryptedToken
-      ? account.status === 'active'
-        ? this.crypto.decrypt(account.encryptedToken)
-        : null
-      : null;
-
-    if (
-      !token ||
-      !(await this.schoolAuth.verifyToken(token, account.authMode || 'direct'))
-        .success
-    ) {
-      token = await this.refreshAccount(account);
+    if (task.venueType === 'library') {
+      throw new UnprocessableEntityException(
+        '图书馆当前要求预约前完成验证码验证，请在控制台手动确认后提交',
+      );
     }
+    const service = await this.serviceConnections.ensureReady(
+      account,
+      'study_room',
+    );
+    const token = service.token;
 
     const candidates = this.seatClient.buildCandidates(
       task.primarySeatId,
@@ -144,6 +146,7 @@ export class PlatformBookingExecutor {
         run.targetDate,
         candidate,
         timeoutMs,
+        'study_room',
       );
       run.attemptsUsed = index + 1;
       run.httpStatus = response.httpStatus;
@@ -163,6 +166,10 @@ export class PlatformBookingExecutor {
         run.reservedBegin = stringValue(data.begin);
         run.reservedEnd = stringValue(data.end);
         await this.runs.save(run);
+        if (task.scheduleMode === 'once') {
+          task.enabled = false;
+          await this.tasks.save(task);
+        }
         await this.notify(
           run.userId,
           'booking_success',
@@ -211,35 +218,6 @@ export class PlatformBookingExecutor {
     }
   }
 
-  private async refreshAccount(account: SchoolAccountEntity): Promise<string> {
-    try {
-      const password = this.crypto.decrypt(account.encryptedSchoolPassword);
-      const authenticated = await this.schoolAuth.authenticate(
-        account.schoolUsername,
-        password,
-      );
-      const verified = await this.schoolAuth.verifyToken(
-        authenticated.token,
-        authenticated.mode,
-      );
-      if (!verified.success) {
-        throw new UnprocessableEntityException('学校账号 Token 验证失败');
-      }
-      account.encryptedToken = this.crypto.encrypt(authenticated.token);
-      account.authMode = authenticated.mode;
-      account.tokenRefreshedAt = new Date();
-      account.lastVerifiedAt = new Date();
-      account.status = 'active';
-      await this.accounts.save(account);
-      return authenticated.token;
-    } catch (error: unknown) {
-      account.status = 'attention';
-      account.encryptedToken = null;
-      await this.accounts.save(account);
-      throw error;
-    }
-  }
-
   private async getAccount(
     run: BookingRunEntity,
   ): Promise<SchoolAccountEntity> {
@@ -256,6 +234,12 @@ export class PlatformBookingExecutor {
     if (!task) throw new NotFoundException('预约任务不存在');
     return task;
   }
+}
+
+function serviceType(
+  venueType: BookingTaskEntity['venueType'],
+): 'study_room' | 'library' {
+  return venueType === 'library' ? 'library' : 'study_room';
 }
 
 function stringValue(value: unknown): string | null {

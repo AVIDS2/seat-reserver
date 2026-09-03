@@ -63,6 +63,28 @@ export class CreateBookingTaskDto {
   @MaxLength(120)
   roomName?: string;
 
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  @MaxLength(30)
+  buildingId?: string | null;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  @MaxLength(30)
+  roomId?: string | null;
+
+  @ApiProperty({ enum: ['daily', 'once'], required: false })
+  @IsOptional()
+  @IsIn(['daily', 'once'])
+  scheduleMode?: 'daily' | 'once';
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsDateString()
+  targetDate?: string | null;
+
   @ApiProperty({ example: '197' })
   @IsString()
   @IsNotEmpty()
@@ -87,6 +109,14 @@ export class CreateBookingTaskDto {
   @ArrayMaxSize(30)
   @ArrayUnique()
   backupSeatIds?: string[];
+
+  @ApiProperty({ example: ['45'], required: false, default: [] })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  @MaxLength(30, { each: true })
+  @ArrayMaxSize(30)
+  backupSeatLabels?: string[];
 
   @ApiProperty({
     type: () => [TimeCandidateDto],

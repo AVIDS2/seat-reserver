@@ -8,7 +8,11 @@ describe('SchoolAuthenticationService', () => {
       Promise.reject(new UnprocessableEntityException('direct failed')),
     );
     const webVpnAuthenticate = jest.fn<
-      (username: string, password: string) => Promise<{ token: string }>
+      (
+        username: string,
+        password: string,
+        serviceType?: 'study_room' | 'library',
+      ) => Promise<{ token: string }>
     >(() => Promise.resolve({ token: 'webvpn-token' }));
     const service = new SchoolAuthenticationService(
       { authenticate: directAuthenticate } as never,
@@ -19,7 +23,11 @@ describe('SchoolAuthenticationService', () => {
       token: 'webvpn-token',
       mode: 'webvpn',
     });
-    expect(webVpnAuthenticate).toHaveBeenCalledWith('student', 'password');
+    expect(webVpnAuthenticate).toHaveBeenCalledWith(
+      'student',
+      'password',
+      'study_room',
+    );
   });
 
   it('should prefer direct authentication when credentials are accepted', async () => {

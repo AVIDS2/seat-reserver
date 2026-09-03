@@ -2,6 +2,7 @@ import { Injectable, UnprocessableEntityException } from '@nestjs/common';
 import { SeatClientService } from './seat-client.service';
 import { WebVpnSeatClientService } from './webvpn-seat-client.service';
 import type { SeatCandidate, SeatResponse } from './seat-client.service';
+import type { SeatServiceType } from './entities/school-service-connection.entity';
 
 export type SchoolAuthMode = 'direct' | 'webvpn';
 
@@ -26,12 +27,13 @@ export class SchoolAuthenticationService {
     username: string,
     password: string,
     mode?: SchoolAuthMode,
+    serviceType: SeatServiceType = 'study_room',
   ): Promise<SchoolAuthenticationResult> {
-    const key = `${mode || 'auto'}:${username}`;
+    const key = `${serviceType}:${mode || 'auto'}:${username}`;
     const current = this.authenticationFlights.get(key);
     if (current) return current;
 
-    const flight = this.authenticateOnce(username, password, mode);
+    const flight = this.authenticateOnce(username, password, mode, serviceType);
     this.authenticationFlights.set(key, flight);
     try {
       return await flight;
@@ -46,7 +48,16 @@ export class SchoolAuthenticationService {
     username: string,
     password: string,
     mode?: SchoolAuthMode,
+    serviceType: SeatServiceType = 'study_room',
   ): Promise<SchoolAuthenticationResult> {
+    if (serviceType === 'library') {
+      const result = await this.webVpnSeatClient.authenticate(
+        username,
+        password,
+        serviceType,
+      );
+      return { token: result.token, mode: 'webvpn' };
+    }
     if (mode === 'direct') {
       const result = await this.seatClient.authenticate(username, password);
       return { token: result.token, mode };
@@ -55,6 +66,7 @@ export class SchoolAuthenticationService {
       const result = await this.webVpnSeatClient.authenticate(
         username,
         password,
+        serviceType,
       );
       return { token: result.token, mode };
     }
@@ -67,6 +79,7 @@ export class SchoolAuthenticationService {
       const result = await this.webVpnSeatClient.authenticate(
         username,
         password,
+        serviceType,
       );
       return { token: result.token, mode: 'webvpn' };
     }
@@ -75,8 +88,9 @@ export class SchoolAuthenticationService {
   async verifyToken(
     token: string,
     mode: SchoolAuthMode,
+    serviceType: SeatServiceType = 'study_room',
   ): Promise<SeatResponse> {
-    return mode === 'webvpn'
+    return mode === 'webvpn' || serviceType === 'library'
       ? this.webVpnSeatClient.verifyToken(token)
       : this.seatClient.verifyToken(token);
   }
@@ -87,9 +101,21 @@ export class SchoolAuthenticationService {
     date: string,
     candidate: SeatCandidate,
     timeoutMs: number,
+    serviceType: SeatServiceType = 'study_room',
   ): Promise<SeatResponse> {
-    return mode === 'webvpn'
+    return mode === 'webvpn' || serviceType === 'library'
       ? this.webVpnSeatClient.book(token, date, candidate, timeoutMs)
       : this.seatClient.book(token, date, candidate, timeoutMs);
+  }
+
+  async get(
+    token: string,
+    mode: SchoolAuthMode,
+    path: string,
+    serviceType: SeatServiceType = 'study_room',
+  ): Promise<SeatResponse> {
+    return mode === 'webvpn' || serviceType === 'library'
+      ? this.webVpnSeatClient.get(token, path)
+      : this.seatClient.get(token, path);
   }
 }

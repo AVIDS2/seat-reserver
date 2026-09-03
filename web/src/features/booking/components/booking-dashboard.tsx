@@ -116,20 +116,33 @@ export default function BookingDashboard({ initialData }: { initialData: Booking
           className='flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between'
         >
           <div>
-            <p className='text-muted-foreground mb-2 text-sm'>{formatDateLabel(summary.executionDate)}</p>
+            <p className='text-muted-foreground mb-2 text-sm'>
+              {formatDateLabel(summary.executionDate)}
+            </p>
             <h1 className='text-2xl font-semibold tracking-tight sm:text-3xl'>
               早上好，准备好下一次预约了吗？
             </h1>
             <p className='text-muted-foreground mt-2 max-w-2xl text-sm leading-6'>
-              {summary.enabledTasks > 0 ? `你的 ${summary.enabledTasks} 个启用任务已排程。系统会在开放时间自动预热账号，并按候选策略完成预约。` : '还没有启用任务，先去配置一个明早的预约策略。'}
+              {summary.enabledTasks > 0
+                ? `你的 ${summary.enabledTasks} 个启用任务已排程。系统会在开放时间自动预热账号，并按候选策略完成预约。`
+                : '还没有启用任务，先去配置一个明早的预约策略。'}
             </p>
           </div>
           <div className='grid grid-cols-2 gap-2 sm:flex'>
-            <Button className='w-full sm:w-auto' variant='outline' onClick={refreshData} disabled={isRefreshing}>
+            <Button
+              className='w-full sm:w-auto'
+              variant='outline'
+              onClick={refreshData}
+              disabled={isRefreshing}
+            >
               <Icons.refresh className={cn(isRefreshing && 'animate-spin')} />
               {isRefreshing ? '刷新中' : '刷新状态'}
             </Button>
-            <Link href='/dashboard/tasks' className={cn(buttonVariants(), 'w-full sm:w-auto')} aria-label='新建预约任务'>
+            <Link
+              href='/dashboard/tasks'
+              className={cn(buttonVariants(), 'w-full sm:w-auto')}
+              aria-label='新建预约任务'
+            >
               <Icons.add />
               新建任务
             </Link>
@@ -144,7 +157,12 @@ export default function BookingDashboard({ initialData }: { initialData: Booking
             icon={Icons.target}
             accent='success'
           />
-          <MetricCard label='下次执行' value={summary.executionTime} detail='北京时间 · 每日开放' icon={Icons.clock} />
+          <MetricCard
+            label='下次执行'
+            value={summary.executionTime}
+            detail='北京时间 · 每日开放'
+            icon={Icons.clock}
+          />
           <MetricCard
             label='近 7 日成功率'
             value={summary.successRate === null ? '暂无' : `${summary.successRate}%`}
@@ -155,7 +173,7 @@ export default function BookingDashboard({ initialData }: { initialData: Booking
           <MetricCard
             label='账号状态'
             value={`${summary.connectedAccounts} / ${summary.totalAccounts}`}
-            detail={summary.totalAccounts ? 'Token 验证通过 / 总账号' : '尚未接入学校账号'}
+            detail={summary.totalAccounts ? '连接正常 / 总账号' : '尚未接入学校账号'}
             icon={Icons.shield}
             accent='success'
           />
@@ -191,7 +209,9 @@ export default function BookingDashboard({ initialData }: { initialData: Booking
                   </div>
                   <div>
                     <p className='text-muted-foreground text-xs'>执行窗口</p>
-                    <p className='mt-1 font-medium tabular-nums'>{summary.bookingWindowSeconds || '-'} 秒</p>
+                    <p className='mt-1 font-medium tabular-nums'>
+                      {summary.bookingWindowSeconds || '-'} 秒
+                    </p>
                   </div>
                   <div>
                     <p className='text-muted-foreground text-xs'>执行任务</p>
@@ -205,7 +225,9 @@ export default function BookingDashboard({ initialData }: { initialData: Booking
               </div>
             </CardContent>
             <CardFooter className='justify-between gap-4'>
-              <p className='text-muted-foreground text-xs'>最后检查：{formatDateTime(summary.lastCheckedAt)}</p>
+              <p className='text-muted-foreground text-xs'>
+                最后检查：{formatDateTime(summary.lastCheckedAt)}
+              </p>
               <Link
                 href='/dashboard/tasks'
                 className={buttonVariants({ variant: 'ghost', size: 'sm' })}
@@ -294,7 +316,14 @@ function formatDateTime(value: string): string {
   });
 }
 
-function formatLocation(building: string, venueType: BookingTask['venueType'], roomName: string): string {
+function formatLocation(
+  building: string,
+  venueType: BookingTask['venueType'],
+  roomName: string
+): string {
   const venue = { library: '图书馆', study_room: '自习室', other: '其他' }[venueType];
-  return [building, venue, roomName].filter((value) => value && value !== '未指定').join(' · ') || '位置未设置';
+  return (
+    [building, venue, roomName].filter((value) => value && value !== '未指定').join(' · ') ||
+    '位置未设置'
+  );
 }

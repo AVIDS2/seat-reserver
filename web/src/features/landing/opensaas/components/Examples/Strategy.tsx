@@ -6,8 +6,8 @@ export function Strategy() {
   return (
     <HighlightedFeature
       id='strategy-feature'
-      name='候选顺序，按你的策略执行。'
-      description='先选主座位，再配置备选座位和时间段。每个任务有自己的尝试顺序、最大次数和错峰参数，系统会在预约窗口内按配置执行。'
+      name='你选位置，平台记住偏好。'
+      description='从实时座位图中选定首选与备选，再安排日期和时间。位置变化、可用状态和执行顺序都以直观的方式呈现。'
       highlightedComponent={<StrategyExample />}
     />
   );
@@ -21,16 +21,16 @@ function StrategyExample() {
           <p className='text-muted-foreground text-xs font-medium tracking-[0.16em] uppercase'>
             Booking plan
           </p>
-          <p className='mt-2 text-lg font-semibold'>5号楼智能自习室</p>
+          <p className='mt-2 text-lg font-semibold'>今日学习计划</p>
         </div>
         <span className='bg-emerald-500/10 text-emerald-700 rounded-full px-3 py-1.5 text-xs font-medium'>
           已启用
         </span>
       </div>
       <div className='mt-6 space-y-3'>
-        <CandidateRow order='01' title='座位 044' detail='18:00 — 22:00 / 主座位' active />
-        <CandidateRow order='02' title='座位 045' detail='18:00 — 22:00 / 备选座位' />
-        <CandidateRow order='03' title='座位 046' detail='14:00 — 22:00 / 备选时间段' />
+        <CandidateRow order='01' title='靠窗座位' detail='18:00 — 22:00 / 首选位置' active />
+        <CandidateRow order='02' title='安静区域' detail='18:00 — 22:00 / 备选位置' />
+        <CandidateRow order='03' title='同层可用座位' detail='14:00 — 22:00 / 弹性时间' />
       </div>
       <div className='text-muted-foreground mt-5 flex items-center gap-2 border-t pt-4 text-xs'>
         <Icons.clock className='size-4' />

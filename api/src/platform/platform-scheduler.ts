@@ -39,8 +39,11 @@ export class PlatformScheduler {
         where: { enabled: true, user: { status: { id: StatusEnum.active } } },
         relations: ['user', 'schoolAccount'],
       });
+      const runnableTasks = tasks.filter(
+        (task) => task.scheduleMode === 'daily' || task.targetDate === date,
+      );
       const results = await Promise.allSettled(
-        tasks.map((task) =>
+        runnableTasks.map((task) =>
           this.queue.enqueue(
             task,
             runType,
@@ -54,11 +57,11 @@ export class PlatformScheduler {
       const rejected = results.filter((result) => result.status === 'rejected');
       if (rejected.length) {
         this.logger.error(
-          `Failed to schedule ${rejected.length}/${tasks.length} ${runType} tasks for ${date}`,
+          `Failed to schedule ${rejected.length}/${runnableTasks.length} ${runType} tasks for ${date}`,
         );
       }
       this.logger.log(
-        `Scheduled ${tasks.length - rejected.length}/${tasks.length} ${runType} tasks for ${date}`,
+        `Scheduled ${runnableTasks.length - rejected.length}/${runnableTasks.length} ${runType} tasks for ${date}`,
       );
     } finally {
       await this.redis.unlock(lockKey, lock);

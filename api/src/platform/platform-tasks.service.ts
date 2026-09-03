@@ -12,12 +12,10 @@ import {
 } from './dto/booking-task.dto';
 import { BookingRunEntity } from './entities/booking-run.entity';
 import { BookingTaskEntity } from './entities/booking-task.entity';
-import { SchoolAccountEntity } from './entities/school-account.entity';
 import { PlatformAccountsService } from './platform-accounts.service';
-import { PlatformCryptoService } from './platform-crypto.service';
 import { PlatformQueueService } from './platform-queue.service';
 import { SeatClientService } from './seat-client.service';
-import { SchoolAuthenticationService } from './school-authentication.service';
+import { PlatformServiceConnectionsService } from './platform-service-connections.service';
 
 export type BookingTaskView = {
   id: string;
@@ -25,6 +23,10 @@ export type BookingTaskView = {
   venueType: 'library' | 'study_room' | 'other';
   building: string;
   roomName: string;
+  buildingId: string | null;
+  roomId: string | null;
+  scheduleMode: 'daily' | 'once';
+  targetDate: string | null;
   seatLabel: string | null;
   account: string;
   accountId: string;
@@ -35,6 +37,7 @@ export type BookingTaskView = {
   status: 'enabled' | 'paused' | 'attention';
   enabled: boolean;
   backupSeatIds: string[];
+  backupSeatLabels: string[];
   timeCandidates: Array<{ start: number; end: number }>;
   maxAttempts: number;
   attemptDelaySeconds: number;
@@ -52,6 +55,7 @@ export type DryRunView = {
   candidates: Array<{
     order: number;
     seatId: string;
+    seatLabel: string;
     startTime: number;
     endTime: number;
   }>;
@@ -66,10 +70,9 @@ export class PlatformTasksService {
     @InjectRepository(BookingRunEntity)
     private readonly runs: Repository<BookingRunEntity>,
     private readonly accounts: PlatformAccountsService,
-    private readonly crypto: PlatformCryptoService,
     private readonly queue: PlatformQueueService,
     private readonly seatClient: SeatClientService,
-    private readonly schoolAuth: SchoolAuthenticationService,
+    private readonly serviceConnections: PlatformServiceConnectionsService,
   ) {}
 
   async list(userId: number): Promise<BookingTaskView[]> {
@@ -87,23 +90,35 @@ export class PlatformTasksService {
     dto: CreateBookingTaskDto,
   ): Promise<BookingTaskView> {
     validateTimeCandidates(dto.timeCandidates);
+    validateSchedule(dto.scheduleMode ?? 'daily', dto.targetDate);
     const account = await this.accounts.findOwned(userId, dto.accountId);
-    assertAccountReady(account);
+    await this.serviceConnections.ensureReady(
+      account,
+      dto.venueType === 'library' ? 'library' : 'study_room',
+    );
     const task = this.tasks.create({
       name: requireText(dto.name, '任务名称'),
       venueType: dto.venueType ?? 'study_room',
       building: optionalText(dto.building, '未指定'),
       roomName: optionalText(dto.roomName, '未指定'),
+      buildingId: nullableText(dto.buildingId),
+      roomId: nullableText(dto.roomId),
+      scheduleMode: dto.scheduleMode ?? 'daily',
+      targetDate: dto.scheduleMode === 'once' ? (dto.targetDate ?? null) : null,
       primarySeatId: requireText(dto.primarySeatId, '主座位'),
       primarySeatLabel: nullableText(dto.primarySeatLabel),
       backupSeatIds: normalizeSeatIds(dto.backupSeatIds ?? []),
+      backupSeatLabels: normalizeSeatIds(dto.backupSeatLabels ?? []),
       timeCandidates: dto.timeCandidates,
       maxAttempts: dto.maxAttempts ?? 12,
       attemptDelaySeconds: dto.attemptDelaySeconds ?? 1.2,
       bookingWindowSeconds: dto.bookingWindowSeconds ?? 20,
       prewarmOffsetSeconds: dto.prewarmOffsetSeconds ?? 0,
       runOffsetSeconds: dto.runOffsetSeconds ?? 1,
-      enabled: dto.enabled ?? true,
+      enabled:
+        (dto.venueType ?? 'study_room') === 'library'
+          ? false
+          : (dto.enabled ?? true),
       user: { id: userId } as UserEntity,
       schoolAccount: account,
     });
@@ -118,18 +133,28 @@ export class PlatformTasksService {
   ): Promise<BookingTaskView> {
     const task = await this.findOwned(userId, id);
     if (dto.timeCandidates) validateTimeCandidates(dto.timeCandidates);
+    validateSchedule(
+      dto.scheduleMode ?? task.scheduleMode,
+      dto.targetDate === undefined ? task.targetDate : dto.targetDate,
+    );
     const account =
       dto.accountId === undefined
         ? task.schoolAccount
         : await this.accounts.findOwned(userId, dto.accountId);
-    const enabled = dto.enabled ?? task.enabled;
-    if (enabled && (dto.enabled === true || dto.accountId !== undefined))
-      assertAccountReady(account);
+    const targetVenueType = dto.venueType ?? task.venueType;
+    const enabled =
+      targetVenueType === 'library' ? false : (dto.enabled ?? task.enabled);
+    if (enabled && (dto.enabled === true || dto.accountId !== undefined)) {
+      await this.serviceConnections.ensureReady(
+        account,
+        targetVenueType === 'library' ? 'library' : 'study_room',
+      );
+    }
     task.schoolAccount = account;
     Object.assign(task, {
       name:
         dto.name === undefined ? task.name : requireText(dto.name, '任务名称'),
-      venueType: dto.venueType ?? task.venueType,
+      venueType: targetVenueType,
       building:
         dto.building === undefined
           ? task.building
@@ -138,6 +163,18 @@ export class PlatformTasksService {
         dto.roomName === undefined
           ? task.roomName
           : optionalText(dto.roomName, '未指定'),
+      buildingId:
+        dto.buildingId === undefined
+          ? task.buildingId
+          : nullableText(dto.buildingId),
+      roomId: dto.roomId === undefined ? task.roomId : nullableText(dto.roomId),
+      scheduleMode: dto.scheduleMode ?? task.scheduleMode,
+      targetDate:
+        (dto.scheduleMode ?? task.scheduleMode) === 'once'
+          ? dto.targetDate === undefined
+            ? task.targetDate
+            : dto.targetDate
+          : null,
       primarySeatId:
         dto.primarySeatId === undefined
           ? task.primarySeatId
@@ -150,6 +187,10 @@ export class PlatformTasksService {
         dto.backupSeatIds === undefined
           ? task.backupSeatIds
           : normalizeSeatIds(dto.backupSeatIds),
+      backupSeatLabels:
+        dto.backupSeatLabels === undefined
+          ? task.backupSeatLabels
+          : normalizeSeatIds(dto.backupSeatLabels),
       timeCandidates: dto.timeCandidates ?? task.timeCandidates,
       maxAttempts: dto.maxAttempts ?? task.maxAttempts,
       attemptDelaySeconds: dto.attemptDelaySeconds ?? task.attemptDelaySeconds,
@@ -169,7 +210,17 @@ export class PlatformTasksService {
     enabled: boolean,
   ): Promise<BookingTaskView> {
     const task = await this.findOwned(userId, id);
-    if (enabled) assertAccountReady(task.schoolAccount);
+    if (enabled && task.venueType === 'library') {
+      throw new UnprocessableEntityException(
+        '图书馆自动执行将在验证码确认流程接入后开放',
+      );
+    }
+    if (enabled) {
+      await this.serviceConnections.ensureReady(
+        task.schoolAccount,
+        task.venueType === 'library' ? 'library' : 'study_room',
+      );
+    }
     task.enabled = enabled;
     return this.toView(await this.tasks.save(task));
   }
@@ -188,14 +239,13 @@ export class PlatformTasksService {
       task.timeCandidates,
     );
     let tokenStatus: DryRunView['tokenStatus'] = 'missing';
-    if (account?.encryptedToken) {
+    if (account) {
       try {
-        const token = this.crypto.decrypt(account.encryptedToken);
-        tokenStatus = (
-          await this.schoolAuth.verifyToken(token, account.authMode || 'direct')
-        ).success
-          ? 'valid'
-          : 'invalid';
+        await this.serviceConnections.ensureReady(
+          account,
+          task.venueType === 'library' ? 'library' : 'study_room',
+        );
+        tokenStatus = 'valid';
       } catch {
         tokenStatus = 'unavailable';
       }
@@ -207,6 +257,12 @@ export class PlatformTasksService {
       candidates: candidates.map((candidate, index) => ({
         order: index + 1,
         ...candidate,
+        seatLabel:
+          candidate.seatId === task.primarySeatId
+            ? task.primarySeatLabel || '主座位'
+            : task.backupSeatLabels[
+                task.backupSeatIds.indexOf(candidate.seatId)
+              ] || '备选座位',
       })),
       message:
         tokenStatus === 'valid'
@@ -226,6 +282,11 @@ export class PlatformTasksService {
     const task = await this.findOwned(userId, id);
     if (!task.enabled && runType === 'booking') {
       throw new UnprocessableEntityException('任务已暂停');
+    }
+    if (runType === 'booking' && task.venueType === 'library') {
+      throw new UnprocessableEntityException(
+        '图书馆预约需要先在控制台完成验证码验证',
+      );
     }
     return this.queue.enqueue(
       task,
@@ -252,7 +313,18 @@ export class PlatformTasksService {
       order: { createdAt: 'DESC' },
     });
     const account = task.schoolAccount;
-    const hasIssue = account?.status !== 'active' || !account?.encryptedToken;
+    const connections = account
+      ? await this.serviceConnections.listForAccount(account.id)
+      : [];
+    const connection = connections.find(
+      (item) =>
+        item.serviceType ===
+        (task.venueType === 'library' ? 'library' : 'study_room'),
+    );
+    const hasIssue =
+      !connection ||
+      connection.status !== 'active' ||
+      !connection.encryptedToken;
     const time = task.timeCandidates
       .map(({ start, end }) => `${formatTime(start)} - ${formatTime(end)}`)
       .join(' / ');
@@ -263,6 +335,10 @@ export class PlatformTasksService {
       venueType: task.venueType,
       building: task.building,
       roomName: task.roomName,
+      buildingId: task.buildingId,
+      roomId: task.roomId,
+      scheduleMode: task.scheduleMode,
+      targetDate: task.targetDate,
       seatLabel: task.primarySeatLabel,
       account: account?.label ?? '未关联账号',
       accountId: String(task.schoolAccountId),
@@ -272,7 +348,7 @@ export class PlatformTasksService {
       seatId: task.primarySeatId,
       time,
       nextRun: task.enabled
-        ? `下次开放 ${formatScheduledTime(task.runOffsetSeconds)}`
+        ? `${task.scheduleMode === 'once' && task.targetDate ? task.targetDate : '每日'} ${formatScheduledTime(task.runOffsetSeconds)}`
         : '已暂停',
       status:
         hasIssue || lastRun?.status === 'failed'
@@ -282,6 +358,7 @@ export class PlatformTasksService {
             : 'paused',
       enabled: task.enabled,
       backupSeatIds: task.backupSeatIds,
+      backupSeatLabels: task.backupSeatLabels,
       timeCandidates: task.timeCandidates,
       maxAttempts: task.maxAttempts,
       attemptDelaySeconds: task.attemptDelaySeconds,
@@ -293,6 +370,15 @@ export class PlatformTasksService {
         lastRun?.message ??
         (hasIssue ? '账号授权需要检查' : '等待下一次自动执行'),
     };
+  }
+}
+
+function validateSchedule(
+  mode: 'daily' | 'once',
+  targetDate: string | null | undefined,
+) {
+  if (mode === 'once' && !targetDate) {
+    throw new UnprocessableEntityException('单次预约必须选择日期');
   }
 }
 
@@ -335,11 +421,6 @@ function optionalText(value: string | undefined, fallback: string): string {
 function nullableText(value: string | null | undefined): string | null {
   const trimmed = value?.trim();
   return trimmed || null;
-}
-
-function assertAccountReady(account: SchoolAccountEntity): void {
-  if (account.status !== 'active' || !account.encryptedToken)
-    throw new UnprocessableEntityException('请先验证学校账号 Token');
 }
 
 function formatScheduledTime(offsetSeconds: number): string {

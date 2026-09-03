@@ -26,6 +26,7 @@ import { PlatformInvitationEntity } from './entities/platform-invitation.entity'
 import { PlatformInvitationUseEntity } from './entities/platform-invitation-use.entity';
 import { PlatformNotificationEntity } from './entities/platform-notification.entity';
 import { SchoolAccountEntity } from './entities/school-account.entity';
+import { SchoolServiceConnectionEntity } from './entities/school-service-connection.entity';
 import { PlatformProcessor } from './platform-processor';
 import { PlatformCryptoService } from './platform-crypto.service';
 import {
@@ -38,6 +39,9 @@ import { PlatformRunsService } from './platform-runs.service';
 import { PlatformScheduler } from './platform-scheduler';
 import { PlatformTasksController } from './platform-tasks.controller';
 import { PlatformTasksService } from './platform-tasks.service';
+import { PlatformServiceConnectionsService } from './platform-service-connections.service';
+import { PlatformSeatCatalogController } from './platform-seat-catalog.controller';
+import { PlatformSeatCatalogService } from './platform-seat-catalog.service';
 import { SeatClientService } from './seat-client.service';
 import { SchoolAuthenticationService } from './school-authentication.service';
 import { WebVpnSeatClientService } from './webvpn-seat-client.service';
@@ -57,6 +61,7 @@ import { WebVpnSeatClientService } from './webvpn-seat-client.service';
       PlatformInvitationUseEntity,
       PlatformNotificationEntity,
       SchoolAccountEntity,
+      SchoolServiceConnectionEntity,
       UserEntity,
     ]),
   ],
@@ -70,6 +75,7 @@ import { WebVpnSeatClientService } from './webvpn-seat-client.service';
     PlatformNotificationsController,
     PlatformRunsController,
     PlatformTasksController,
+    PlatformSeatCatalogController,
   ],
   providers: [
     PlatformAccountsService,
@@ -86,6 +92,8 @@ import { WebVpnSeatClientService } from './webvpn-seat-client.service';
     PlatformRunsService,
     PlatformScheduler,
     PlatformTasksService,
+    PlatformServiceConnectionsService,
+    PlatformSeatCatalogService,
     SchoolAuthenticationService,
     SeatClientService,
     WebVpnSeatClientService,

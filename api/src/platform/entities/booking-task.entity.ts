@@ -32,6 +32,18 @@ export class BookingTaskEntity extends EntityRelationalHelper {
   @Column({ length: 120, default: '未指定' })
   roomName: string;
 
+  @Column({ type: String, length: 30, nullable: true })
+  buildingId: string | null;
+
+  @Column({ type: String, length: 30, nullable: true })
+  roomId: string | null;
+
+  @Column({ length: 20, default: 'daily' })
+  scheduleMode: 'daily' | 'once';
+
+  @Column({ type: 'date', nullable: true })
+  targetDate: string | null;
+
   @Column({ length: 30 })
   primarySeatId: string;
 
@@ -40,6 +52,9 @@ export class BookingTaskEntity extends EntityRelationalHelper {
 
   @Column({ type: 'jsonb', default: () => "'[]'" })
   backupSeatIds: string[];
+
+  @Column({ type: 'jsonb', default: () => "'[]'" })
+  backupSeatLabels: string[];
 
   @Column({ type: 'jsonb' })
   timeCandidates: TimeCandidate[];

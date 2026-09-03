@@ -35,6 +35,8 @@ function makeRun(enabled: boolean): BookingRunEntity {
       maxAttempts: 1,
       attemptDelaySeconds: 0,
       bookingWindowSeconds: 5,
+      venueType: 'study_room',
+      scheduleMode: 'daily',
     } as unknown as BookingTaskEntity,
     schoolAccount: {
       id: 22,
@@ -52,6 +54,7 @@ type BookMock = (
   date: string,
   candidate: { seatId: string; startTime: number; endTime: number },
   timeoutMs: number,
+  serviceType: 'study_room',
 ) => Promise<{
   success: boolean;
   httpStatus: number;
@@ -93,9 +96,6 @@ function makeExecutor(
       { seatId: '197', startTime: 840, endTime: 1320 },
     ]),
   };
-  const crypto = {
-    decrypt: jest.fn<(value: string) => string>(() => 'school-token'),
-  };
   const schoolAuth = {
     authenticate: jest.fn(() =>
       Promise.resolve({ token: 'school-token', mode: 'direct' as const }),
@@ -103,14 +103,23 @@ function makeExecutor(
     verifyToken: jest.fn(() => Promise.resolve({ success: true })),
     book,
   };
+  const serviceConnections = {
+    ensureReady: jest.fn(() =>
+      Promise.resolve({
+        token: 'school-token',
+        mode: 'direct' as const,
+        serviceType: 'study_room' as const,
+      }),
+    ),
+  };
   return {
     executor: new PlatformBookingExecutor(
       runs,
       tasks,
       accounts,
-      crypto as never,
       seatClient as never,
       schoolAuth as never,
+      serviceConnections as never,
       notifications as never,
       redis as never,
     ),
@@ -165,6 +174,7 @@ describe('PlatformBookingExecutor', () => {
       '2026-09-02',
       { seatId: '197', startTime: 840, endTime: 1320 },
       expect.any(Number),
+      'study_room',
     );
     expect(notifications.create).toHaveBeenCalledWith(
       expect.objectContaining({ kind: 'booking_success', userId: 7 }),

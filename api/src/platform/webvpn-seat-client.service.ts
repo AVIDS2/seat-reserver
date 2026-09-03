@@ -14,6 +14,7 @@ import {
 } from 'node:crypto';
 import { CookieJar } from 'tough-cookie';
 import type { SeatCandidate, SeatResponse } from './seat-client.service';
+import type { SeatServiceType } from './entities/school-service-connection.entity';
 
 type CookieFetch = FetchCookieImpl<RequestInfo | URL, RequestInit, Response>;
 
@@ -65,8 +66,11 @@ export class WebVpnSeatClientService {
   private readonly seatAppPath = normalizeAppPath(
     process.env.SEAT_WEBVPN_APP_PATH || '/libseat/',
   );
-  private readonly seatTargetUrl = new URL(
+  private readonly studyRoomTargetUrl = new URL(
     process.env.SEAT_WEBVPN_TARGET_URL || 'http://202.195.100.14',
+  );
+  private readonly libraryTargetUrl = new URL(
+    process.env.LIBRARY_WEBVPN_TARGET_URL || 'http://zuowei.cczu.edu.cn',
   );
   private readonly timeoutMs = numberSetting(
     process.env.SEAT_WEBVPN_TIMEOUT_MS,
@@ -79,6 +83,7 @@ export class WebVpnSeatClientService {
   async authenticate(
     username: string,
     password: string,
+    serviceType: SeatServiceType = 'study_room',
   ): Promise<{ token: string }> {
     const jar = new CookieJar();
     const client: CookieFetch = makeFetchCookie(fetch, jar, false);
@@ -90,17 +95,23 @@ export class WebVpnSeatClientService {
         client,
         proxyUrl(portalSeatProxy.baseUrl, this.seatAppPath),
       );
-      const seatPage = seatEntry.fragmentToken
-        ? seatEntry
-        : await this.startSeatCas(
-            client,
-            {
-              ...portalSeatProxy,
-              serverUrl: this.seatTargetUrl.origin,
-            },
-            username,
-            password,
-          );
+      const targetUrl =
+        serviceType === 'library'
+          ? this.libraryTargetUrl
+          : this.studyRoomTargetUrl;
+      const entryMatchesTarget = proxyTargetsOrigin(seatEntry.url, targetUrl);
+      const seatPage =
+        seatEntry.fragmentToken && entryMatchesTarget
+          ? seatEntry
+          : await this.startSeatCas(
+              client,
+              {
+                ...portalSeatProxy,
+                serverUrl: targetUrl.origin,
+              },
+              username,
+              password,
+            );
       const ssoToken = seatPage.fragmentToken;
       if (!ssoToken) {
         throw new UnprocessableEntityException(
@@ -115,7 +126,7 @@ export class WebVpnSeatClientService {
       );
       const seatProxy = {
         baseUrl: proxyBase,
-        serverUrl: this.seatTargetUrl.origin,
+        serverUrl: targetUrl.origin,
       };
       const signingSecret = await this.loadSigningSecret(client, proxyBase);
       const businessToken = await this.exchangeSsoToken(
@@ -196,6 +207,10 @@ export class WebVpnSeatClientService {
       body,
       timeoutMs,
     );
+  }
+
+  async get(token: string, path: string): Promise<SeatResponse> {
+    return this.signedSeatRequest(token, 'GET', path);
   }
 
   private async loginToGateway(
@@ -689,6 +704,11 @@ function extractProxyBase(pageUrl: URL, gateway: URL, appPath: string): string {
   return new URL(pageUrl.pathname.slice(0, -normalizedPath.length), gateway)
     .toString()
     .replace(/\/$/, '');
+}
+
+function proxyTargetsOrigin(pageUrl: URL, target: URL): boolean {
+  const host = target.hostname.replace(/\./g, '-');
+  return pageUrl.pathname.toLowerCase().includes(host.toLowerCase());
 }
 
 function numberSetting(value: string | undefined, fallback: number): number {

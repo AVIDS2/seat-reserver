@@ -7,6 +7,7 @@ import type {
   TimeCandidate,
   VenueType
 } from '../types';
+import type { SeatCatalog, SeatLayout, SeatTimes } from '../types';
 
 export type CreateAccountPayload = {
   label: string;
@@ -26,9 +27,14 @@ export type TaskPayload = {
   venueType: VenueType;
   building: string;
   roomName: string;
+  buildingId?: string | null;
+  roomId?: string | null;
+  scheduleMode: 'daily' | 'once';
+  targetDate?: string | null;
   primarySeatLabel?: string | null;
   primarySeatId: string;
   backupSeatIds: string[];
+  backupSeatLabels: string[];
   timeCandidates: TimeCandidate[];
   maxAttempts: number;
   attemptDelaySeconds: number;
@@ -137,6 +143,7 @@ export type DryRunResult = {
   candidates: Array<{
     order: number;
     seatId: string;
+    seatLabel: string;
     startTime: number;
     endTime: number;
   }>;
@@ -180,9 +187,10 @@ async function platformRequest<T>(
   }
 
   if (!response.ok) {
-    const body = (await response.json().catch(() => null)) as
-      | { message?: string | string[]; errors?: Record<string, string> }
-      | null;
+    const body = (await response.json().catch(() => null)) as {
+      message?: string | string[];
+      errors?: Record<string, string>;
+    } | null;
     const message = Array.isArray(body?.message)
       ? body.message.join('；')
       : body?.message || Object.values(body?.errors || {})[0] || `请求失败（${response.status}）`;
@@ -228,13 +236,19 @@ export async function createSchoolAccount(payload: CreateAccountPayload): Promis
 }
 
 export async function refreshSchoolAccount(id: string): Promise<BookingAccount> {
-  const response = await platformRequest<{ account: BookingAccount }>(`/platform/accounts/${id}/refresh`, {
-    method: 'POST'
-  });
+  const response = await platformRequest<{ account: BookingAccount }>(
+    `/platform/accounts/${id}/refresh`,
+    {
+      method: 'POST'
+    }
+  );
   return response.account;
 }
 
-export async function updateSchoolAccount(id: string, payload: UpdateAccountPayload): Promise<BookingAccount> {
+export async function updateSchoolAccount(
+  id: string,
+  payload: UpdateAccountPayload
+): Promise<BookingAccount> {
   const response = await platformRequest<{ account: BookingAccount }>(`/platform/accounts/${id}`, {
     method: 'PATCH',
     body: JSON.stringify(payload)
@@ -254,8 +268,14 @@ export async function createBookingTask(payload: TaskPayload): Promise<BookingTa
   return response.task;
 }
 
-export async function updateBookingTask(id: string, payload: Partial<TaskPayload>): Promise<BookingTask> {
-  const body = payload.accountId === undefined ? payload : { ...payload, accountId: Number(payload.accountId) };
+export async function updateBookingTask(
+  id: string,
+  payload: Partial<TaskPayload>
+): Promise<BookingTask> {
+  const body =
+    payload.accountId === undefined
+      ? payload
+      : { ...payload, accountId: Number(payload.accountId) };
   const response = await platformRequest<{ task: BookingTask }>(`/platform/tasks/${id}`, {
     method: 'PATCH',
     body: JSON.stringify(body)
@@ -268,9 +288,12 @@ export async function deleteBookingTask(id: string): Promise<void> {
 }
 
 export async function setBookingTaskEnabled(id: string, enabled: boolean): Promise<BookingTask> {
-  const response = await platformRequest<{ task: BookingTask }>(`/platform/tasks/${id}/${enabled ? 'enable' : 'disable'}`, {
-    method: 'POST'
-  });
+  const response = await platformRequest<{ task: BookingTask }>(
+    `/platform/tasks/${id}/${enabled ? 'enable' : 'disable'}`,
+    {
+      method: 'POST'
+    }
+  );
   return response.task;
 }
 
@@ -291,21 +314,61 @@ export async function prewarmBookingTask(id: string): Promise<BookingRun> {
 }
 
 export async function dryRunBookingTask(id: string): Promise<DryRunResult> {
-  const response = await platformRequest<{ dryRun: DryRunResult }>(`/platform/tasks/${id}/dry-run`, {
-    method: 'POST'
-  });
+  const response = await platformRequest<{ dryRun: DryRunResult }>(
+    `/platform/tasks/${id}/dry-run`,
+    {
+      method: 'POST'
+    }
+  );
   return response.dryRun;
 }
 
+export async function getSeatCatalog(
+  accountId: string,
+  serviceType: VenueType
+): Promise<SeatCatalog> {
+  const query = new URLSearchParams({ accountId, serviceType });
+  return platformRequest<SeatCatalog>(`/platform/catalog/filters?${query}`);
+}
+
+export async function getSeatLayout(input: {
+  accountId: string;
+  serviceType: VenueType;
+  roomId: string;
+  date: string;
+}): Promise<SeatLayout> {
+  const query = new URLSearchParams(input);
+  return platformRequest<SeatLayout>(`/platform/catalog/layout?${query}`);
+}
+
+export async function getSeatTimes(input: {
+  accountId: string;
+  serviceType: VenueType;
+  roomId: string;
+  seatId: string;
+  date: string;
+  startTime?: string;
+}): Promise<SeatTimes> {
+  const query = new URLSearchParams(
+    Object.entries(input).filter((entry): entry is [string, string] => typeof entry[1] === 'string')
+  );
+  return platformRequest<SeatTimes>(`/platform/catalog/times?${query}`);
+}
+
 export async function getClientNotifications(): Promise<PlatformNotification[]> {
-  const response = await platformRequest<{ notifications: PlatformNotification[] }>('/platform/notifications');
+  const response = await platformRequest<{ notifications: PlatformNotification[] }>(
+    '/platform/notifications'
+  );
   return response.notifications;
 }
 
 export async function markNotificationRead(id: string): Promise<PlatformNotification> {
-  const response = await platformRequest<{ notification: PlatformNotification }>(`/platform/notifications/${id}/read`, {
-    method: 'PATCH'
-  });
+  const response = await platformRequest<{ notification: PlatformNotification }>(
+    `/platform/notifications/${id}/read`,
+    {
+      method: 'PATCH'
+    }
+  );
   return response.notification;
 }
 
@@ -338,9 +401,12 @@ export async function getAdminRuns(): Promise<AdminRun[]> {
 }
 
 export async function setAdminUserEnabled(id: string, enabled: boolean): Promise<AdminUser> {
-  const response = await platformRequest<{ user: AdminUser }>(`/platform/admin/users/${id}/${enabled ? 'enable' : 'disable'}`, {
-    method: 'POST'
-  });
+  const response = await platformRequest<{ user: AdminUser }>(
+    `/platform/admin/users/${id}/${enabled ? 'enable' : 'disable'}`,
+    {
+      method: 'POST'
+    }
+  );
   return response.user;
 }
 
@@ -358,17 +424,24 @@ export async function createInvitation(maxUses: number, validDays: number): Prom
 }
 
 export async function disableInvitation(id: string): Promise<Invitation> {
-  const response = await platformRequest<{ invitation: Invitation }>(`/platform/invitations/${id}`, {
-    method: 'DELETE'
-  });
+  const response = await platformRequest<{ invitation: Invitation }>(
+    `/platform/invitations/${id}`,
+    {
+      method: 'DELETE'
+    }
+  );
   return response.invitation;
 }
 
 export async function signInPlatform(email: string, password: string): Promise<void> {
-  await platformRequest('/platform/auth/login', {
-    method: 'POST',
-    body: JSON.stringify({ email, password })
-  }, false);
+  await platformRequest(
+    '/platform/auth/login',
+    {
+      method: 'POST',
+      body: JSON.stringify({ email, password })
+    },
+    false
+  );
 }
 
 export async function signUpPlatform(payload: {
@@ -378,10 +451,14 @@ export async function signUpPlatform(payload: {
   lastName: string;
   inviteCode?: string;
 }): Promise<void> {
-  await platformRequest('/platform/auth/register', {
-    method: 'POST',
-    body: JSON.stringify(payload)
-  }, false);
+  await platformRequest(
+    '/platform/auth/register',
+    {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    },
+    false
+  );
 }
 
 function toPlatformUser(value: Record<string, unknown>): PlatformUser {

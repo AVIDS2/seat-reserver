@@ -7,7 +7,7 @@ export function Automation() {
     <HighlightedFeature
       id='flow'
       name='开放之前，系统已经准备好。'
-      description='固定的北京时间调度、独立的任务队列和有限的预约窗口，让自动化动作更接近真实使用节奏。授权先预热，开放后按候选顺序执行，最后把回执写入运行记录。'
+      description='平台在场馆开放前完成连接检查和任务准备，开放后按你的座位偏好准时执行，并把最终结果送回工作台。'
       highlightedComponent={<AutomationExample />}
       direction='row-reverse'
     />
@@ -34,7 +34,7 @@ function AutomationExample() {
           icon={<Icons.shield />}
           time='05:59:50'
           title='授权预热'
-          detail='验证缓存 Token，必要时自动刷新'
+          detail='检查账号连接与预约偏好'
           tone='success'
         />
         <TimelineRow
