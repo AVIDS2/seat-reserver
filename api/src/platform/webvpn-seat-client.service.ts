@@ -210,7 +210,10 @@ export class WebVpnSeatClientService {
   }
 
   async get(token: string, path: string): Promise<SeatResponse> {
-    return this.signedSeatRequest(token, 'GET', path);
+    const response = await this.signedSeatRequest(token, 'GET', path);
+    return response.httpStatus === 200 && response.payload
+      ? { ...response, success: true, message: '' }
+      : response;
   }
 
   private async loginToGateway(
