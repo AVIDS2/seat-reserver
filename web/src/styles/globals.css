@@ -19,6 +19,19 @@
     @apply bg-background text-foreground;
   }
 
+  /* Use the same compact input treatment on touch devices and avoid browser
+     spinner controls being mistaken for a second select affordance. */
+  input[type='number'] {
+    appearance: textfield;
+    -moz-appearance: textfield;
+  }
+
+  input[type='number']::-webkit-inner-spin-button,
+  input[type='number']::-webkit-outer-spin-button {
+    margin: 0;
+    -webkit-appearance: none;
+  }
+
   /* Global scrollbar styling to match ScrollArea */
   * {
     scrollbar-width: thin;

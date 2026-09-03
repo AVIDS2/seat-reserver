@@ -197,7 +197,14 @@ function TimeSelect({
   return (
     <label className='flex min-w-0 flex-col gap-1.5'>
       <span className='text-muted-foreground text-xs'>{label}</span>
-      <Select value={String(value)} onValueChange={(next) => next && onChange(Number(next))}>
+      <Select
+        value={String(value)}
+        items={safeOptions.map((option) => ({
+          value: String(option),
+          label: formatTime(option)
+        }))}
+        onValueChange={(next) => next && onChange(Number(next))}
+      >
         <SelectTrigger className='w-full'>
           <SelectValue />
         </SelectTrigger>

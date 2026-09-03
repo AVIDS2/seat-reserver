@@ -15,6 +15,7 @@ type Props = {
   selectedIds: string[];
   onSelectedIdsChange: (ids: string[]) => void;
   onRefresh: () => void;
+  className?: string;
 };
 
 const statusLabels: Record<SeatNode['status'], string> = {
@@ -31,7 +32,8 @@ export function SeatMapPicker({
   loading,
   selectedIds,
   onSelectedIdsChange,
-  onRefresh
+  onRefresh,
+  className
 }: Props) {
   const [zoom, setZoom] = useState(30);
   const seats = useMemo(
@@ -52,7 +54,7 @@ export function SeatMapPicker({
   };
 
   return (
-    <section className='overflow-hidden rounded-lg border bg-card'>
+    <section className={cn('min-w-0 overflow-hidden rounded-lg border bg-card', className)}>
       <div className='flex flex-col gap-3 border-b p-3 sm:flex-row sm:items-center sm:justify-between'>
         <div className='min-w-0'>
           <p className='text-sm font-medium'>{layout?.room.name || '选择房间后加载座位图'}</p>

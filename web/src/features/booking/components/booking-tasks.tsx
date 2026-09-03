@@ -33,6 +33,8 @@ import {
   DialogHeader,
   DialogTitle
 } from '@/components/ui/dialog';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -69,13 +71,12 @@ import type {
   TimeCandidate,
   VenueType
 } from '../types';
-import { DatePicker } from './date-picker';
 import { SeatMapPicker } from './seat-map-picker';
 import { TaskStatusBadge } from './status-badge';
 import { TimeRangePicker } from './time-range-picker';
 
 type EditorPayload = Omit<TaskPayload, 'enabled'>;
-type ScheduleMode = 'daily' | 'weekdays' | 'weekly' | 'once';
+type ScheduleMode = 'daily' | 'weekdays' | 'weekly';
 
 const WEEKDAYS = [
   { value: '1', label: '周一' },
@@ -127,7 +128,7 @@ function TaskEditorDialog({
   const [venueType, setVenueType] = useState<VenueType>('study_room');
   const [buildingId, setBuildingId] = useState('');
   const [roomId, setRoomId] = useState('');
-  const [date, setDate] = useState('');
+  const [previewDate, setPreviewDate] = useState('');
   const [scheduleMode, setScheduleMode] = useState<ScheduleMode>('daily');
   const [scheduleWeekdays, setScheduleWeekdays] = useState<number[]>([1, 2, 3, 4, 5]);
   const [selectedSeatIds, setSelectedSeatIds] = useState<string[]>([]);
@@ -144,6 +145,8 @@ function TaskEditorDialog({
   const [windowSeconds, setWindowSeconds] = useState('20');
   const [prewarmOffset, setPrewarmOffset] = useState('0');
   const [runOffset, setRunOffset] = useState('1');
+  const [step, setStep] = useState<1 | 2>(1);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -153,8 +156,8 @@ function TaskEditorDialog({
     setVenueType(task?.venueType || 'study_room');
     setBuildingId(task?.buildingId || '');
     setRoomId(task?.roomId || '');
-    setDate(task?.targetDate || '');
-    setScheduleMode(task?.scheduleMode || 'daily');
+    setPreviewDate('');
+    setScheduleMode(task?.scheduleMode === 'once' ? 'daily' : task?.scheduleMode || 'daily');
     setScheduleWeekdays(task?.scheduleWeekdays?.length ? task.scheduleWeekdays : [1, 2, 3, 4, 5]);
     setSelectedSeatIds(task ? [task.seatId, ...task.backupSeatIds] : []);
     setCatalog(null);
@@ -167,6 +170,8 @@ function TaskEditorDialog({
     setWindowSeconds(String(task?.bookingWindowSeconds || 20));
     setPrewarmOffset(String(task?.prewarmOffsetSeconds || 0));
     setRunOffset(String(task?.runOffsetSeconds ?? 1));
+    setStep(1);
+    setAdvancedOpen(false);
   }, [accounts, open, task]);
 
   useEffect(() => {
@@ -195,9 +200,7 @@ function TaskEditorDialog({
         const nextRoom =
           matchedRoom || nextCatalog.rooms.find((item) => item.buildingId === nextBuildingId);
         setRoomId(nextRoom?.id || '');
-        setDate((current) =>
-          current && nextCatalog.dates.includes(current) ? current : nextCatalog.dates[0] || ''
-        );
+        setPreviewDate(nextCatalog.dates[0] || '');
       })
       .catch((error) => {
         if (!cancelled)
@@ -210,11 +213,18 @@ function TaskEditorDialog({
   }, [accountId, open, task, venueType]);
 
   const loadLayout = async () => {
-    if (!accountId || !roomId || !date) return;
+    if (!accountId || !roomId || !previewDate) return;
     setLayoutLoading(true);
     setCatalogError('');
     try {
-      setLayout(await getSeatLayout({ accountId, serviceType: venueType, roomId, date }));
+      setLayout(
+        await getSeatLayout({
+          accountId,
+          serviceType: venueType,
+          roomId,
+          date: previewDate
+        })
+      );
     } catch (error) {
       setLayout(null);
       setCatalogError(error instanceof Error ? error.message : '座位图加载失败');
@@ -224,21 +234,27 @@ function TaskEditorDialog({
   };
 
   useEffect(() => {
-    if (!open || !roomId || !date) return;
+    if (!open || !roomId || !previewDate) return;
     void loadLayout();
     // loadLayout intentionally tracks the concrete catalog selection only.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [accountId, date, open, roomId, venueType]);
+  }, [accountId, open, previewDate, roomId, venueType]);
 
   useEffect(() => {
     const primarySeatId = selectedSeatIds[0];
-    if (!open || !accountId || !roomId || !date || !primarySeatId) {
+    if (!open || !accountId || !roomId || !previewDate || !primarySeatId) {
       setAvailableStartTimes([]);
       return;
     }
     let cancelled = false;
     setTimesLoading(true);
-    void getSeatTimes({ accountId, serviceType: venueType, roomId, seatId: primarySeatId, date })
+    void getSeatTimes({
+      accountId,
+      serviceType: venueType,
+      roomId,
+      seatId: primarySeatId,
+      date: previewDate
+    })
       .then((times) => {
         if (cancelled) return;
         setAvailableStartTimes(
@@ -250,7 +266,7 @@ function TaskEditorDialog({
     return () => {
       cancelled = true;
     };
-  }, [accountId, date, open, roomId, selectedSeatIds, venueType]);
+  }, [accountId, open, previewDate, roomId, selectedSeatIds, venueType]);
 
   const rooms = catalog?.rooms.filter((room) => room.buildingId === buildingId) ?? [];
   const selectedRoom = catalog?.rooms.find((room) => room.id === roomId);
@@ -259,10 +275,24 @@ function TaskEditorDialog({
   const resetLocationSelection = () => {
     setCatalog(null);
     setLayout(null);
+    setPreviewDate('');
     setBuildingId('');
     setRoomId('');
     setSelectedSeatIds([]);
     setAvailableStartTimes([]);
+    setStep(1);
+  };
+
+  const canContinue = Boolean(
+    name.trim() && accountId && selectedBuilding && selectedRoom && !catalogLoading
+  );
+
+  const handleContinue = () => {
+    if (!canContinue) {
+      toast.error('请先填写任务名称并选择账号、系统和空间');
+      return;
+    }
+    setStep(2);
   };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -275,7 +305,8 @@ function TaskEditorDialog({
       toast.error('请至少保留一个有效时间段');
       return;
     }
-    if (scheduleMode === 'weekly' && !scheduleWeekdays.length) {
+    const normalizedScheduleMode = scheduleMode;
+    if (normalizedScheduleMode === 'weekly' && !scheduleWeekdays.length) {
       toast.error('请至少选择一个执行日');
       return;
     }
@@ -290,8 +321,8 @@ function TaskEditorDialog({
           buildingId,
           roomName: selectedRoom.name,
           roomId,
-          scheduleMode,
-          targetDate: scheduleMode === 'once' ? date : null,
+          scheduleMode: normalizedScheduleMode,
+          targetDate: null,
           scheduleWeekdays,
           primarySeatLabel: selectedNodes[0]?.label || task?.seatLabel || null,
           primarySeatId: selectedSeatIds[0],
@@ -320,196 +351,185 @@ function TaskEditorDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className='flex h-[calc(100svh-1rem)] max-h-[calc(100svh-1rem)] w-[calc(100%-0.5rem)] flex-col overflow-hidden overscroll-contain p-3 sm:h-auto sm:max-h-[calc(100svh-2rem)] sm:p-5'>
+      <DialogContent className='flex h-[calc(100svh-1rem)] max-h-[calc(100svh-1rem)] w-[calc(100%-1rem)] max-w-[1040px] flex-col overflow-hidden overscroll-contain p-3 sm:h-[min(900px,calc(100svh-2rem))] sm:max-h-[calc(100svh-2rem)] sm:p-5'>
         <DialogHeader className='shrink-0 pr-8'>
           <DialogTitle>{task ? '编辑预约任务' : '新建预约任务'}</DialogTitle>
-          <DialogDescription>从学校实时目录选择空间和座位，再设置自动执行策略。</DialogDescription>
+          <DialogDescription>配置一次预约任务，系统会按规则自动执行。</DialogDescription>
         </DialogHeader>
+        <ToggleGroup
+          value={[String(step)]}
+          onValueChange={(values) => {
+            const next = Number(values[0]);
+            if (next === 1 || (next === 2 && canContinue)) setStep(next as 1 | 2);
+          }}
+          variant='outline'
+          spacing={0}
+          className='grid shrink-0 grid-cols-2'
+          aria-label='任务配置步骤'
+        >
+          <ToggleGroupItem value='1' className='w-full justify-start gap-2 px-3 sm:justify-center'>
+            <span className='flex size-5 items-center justify-center rounded-full bg-current/10 text-xs'>
+              1
+            </span>
+            选择位置
+          </ToggleGroupItem>
+          <ToggleGroupItem
+            value='2'
+            disabled={!canContinue}
+            className='w-full justify-start gap-2 px-3 sm:justify-center'
+          >
+            <span className='flex size-5 items-center justify-center rounded-full bg-current/10 text-xs'>
+              2
+            </span>
+            设置策略
+          </ToggleGroupItem>
+        </ToggleGroup>
         <div className='min-h-0 flex-1 overflow-y-auto overscroll-contain px-0.5'>
           <form
             id='booking-task-editor'
             onSubmit={handleSubmit}
             className='flex flex-col gap-4 pb-1'
           >
-            <div className='grid gap-5 lg:grid-cols-[minmax(280px,0.72fr)_minmax(0,1.28fr)]'>
-              <div className='flex min-w-0 flex-col gap-4'>
-                <div className='flex flex-col gap-2'>
-                  <Label htmlFor='task-name'>任务名称</Label>
-                  <Input
-                    id='task-name'
-                    value={name}
-                    onChange={(event) => setName(event.target.value)}
-                    placeholder='例如：周三靠窗位'
-                    required
-                  />
-                </div>
-                <div className='flex flex-col gap-2'>
-                  <Label htmlFor='task-account'>绑定账号</Label>
-                  <Select
-                    value={accountId}
-                    onValueChange={(value) => {
-                      if (!value || value === accountId) return;
-                      setAccountId(value);
-                      resetLocationSelection();
-                    }}
-                    disabled={accounts.length === 0}
-                  >
-                    <SelectTrigger id='task-account' className='w-full'>
-                      <SelectValue placeholder='选择学校账号' />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectGroup>
-                        <SelectLabel>学校账号</SelectLabel>
-                        {accounts.map((account) => (
-                          <SelectItem key={account.id} value={account.id}>
-                            {account.label}
-                          </SelectItem>
-                        ))}
-                      </SelectGroup>
-                    </SelectContent>
-                  </Select>
-                  <p className='text-muted-foreground text-xs'>
-                    每个任务绑定一个校园账号；需要多个账号时分别创建任务。
+            {step === 1 ? (
+              <section className='flex flex-col gap-5 rounded-xl border bg-card p-4 sm:p-5'>
+                <div>
+                  <h3 className='text-base font-semibold'>选择预约位置</h3>
+                  <p className='text-muted-foreground mt-1 text-sm'>
+                    先确定账号和空间，下一步选择座位与时间。
                   </p>
                 </div>
-                <div className='flex flex-col gap-2'>
-                  <Label>预约系统</Label>
-                  <ToggleGroup
-                    value={[venueType]}
-                    onValueChange={(value) => {
-                      if (!value[0] || value[0] === venueType) return;
-                      setVenueType(value[0] as VenueType);
-                      resetLocationSelection();
-                    }}
-                    variant='outline'
-                    spacing={0}
-                    className='grid w-full grid-cols-2'
-                  >
-                    <ToggleGroupItem value='study_room' className='w-full'>
-                      自习室
-                    </ToggleGroupItem>
-                    <ToggleGroupItem value='library' className='w-full'>
-                      图书馆
-                    </ToggleGroupItem>
-                  </ToggleGroup>
-                </div>
-                <div className='flex flex-col gap-2'>
-                  <Label htmlFor='task-building'>{venueType === 'library' ? '馆区' : '楼栋'}</Label>
-                  <Select
-                    value={buildingId}
-                    onValueChange={(value) => {
-                      if (!value) return;
-                      setBuildingId(value);
-                      setRoomId(catalog?.rooms.find((room) => room.buildingId === value)?.id || '');
-                      setSelectedSeatIds([]);
-                    }}
-                    disabled={catalogLoading || !catalog}
-                  >
-                    <SelectTrigger id='task-building' className='w-full'>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectGroup>
-                        <SelectLabel>{venueType === 'library' ? '馆区' : '楼栋'}</SelectLabel>
-                        {catalog?.buildings.map((building) => (
-                          <SelectItem key={building.id} value={building.id}>
-                            {building.name}
-                          </SelectItem>
-                        ))}
-                      </SelectGroup>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className='flex flex-col gap-2'>
-                  <Label htmlFor='task-room'>空间</Label>
-                  <Select
-                    value={roomId}
-                    onValueChange={(value) => {
-                      if (value) {
-                        setRoomId(value);
-                        setSelectedSeatIds([]);
-                      }
-                    }}
-                    disabled={!rooms.length}
-                  >
-                    <SelectTrigger id='task-room' className='w-full'>
-                      <SelectValue placeholder='选择空间' />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectGroup>
-                        <SelectLabel>可预约空间</SelectLabel>
-                        {rooms.map((room) => (
-                          <SelectItem key={room.id} value={room.id}>
-                            {room.name}
-                          </SelectItem>
-                        ))}
-                      </SelectGroup>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className='flex flex-col gap-2'>
-                  <Label>执行频率</Label>
-                  <ToggleGroup
-                    value={[scheduleMode]}
-                    onValueChange={(value) => value[0] && setScheduleMode(value[0] as ScheduleMode)}
-                    variant='outline'
-                    spacing={0}
-                    className='grid w-full grid-cols-2 sm:grid-cols-4'
-                  >
-                    <ToggleGroupItem value='daily' className='w-full'>
-                      每天
-                    </ToggleGroupItem>
-                    <ToggleGroupItem value='weekdays' className='w-full'>
-                      工作日
-                    </ToggleGroupItem>
-                    <ToggleGroupItem value='weekly' className='w-full'>
-                      自定义
-                    </ToggleGroupItem>
-                    <ToggleGroupItem value='once' className='w-full'>
-                      单次
-                    </ToggleGroupItem>
-                  </ToggleGroup>
-                </div>
-                {scheduleMode === 'weekly' && (
-                  <div className='rounded-lg border bg-muted/20 p-3'>
-                    <div className='flex items-center justify-between gap-3'>
-                      <Label>选择星期</Label>
-                      <span className='text-muted-foreground text-xs'>至少选择一天</span>
-                    </div>
-                    <ToggleGroup
-                      multiple
-                      value={scheduleWeekdays.map(String)}
-                      onValueChange={(values) => setScheduleWeekdays(values.map(Number))}
-                      variant='outline'
-                      spacing={1}
-                      className='mt-3 grid w-full grid-cols-4 sm:grid-cols-7'
-                      aria-label='选择执行星期'
+                <FieldGroup className='grid gap-4 sm:grid-cols-2'>
+                  <Field>
+                    <FieldLabel htmlFor='task-name'>任务名称</FieldLabel>
+                    <Input
+                      id='task-name'
+                      value={name}
+                      onChange={(event) => setName(event.target.value)}
+                      placeholder='例如：周三靠窗位'
+                      required
+                    />
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor='task-account'>使用账号</FieldLabel>
+                    <Select
+                      value={accountId}
+                      items={accounts.map((account) => ({
+                        value: account.id,
+                        label: account.label
+                      }))}
+                      onValueChange={(value) => {
+                        if (!value || value === accountId) return;
+                        setAccountId(value);
+                        resetLocationSelection();
+                      }}
+                      disabled={accounts.length === 0}
                     >
-                      {WEEKDAYS.map((weekday) => (
-                        <ToggleGroupItem
-                          key={weekday.value}
-                          value={weekday.value}
-                          className='w-full'
-                        >
-                          {weekday.label}
-                        </ToggleGroupItem>
-                      ))}
+                      <SelectTrigger id='task-account' className='w-full'>
+                        <SelectValue placeholder='选择学校账号' />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectGroup>
+                          <SelectLabel>学校账号</SelectLabel>
+                          {accounts.map((account) => (
+                            <SelectItem key={account.id} value={account.id}>
+                              {account.label}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                    <FieldDescription>一个任务对应一个账号。</FieldDescription>
+                  </Field>
+                  <Field className='sm:col-span-2'>
+                    <FieldLabel>预约系统</FieldLabel>
+                    <ToggleGroup
+                      value={[venueType]}
+                      onValueChange={(value) => {
+                        if (!value[0] || value[0] === venueType) return;
+                        setVenueType(value[0] as VenueType);
+                        resetLocationSelection();
+                      }}
+                      variant='outline'
+                      spacing={0}
+                      className='grid w-full grid-cols-2'
+                    >
+                      <ToggleGroupItem value='study_room' className='w-full'>
+                        自习室
+                      </ToggleGroupItem>
+                      <ToggleGroupItem value='library' className='w-full'>
+                        图书馆
+                      </ToggleGroupItem>
                     </ToggleGroup>
-                  </div>
-                )}
-                {scheduleMode === 'once' && (
-                  <div className='flex flex-col gap-2'>
-                    <Label>执行日期</Label>
-                    <DatePicker
-                      value={date}
-                      dates={catalog?.dates || []}
-                      onChange={(value) => {
-                        setDate(value);
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor='task-building'>
+                      {venueType === 'library' ? '馆区' : '楼栋'}
+                    </FieldLabel>
+                    <Select
+                      value={buildingId}
+                      items={(catalog?.buildings ?? []).map((building) => ({
+                        value: building.id,
+                        label: building.name
+                      }))}
+                      onValueChange={(value) => {
+                        if (!value) return;
+                        setBuildingId(value);
+                        setRoomId(
+                          catalog?.rooms.find((room) => room.buildingId === value)?.id || ''
+                        );
+                        setLayout(null);
                         setSelectedSeatIds([]);
                       }}
-                    />
-                  </div>
-                )}
+                      disabled={catalogLoading || !catalog}
+                    >
+                      <SelectTrigger id='task-building' className='w-full'>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectGroup>
+                          <SelectLabel>{venueType === 'library' ? '馆区' : '楼栋'}</SelectLabel>
+                          {catalog?.buildings.map((building) => (
+                            <SelectItem key={building.id} value={building.id}>
+                              {building.name}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor='task-room'>空间</FieldLabel>
+                    <Select
+                      value={roomId}
+                      items={rooms.map((room) => ({ value: room.id, label: room.name }))}
+                      onValueChange={(value) => {
+                        if (value) {
+                          setRoomId(value);
+                          setLayout(null);
+                          setSelectedSeatIds([]);
+                        }
+                      }}
+                      disabled={!rooms.length}
+                    >
+                      <SelectTrigger id='task-room' className='w-full'>
+                        <SelectValue placeholder='选择空间' />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectGroup>
+                          <SelectLabel>可预约空间</SelectLabel>
+                          {rooms.map((room) => (
+                            <SelectItem key={room.id} value={room.id}>
+                              {room.name}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                    <FieldDescription>
+                      {catalogLoading ? '正在读取学校实时空间…' : '名称来自学校实时目录。'}
+                    </FieldDescription>
+                  </Field>
+                </FieldGroup>
                 {catalog?.captchaRequired && (
                   <Alert>
                     <Icons.shield />
@@ -526,100 +546,222 @@ function TaskEditorDialog({
                     <AlertDescription>{catalogError}</AlertDescription>
                   </Alert>
                 )}
-                <div>
-                  <TimeRangePicker
-                    value={timeCandidates}
-                    onChange={setTimeCandidates}
-                    availableStartTimes={availableStartTimes}
-                  />
-                  {selectedSeatIds[0] && (
-                    <p className='text-muted-foreground mt-2 text-xs'>
-                      {timesLoading
-                        ? '正在读取该座位的可用时段…'
-                        : availableStartTimes.length
-                          ? '已按学校返回的可用起始时段更新菜单。'
-                          : '暂未取得该座位的实时起始时段，仍可使用常规半小时刻度。'}
-                    </p>
-                  )}
+                <div className='rounded-lg bg-muted/40 px-3 py-2.5 text-sm'>
+                  <span className='text-muted-foreground'>当前选择：</span>
+                  <span className='font-medium'>
+                    {selectedBuilding?.name || '未选楼栋'}
+                    {selectedRoom ? ` / ${selectedRoom.name}` : ''}
+                  </span>
                 </div>
-                <details className='rounded-lg border p-3'>
-                  <summary className='cursor-pointer text-sm font-medium'>高级执行参数</summary>
-                  <div className='mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3'>
-                    <NumberField
-                      id='task-attempts'
-                      label='最大尝试次数'
-                      value={maxAttempts}
-                      onChange={setMaxAttempts}
-                      min='1'
-                      max='100'
-                      step='1'
+              </section>
+            ) : (
+              <section className='flex min-w-0 flex-col gap-5'>
+                <div className='rounded-lg border bg-muted/30 px-4 py-3'>
+                  <p className='text-muted-foreground text-xs'>预约位置</p>
+                  <p className='mt-1 truncate text-sm font-medium'>
+                    {selectedBuilding?.name} / {selectedRoom?.name}
+                  </p>
+                </div>
+                <SeatMapPicker
+                  layout={layout}
+                  loading={layoutLoading || catalogLoading}
+                  selectedIds={selectedSeatIds}
+                  onSelectedIdsChange={setSelectedSeatIds}
+                  onRefresh={() => void loadLayout()}
+                  className='w-full'
+                />
+                {catalog?.captchaRequired && (
+                  <Alert>
+                    <Icons.shield />
+                    <AlertTitle>预约前需要验证</AlertTitle>
+                    <AlertDescription>
+                      图书馆当前开启验证码。座位查询可正常使用，提交预约前需在控制台完成一次验证。
+                    </AlertDescription>
+                  </Alert>
+                )}
+                {catalogError && (
+                  <Alert variant='destructive'>
+                    <Icons.warning />
+                    <AlertTitle>实时数据未加载</AlertTitle>
+                    <AlertDescription>{catalogError}</AlertDescription>
+                  </Alert>
+                )}
+                <div className='grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(280px,0.7fr)]'>
+                  <section className='min-w-0 rounded-xl border bg-card p-4'>
+                    <TimeRangePicker
+                      value={timeCandidates}
+                      onChange={setTimeCandidates}
+                      availableStartTimes={availableStartTimes}
                     />
-                    <NumberField
-                      id='task-delay'
-                      label='尝试间隔（秒）'
-                      value={delay}
-                      onChange={setDelay}
-                      min='0'
-                      max='30'
-                      step='0.1'
-                    />
-                    <NumberField
-                      id='task-window'
-                      label='执行窗口（秒）'
-                      value={windowSeconds}
-                      onChange={setWindowSeconds}
-                      min='1'
-                      max='120'
-                      step='1'
-                    />
-                    <NumberField
-                      id='task-prewarm-offset'
-                      label='预热错峰（秒）'
-                      value={prewarmOffset}
-                      onChange={setPrewarmOffset}
-                      min='0'
-                      max='300'
-                      step='1'
-                    />
-                    <NumberField
-                      id='task-run-offset'
-                      label='预约错峰（秒）'
-                      value={runOffset}
-                      onChange={setRunOffset}
-                      min='0'
-                      max='300'
-                      step='1'
-                    />
-                  </div>
-                </details>
-              </div>
-              <SeatMapPicker
-                layout={layout}
-                loading={layoutLoading || catalogLoading}
-                selectedIds={selectedSeatIds}
-                onSelectedIdsChange={setSelectedSeatIds}
-                onRefresh={() => void loadLayout()}
-              />
-            </div>
+                    {selectedSeatIds[0] && (
+                      <p className='text-muted-foreground mt-2 text-xs'>
+                        {timesLoading
+                          ? '正在读取该座位的可用时段…'
+                          : availableStartTimes.length
+                            ? '已按学校返回的可用起始时段更新菜单。'
+                            : '暂未取得该座位的实时起始时段，仍可使用常规半小时刻度。'}
+                      </p>
+                    )}
+                  </section>
+                  <section className='min-w-0 rounded-xl border bg-card p-4'>
+                    <FieldGroup>
+                      <Field>
+                        <FieldLabel>执行频率</FieldLabel>
+                        <ToggleGroup
+                          value={[scheduleMode]}
+                          onValueChange={(value) =>
+                            value[0] && setScheduleMode(value[0] as ScheduleMode)
+                          }
+                          variant='outline'
+                          spacing={0}
+                          className='grid w-full grid-cols-3'
+                        >
+                          <ToggleGroupItem value='daily' className='w-full'>
+                            每天
+                          </ToggleGroupItem>
+                          <ToggleGroupItem value='weekdays' className='w-full'>
+                            工作日
+                          </ToggleGroupItem>
+                          <ToggleGroupItem value='weekly' className='w-full'>
+                            自定义
+                          </ToggleGroupItem>
+                        </ToggleGroup>
+                      </Field>
+                      {scheduleMode === 'weekly' && (
+                        <Field>
+                          <div className='flex items-center justify-between gap-3'>
+                            <FieldLabel>执行星期</FieldLabel>
+                            <span className='text-muted-foreground text-xs'>至少一天</span>
+                          </div>
+                          <ToggleGroup
+                            multiple
+                            value={scheduleWeekdays.map(String)}
+                            onValueChange={(values) => setScheduleWeekdays(values.map(Number))}
+                            variant='outline'
+                            spacing={1}
+                            className='grid w-full grid-cols-4 sm:grid-cols-7'
+                            aria-label='选择执行星期'
+                          >
+                            {WEEKDAYS.map((weekday) => (
+                              <ToggleGroupItem
+                                key={weekday.value}
+                                value={weekday.value}
+                                className='w-full'
+                              >
+                                {weekday.label}
+                              </ToggleGroupItem>
+                            ))}
+                          </ToggleGroup>
+                        </Field>
+                      )}
+                    </FieldGroup>
+                    <div className='mt-4 rounded-lg bg-muted/40 px-3 py-2 text-xs text-muted-foreground'>
+                      {scheduleMode === 'daily'
+                        ? '每天按照下面的时间段自动尝试。'
+                        : scheduleMode === 'weekdays'
+                          ? '周一至周五自动尝试。'
+                          : '只在选中的星期自动尝试。'}
+                    </div>
+                  </section>
+                </div>
+                <Collapsible
+                  open={advancedOpen}
+                  onOpenChange={setAdvancedOpen}
+                  className='rounded-xl border bg-card'
+                >
+                  <CollapsibleTrigger className='flex w-full items-center justify-between gap-3 px-4 py-3 text-left text-sm font-medium'>
+                    高级执行参数
+                    <Icons.chevronDown className='size-4 text-muted-foreground transition-transform data-panel-open:rotate-180' />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className='border-t px-4 py-4'>
+                    <div className='grid grid-cols-2 gap-3 sm:grid-cols-3'>
+                      <NumberField
+                        id='task-attempts'
+                        label='最大尝试次数'
+                        value={maxAttempts}
+                        onChange={setMaxAttempts}
+                        min='1'
+                        max='100'
+                        step='1'
+                      />
+                      <NumberField
+                        id='task-delay'
+                        label='尝试间隔（秒）'
+                        value={delay}
+                        onChange={setDelay}
+                        min='0'
+                        max='30'
+                        step='0.1'
+                      />
+                      <NumberField
+                        id='task-window'
+                        label='执行窗口（秒）'
+                        value={windowSeconds}
+                        onChange={setWindowSeconds}
+                        min='1'
+                        max='120'
+                        step='1'
+                      />
+                      <NumberField
+                        id='task-prewarm-offset'
+                        label='预热错峰（秒）'
+                        value={prewarmOffset}
+                        onChange={setPrewarmOffset}
+                        min='0'
+                        max='300'
+                        step='1'
+                      />
+                      <NumberField
+                        id='task-run-offset'
+                        label='预约错峰（秒）'
+                        value={runOffset}
+                        onChange={setRunOffset}
+                        min='0'
+                        max='300'
+                        step='1'
+                      />
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+              </section>
+            )}
           </form>
         </div>
-        <DialogFooter className='sticky bottom-0 z-10 shrink-0'>
-          <Button type='button' variant='outline' onClick={() => onOpenChange(false)}>
-            取消
-          </Button>
+        <DialogFooter className='sticky bottom-0 z-10 shrink-0 flex-col-reverse gap-2 sm:flex-row sm:justify-between'>
           <Button
-            type='submit'
-            form='booking-task-editor'
-            disabled={saving || accounts.length === 0 || !selectedSeatIds.length}
+            type='button'
+            variant='outline'
+            onClick={() => (step === 2 ? setStep(1) : onOpenChange(false))}
           >
-            {saving
-              ? '保存中'
-              : task
-                ? '保存修改'
-                : venueType === 'library'
-                  ? '保存图书馆任务'
-                  : '创建任务'}
+            {step === 2 ? (
+              <>
+                <Icons.chevronLeft data-icon='inline-start' />
+                返回
+              </>
+            ) : (
+              '取消'
+            )}
           </Button>
+          {step === 1 ? (
+            <Button type='button' onClick={handleContinue} disabled={!canContinue}>
+              继续选座
+              <Icons.arrowRight data-icon='inline-end' />
+            </Button>
+          ) : (
+            <Button
+              type='submit'
+              form='booking-task-editor'
+              disabled={saving || accounts.length === 0 || !selectedSeatIds.length}
+            >
+              {saving
+                ? '保存中'
+                : task
+                  ? '保存修改'
+                  : venueType === 'library'
+                    ? '保存图书馆任务'
+                    : '创建任务'}
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
