@@ -34,12 +34,16 @@ export class PlatformServiceConnectionsService {
     token: string,
     mode: 'direct' | 'webvpn',
   ): Promise<SchoolServiceConnectionEntity> {
+    const ownerId = account.userId || account.user?.id;
+    if (!ownerId) {
+      throw new UnprocessableEntityException('校园账号归属信息不完整');
+    }
     let connection = await this.connections.findOne({
       where: { schoolAccount: { id: account.id }, serviceType },
     });
     connection ??= this.connections.create({
       schoolAccount: account,
-      user: { id: account.userId } as UserEntity,
+      user: { id: ownerId } as UserEntity,
       serviceType,
       identifier: serviceType === 'library' ? 'cczu' : 'cczukaoyan',
     });
@@ -56,10 +60,14 @@ export class PlatformServiceConnectionsService {
     serviceType: SeatServiceType,
     forceRefresh = false,
   ): Promise<ReadySeatConnection> {
+    const ownerId = account.userId || account.user?.id;
+    if (!ownerId) {
+      throw new UnprocessableEntityException('校园账号归属信息不完整');
+    }
     let connection = await this.connections.findOne({
       where: {
         schoolAccount: { id: account.id },
-        user: { id: account.userId },
+        user: { id: ownerId },
         serviceType,
       },
     });
