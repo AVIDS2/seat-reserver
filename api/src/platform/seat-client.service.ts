@@ -95,7 +95,11 @@ export class SeatClientService {
   }
 
   async get(token: string, path: string): Promise<SeatResponse> {
-    return this.request(new URL(path, this.userUrl), { token });
+    const userUrl = new URL(this.userUrl);
+    const servicePrefix = userUrl.pathname.split('/rest/')[0] || '';
+    return this.request(new URL(`${servicePrefix}${path}`, userUrl.origin), {
+      token,
+    });
   }
 
   buildCandidates(

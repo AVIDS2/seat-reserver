@@ -107,4 +107,23 @@ describe('SeatClientService', () => {
       'endTime=1320',
     );
   });
+
+  it('should preserve the service prefix for catalog requests', async () => {
+    process.env.SEAT_USER_URL = 'https://leosys.cn/cczukaoyan/rest/v2/user';
+    const fetchMock = jest.fn<typeof fetch>();
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify({ status: 'success', code: '0', data: {} }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }),
+    );
+    global.fetch = fetchMock;
+    const service = new SeatClientService();
+
+    await service.get('token-123', '/rest/v2/free/filters');
+
+    expect(String(fetchMock.mock.calls[0]?.[0])).toBe(
+      'https://leosys.cn/cczukaoyan/rest/v2/free/filters',
+    );
+  });
 });
