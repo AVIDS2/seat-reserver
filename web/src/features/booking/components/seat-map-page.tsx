@@ -24,6 +24,7 @@ import { cn } from '@/lib/utils';
 import { getSeatCatalog, getSeatLayout } from '../api/service';
 import type { BookingAccount, SeatCatalog, SeatLayout, VenueType } from '../types';
 import { SeatMapPicker } from './seat-map-picker';
+import { getSchoolAvailabilityNotice } from './school-status';
 
 export default function SeatMapPage({ initialAccounts }: { initialAccounts: BookingAccount[] }) {
   const [accountId, setAccountId] = useState(initialAccounts[0]?.id || '');
@@ -81,6 +82,7 @@ export default function SeatMapPage({ initialAccounts }: { initialAccounts: Book
   );
   const selectedBuilding = catalog?.buildings.find((building) => building.id === buildingId);
   const selectedRoom = catalog?.rooms.find((room) => room.id === roomId);
+  const catalogNotice = getSchoolAvailabilityNotice(error);
   const seatStats = useMemo(() => {
     const seats = layout?.nodes.filter((node) => node.kind === 'seat') ?? [];
     return {
@@ -319,11 +321,25 @@ export default function SeatMapPage({ initialAccounts }: { initialAccounts: Book
 
             <div className='min-w-0 space-y-4'>
               {(error || catalog?.captchaRequired) && (
-                <Alert variant={error ? 'destructive' : 'default'}>
-                  {error ? <Icons.warning /> : <Icons.shield />}
-                  <AlertTitle>{error ? '实时数据未加载' : '预约前需要验证'}</AlertTitle>
+                <Alert variant={error && !catalogNotice.maintenance ? 'destructive' : 'default'}>
+                  {error ? (
+                    catalogNotice.maintenance ? (
+                      <Icons.clock />
+                    ) : (
+                      <Icons.warning />
+                    )
+                  ) : (
+                    <Icons.shield />
+                  )}
+                  <AlertTitle>
+                    {error
+                      ? catalogNotice.maintenance
+                        ? '学校系统维护中'
+                        : '实时数据未加载'
+                      : '预约前需要验证'}
+                  </AlertTitle>
                   <AlertDescription>
-                    {error || '该系统当前开启预约验证，座位状态仍可查看。'}
+                    {error ? catalogNotice.message : '该系统当前开启预约验证，座位状态仍可查看。'}
                   </AlertDescription>
                 </Alert>
               )}

@@ -72,6 +72,7 @@ import type {
   VenueType
 } from '../types';
 import { SeatMapPicker } from './seat-map-picker';
+import { getSchoolAvailabilityNotice } from './school-status';
 import { TaskStatusBadge } from './status-badge';
 import { TimeRangePicker } from './time-range-picker';
 
@@ -272,6 +273,7 @@ function TaskEditorDialog({
   const selectedRoom = catalog?.rooms.find((room) => room.id === roomId);
   const selectedBuilding = catalog?.buildings.find((building) => building.id === buildingId);
   const selectedNodes = selectedSeatIds.map((id) => layout?.nodes.find((node) => node.id === id));
+  const catalogNotice = getSchoolAvailabilityNotice(catalogError);
   const resetLocationSelection = () => {
     setCatalog(null);
     setLayout(null);
@@ -530,20 +532,13 @@ function TaskEditorDialog({
                     </FieldDescription>
                   </Field>
                 </FieldGroup>
-                {catalog?.captchaRequired && (
-                  <Alert>
-                    <Icons.shield />
-                    <AlertTitle>预约前需要验证</AlertTitle>
-                    <AlertDescription>
-                      图书馆当前开启验证码。座位查询可正常使用，提交预约前需在控制台完成一次验证。
-                    </AlertDescription>
-                  </Alert>
-                )}
                 {catalogError && (
-                  <Alert variant='destructive'>
-                    <Icons.warning />
-                    <AlertTitle>实时数据未加载</AlertTitle>
-                    <AlertDescription>{catalogError}</AlertDescription>
+                  <Alert variant={catalogNotice.maintenance ? 'default' : 'destructive'}>
+                    {catalogNotice.maintenance ? <Icons.clock /> : <Icons.warning />}
+                    <AlertTitle>
+                      {catalogNotice.maintenance ? '学校系统维护中' : '实时数据未加载'}
+                    </AlertTitle>
+                    <AlertDescription>{catalogNotice.message}</AlertDescription>
                   </Alert>
                 )}
                 <div className='rounded-lg bg-muted/40 px-3 py-2.5 text-sm'>
@@ -580,10 +575,12 @@ function TaskEditorDialog({
                   </Alert>
                 )}
                 {catalogError && (
-                  <Alert variant='destructive'>
-                    <Icons.warning />
-                    <AlertTitle>实时数据未加载</AlertTitle>
-                    <AlertDescription>{catalogError}</AlertDescription>
+                  <Alert variant={catalogNotice.maintenance ? 'default' : 'destructive'}>
+                    {catalogNotice.maintenance ? <Icons.clock /> : <Icons.warning />}
+                    <AlertTitle>
+                      {catalogNotice.maintenance ? '学校系统维护中' : '实时数据未加载'}
+                    </AlertTitle>
+                    <AlertDescription>{catalogNotice.message}</AlertDescription>
                   </Alert>
                 )}
                 <div className='grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(280px,0.7fr)]'>
