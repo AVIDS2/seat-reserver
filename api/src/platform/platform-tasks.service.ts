@@ -328,6 +328,7 @@ export class PlatformTasksService {
     const time = task.timeCandidates
       .map(({ start, end }) => `${formatTime(start)} - ${formatTime(end)}`)
       .join(' / ');
+    const requiresLibraryVerification = task.venueType === 'library';
 
     return {
       id: String(task.id),
@@ -349,7 +350,9 @@ export class PlatformTasksService {
       time,
       nextRun: task.enabled
         ? `${task.scheduleMode === 'once' && task.targetDate ? task.targetDate : '每日'} ${formatScheduledTime(task.runOffsetSeconds)}`
-        : '已暂停',
+        : requiresLibraryVerification
+          ? '完成验证后可预约'
+          : '已暂停',
       status:
         hasIssue || lastRun?.status === 'failed'
           ? 'attention'
@@ -368,7 +371,11 @@ export class PlatformTasksService {
       lastRun: lastRun ? formatDate(lastRun.createdAt) : '尚未运行',
       lastMessage:
         lastRun?.message ??
-        (hasIssue ? '账号授权需要检查' : '等待下一次自动执行'),
+        (hasIssue
+          ? '账号授权需要检查'
+          : requiresLibraryVerification
+            ? '图书馆当前需要预约前验证码确认'
+            : '等待下一次自动执行'),
     };
   }
 }
