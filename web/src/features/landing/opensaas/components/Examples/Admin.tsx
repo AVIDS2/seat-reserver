@@ -6,8 +6,8 @@ export function Admin() {
   return (
     <HighlightedFeature
       id='admin-feature'
-      name='管理员工作台，掌握全局健康度。'
-      description='邀请码、成员状态、任务队列和运行记录集中查看。管理员只看到脱敏的全局视图，用户数据仍按账号独立隔离。'
+      name='所有预约状态，一眼掌握。'
+      description='今日任务、连接状态、执行进度和最终结果集中呈现。无论管理一个安排还是多个学习计划，重要信息都不会被埋在层层页面里。'
       highlightedComponent={<AdminExample />}
     />
   );
@@ -19,9 +19,9 @@ function AdminExample() {
       <div className='flex items-start justify-between border-b pb-5'>
         <div>
           <p className='text-muted-foreground text-xs font-medium tracking-[0.16em] uppercase'>
-            Admin workspace
+            Control center
           </p>
-          <p className='mt-2 text-lg font-semibold'>平台运行概览</p>
+          <p className='mt-2 text-lg font-semibold'>我的预约概览</p>
         </div>
         <span className='bg-emerald-500/10 text-emerald-700 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium'>
           <span className='size-1.5 rounded-full bg-current' />
@@ -29,9 +29,9 @@ function AdminExample() {
         </span>
       </div>
       <div className='mt-6 grid grid-cols-3 gap-3'>
-        <Metric label='成员' value='12' />
-        <Metric label='启用任务' value='08' />
-        <Metric label='今日成功' value='06' accent />
+        <Metric label='已连接' value='02' />
+        <Metric label='待执行' value='03' />
+        <Metric label='本周成功' value='06' accent />
       </div>
       <div className='mt-5 rounded-lg bg-[#171815] p-4 text-white'>
         <div className='flex items-center justify-between'>
