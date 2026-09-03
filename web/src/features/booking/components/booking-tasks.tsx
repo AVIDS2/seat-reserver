@@ -53,6 +53,7 @@ import {
   dryRunBookingTask,
   getSeatCatalog,
   getSeatLayout,
+  getSeatTimes,
   prewarmBookingTask,
   runBookingTask,
   setBookingTaskEnabled,
@@ -122,6 +123,8 @@ function TaskEditorDialog({
   const [layout, setLayout] = useState<SeatLayout | null>(null);
   const [catalogLoading, setCatalogLoading] = useState(false);
   const [layoutLoading, setLayoutLoading] = useState(false);
+  const [timesLoading, setTimesLoading] = useState(false);
+  const [availableStartTimes, setAvailableStartTimes] = useState<number[]>([]);
   const [catalogError, setCatalogError] = useState('');
   const [timeCandidates, setTimeCandidates] = useState<TimeCandidate[]>(DEFAULT_TIME_CANDIDATES);
   const [maxAttempts, setMaxAttempts] = useState('12');
@@ -143,6 +146,7 @@ function TaskEditorDialog({
     setSelectedSeatIds(task ? [task.seatId, ...task.backupSeatIds] : []);
     setCatalog(null);
     setLayout(null);
+    setAvailableStartTimes([]);
     setCatalogError('');
     setTimeCandidates(task?.timeCandidates?.length ? task.timeCandidates : DEFAULT_TIME_CANDIDATES);
     setMaxAttempts(String(task?.maxAttempts || 12));
@@ -212,6 +216,28 @@ function TaskEditorDialog({
     // loadLayout intentionally tracks the concrete catalog selection only.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accountId, date, open, roomId, venueType]);
+
+  useEffect(() => {
+    const primarySeatId = selectedSeatIds[0];
+    if (!open || !accountId || !roomId || !date || !primarySeatId) {
+      setAvailableStartTimes([]);
+      return;
+    }
+    let cancelled = false;
+    setTimesLoading(true);
+    void getSeatTimes({ accountId, serviceType: venueType, roomId, seatId: primarySeatId, date })
+      .then((times) => {
+        if (cancelled) return;
+        setAvailableStartTimes(
+          times.startTimes.map((item) => Number(item.id)).filter((item) => Number.isInteger(item))
+        );
+      })
+      .catch(() => !cancelled && setAvailableStartTimes([]))
+      .finally(() => !cancelled && setTimesLoading(false));
+    return () => {
+      cancelled = true;
+    };
+  }, [accountId, date, open, roomId, selectedSeatIds, venueType]);
 
   const rooms = catalog?.rooms.filter((room) => room.buildingId === buildingId) ?? [];
   const selectedRoom = catalog?.rooms.find((room) => room.id === roomId);
@@ -426,7 +452,20 @@ function TaskEditorDialog({
                 </Alert>
               )}
               <div>
-                <TimeRangePicker value={timeCandidates} onChange={setTimeCandidates} />
+                <TimeRangePicker
+                  value={timeCandidates}
+                  onChange={setTimeCandidates}
+                  availableStartTimes={availableStartTimes}
+                />
+                {selectedSeatIds[0] && (
+                  <p className='text-muted-foreground mt-2 text-xs'>
+                    {timesLoading
+                      ? '正在读取该座位的可用时段…'
+                      : availableStartTimes.length
+                        ? '已按学校返回的可用起始时段更新菜单。'
+                        : '暂未取得该座位的实时起始时段，仍可使用常规半小时刻度。'}
+                  </p>
+                )}
               </div>
               <details className='rounded-lg border p-3'>
                 <summary className='cursor-pointer text-sm font-medium'>高级执行参数</summary>

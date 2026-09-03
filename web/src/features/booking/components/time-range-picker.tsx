@@ -33,10 +33,12 @@ const QUICK_RANGES: TimeCandidate[] = [
 
 export function TimeRangePicker({
   value,
-  onChange
+  onChange,
+  availableStartTimes
 }: {
   value: TimeCandidate[];
   onChange: (value: TimeCandidate[]) => void;
+  availableStartTimes?: number[];
 }) {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
 
@@ -76,7 +78,9 @@ export function TimeRangePicker({
             onOpenChange={(open) => setOpenIndex(open ? index : null)}
           >
             <div className='flex min-w-0 items-center gap-2'>
-              <span className='text-muted-foreground w-12 shrink-0 text-xs tabular-nums'>时段 {index + 1}</span>
+              <span className='text-muted-foreground w-12 shrink-0 text-xs tabular-nums'>
+                时段 {index + 1}
+              </span>
               <PopoverTrigger
                 render={
                   <Button
@@ -89,7 +93,9 @@ export function TimeRangePicker({
               >
                 <span className='flex min-w-0 items-center gap-2 truncate'>
                   <Icons.clock data-icon='inline-start' />
-                  <span className='truncate'>{formatTime(range.start)} - {formatTime(range.end)}</span>
+                  <span className='truncate'>
+                    {formatTime(range.start)} - {formatTime(range.end)}
+                  </span>
                 </span>
                 <Icons.chevronDown aria-hidden='true' />
               </PopoverTrigger>
@@ -114,21 +120,31 @@ export function TimeRangePicker({
                 <TimeSelect
                   label='开始'
                   value={range.start}
-                  options={TIME_OPTIONS.filter((option) => option < range.end)}
-                  onChange={(start) => updateRange(index, { start, end: Math.max(range.end, start + 30) })}
+                  options={(availableStartTimes?.length
+                    ? availableStartTimes
+                    : TIME_OPTIONS
+                  ).filter((option) => option < range.end)}
+                  onChange={(start) =>
+                    updateRange(index, { start, end: Math.max(range.end, start + 30) })
+                  }
                 />
                 <span className='text-muted-foreground pb-2 text-sm'>至</span>
                 <TimeSelect
                   label='结束'
                   value={range.end}
                   options={TIME_OPTIONS.filter((option) => option > range.start)}
-                  onChange={(end) => updateRange(index, { start: Math.min(range.start, end - 30), end })}
+                  onChange={(end) =>
+                    updateRange(index, { start: Math.min(range.start, end - 30), end })
+                  }
                 />
               </div>
               <div className='flex flex-col gap-2'>
                 <p className='text-muted-foreground text-xs'>常用时段</p>
                 <div className='grid grid-cols-2 gap-2'>
-                  {QUICK_RANGES.map((quickRange) => (
+                  {(availableStartTimes?.length
+                    ? QUICK_RANGES.filter((range) => availableStartTimes.includes(range.start))
+                    : QUICK_RANGES
+                  ).map((quickRange) => (
                     <Button
                       key={`${quickRange.start}-${quickRange.end}`}
                       type='button'
@@ -169,7 +185,10 @@ function TimeSelect({
   options: number[];
   onChange: (value: number) => void;
 }) {
-  const safeOptions = useMemo(() => (options.includes(value) ? options : [...options, value].toSorted((a, b) => a - b)), [options, value]);
+  const safeOptions = useMemo(
+    () => (options.includes(value) ? options : [...options, value].toSorted((a, b) => a - b)),
+    [options, value]
+  );
 
   useEffect(() => {
     if (!options.includes(value) && options[0] !== undefined) onChange(options[0]);
@@ -198,5 +217,7 @@ function TimeSelect({
 }
 
 function formatTime(minutes: number): string {
-  return `${Math.floor(minutes / 60).toString().padStart(2, '0')}:${(minutes % 60).toString().padStart(2, '0')}`;
+  return `${Math.floor(minutes / 60)
+    .toString()
+    .padStart(2, '0')}:${(minutes % 60).toString().padStart(2, '0')}`;
 }
