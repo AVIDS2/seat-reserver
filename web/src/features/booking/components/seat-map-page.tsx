@@ -231,8 +231,9 @@ export default function SeatMapPage({ initialAccounts }: { initialAccounts: Book
         seatId,
         date
       });
-      setInstantTimes(times);
-      const firstStart = times.startTimes[0]?.id || '';
+      const usableStarts = times.startTimes.filter((item) => isBookableTime(item.id));
+      setInstantTimes({ ...times, startTimes: usableStarts });
+      const firstStart = usableStarts[0]?.id || '';
       setInstantStartTime(firstStart);
       if (firstStart) {
         const endTimes = await getSeatTimes({
@@ -245,9 +246,9 @@ export default function SeatMapPage({ initialAccounts }: { initialAccounts: Book
         });
         setInstantTimes((current) => ({
           ...current,
-          endTimes: endTimes.endTimes
+          endTimes: endTimes.endTimes.filter((item) => isBookableTime(item.id))
         }));
-        setInstantEndTime(endTimes.endTimes[0]?.id || '');
+        setInstantEndTime(endTimes.endTimes.find((item) => isBookableTime(item.id))?.id || '');
       }
     } catch (reason) {
       setInstantError(reason instanceof Error ? reason.message : '可预约时段加载失败');
@@ -281,11 +282,12 @@ export default function SeatMapPage({ initialAccounts }: { initialAccounts: Book
       startTime: nextStart
     })
       .then((times) => {
+        const usableEnds = times.endTimes.filter((item) => isBookableTime(item.id));
         setInstantTimes((current) => ({
           ...current,
-          endTimes: times.endTimes
+          endTimes: usableEnds
         }));
-        setInstantEndTime(times.endTimes[0]?.id || '');
+        setInstantEndTime(usableEnds[0]?.id || '');
       })
       .catch((reason) =>
         setInstantError(reason instanceof Error ? reason.message : '结束时间加载失败')
@@ -798,4 +800,9 @@ function formatDateLabel(value: string): string {
 
 function findTimeLabel(items: Array<{ id: string; label: string }>, id: string): string {
   return items.find((item) => item.id === id)?.label || id;
+}
+
+function isBookableTime(value: string): boolean {
+  const minutes = Number(value);
+  return Number.isInteger(minutes) && minutes >= 480 && minutes <= 1320;
 }

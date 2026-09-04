@@ -205,6 +205,8 @@ export class PlatformReservationsService {
 
   private validateBooking(dto: ImmediateReservationDto): void {
     if (
+      !Number.isInteger(dto.startTime) ||
+      !Number.isInteger(dto.endTime) ||
       dto.startTime < BOOKABLE_START_MINUTES ||
       dto.endTime > BOOKABLE_END_MINUTES ||
       dto.endTime <= dto.startTime

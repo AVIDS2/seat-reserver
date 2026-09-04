@@ -266,6 +266,22 @@ describe('PlatformReservationsService', () => {
     );
   });
 
+  it('should reject non-numeric booking times before contacting the school', async () => {
+    const { service, schoolAuth } = makeService();
+
+    await expect(
+      service.createCaptcha(7, {
+        accountId: 4,
+        serviceType: 'library',
+        seatId: '197',
+        date: '2026-09-05',
+        startTime: Number.NaN,
+        endTime: 600,
+      }),
+    ).rejects.toThrow('可预约时间为 08:00–22:00');
+    expect(schoolAuth.createBookingCaptcha).not.toHaveBeenCalled();
+  });
+
   it('should verify captcha points once and submit the bound booking', async () => {
     const { service, schoolAuth, redis } = makeService();
     redis.getJson.mockResolvedValue({
