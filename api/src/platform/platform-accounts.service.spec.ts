@@ -11,6 +11,8 @@ describe('PlatformAccountsService', () => {
         (
           username: string,
           password: string,
+          mode?: 'direct' | 'webvpn',
+          serviceType?: 'study_room' | 'library',
         ) => Promise<{ token: string; mode: 'direct' | 'webvpn' }>
       >();
     authenticate.mockResolvedValue({ token: 'token-123', mode: 'direct' });
@@ -63,7 +65,12 @@ describe('PlatformAccountsService', () => {
       schoolPassword: 'school-password',
     });
 
-    expect(authenticate).toHaveBeenCalledWith('2300906131', 'school-password');
+    expect(authenticate).toHaveBeenCalledWith(
+      '2300906131',
+      'school-password',
+      undefined,
+      'study_room',
+    );
     expect(verifyToken).toHaveBeenCalledWith('token-123', 'direct');
     expect(crypto.encrypt).toHaveBeenCalledWith('school-password');
     expect(crypto.encrypt).toHaveBeenCalledWith('token-123');

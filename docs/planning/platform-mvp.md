@@ -414,7 +414,7 @@ GET /api/v1/platform/health 返回 ok
 - [x] 实现学校账号 AES-256-GCM 加密保存。
 - [x] 实现已有一考即过凭据验证：调用 `/rest/auth` 和 `/rest/v2/user`。
 - [x] 保存加密 cached_token。
-- [x] 完成图书馆账号通过 WebVPN 网关、校园 SSO 和动态代理入口换取业务 Token；自习室使用公网 direct Token。
+- [x] 完成图书馆账号通过 WebVPN 网关、校园 SSO 和动态代理入口换取业务 Token；自习室支持公网 direct 和 WebVPN/SSO 两条认证路线。
 
 验收：
 
@@ -478,7 +478,7 @@ booking job 成功/失败都会写 booking_runs
 管理员可以创建邀请码、查看成员并启用/禁用用户
 ```
 
-已有账号的 direct Token 刷新、`/rest/v2/user` 校验和真实预约 POST 已在 VPS 验证。图书馆 WebVPN 网关登录、校园 SSO、代理入口和 `ssoAuth` 作为独立服务路线维护；自习室任务不会依赖 WebVPN。
+已有账号的 direct Token 刷新、`/rest/v2/user` 校验和真实预约 POST 已在 VPS 验证；自习室 WebVPN 网关登录、校园 SSO、代理入口、`ssoAuth` 和真实预约 POST 也已验证。账号恢复时沿用历史成功模式。
 
 ## 测试要求
 

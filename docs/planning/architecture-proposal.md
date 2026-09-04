@@ -829,9 +829,9 @@ seat.rglens.com {
 - [x] seat_client 模块：auth(), verifyToken()
 - [x] 日志脱敏：密码和 token 不写入日志
 - [x] 测试：加密存储、verify 成功/失败、脱敏（关键路径用 mock SeatClient 覆盖）
-- [x] 图书馆 WebVPN 网关、校园 SSO、动态代理、ssoAuth 和真实链路已验证；自习室 direct 真实链路已在 VPS 验证
+- [x] 图书馆 WebVPN 网关、校园 SSO、动态代理、ssoAuth 和真实链路已验证；自习室 direct 与 WebVPN/SSO 两条真实链路均已在 VPS 验证
 
-**验收**：自习室账号通过 direct verify；图书馆账号通过 WebVPN verify；错误凭据失败；DB 中无明文凭据；日志中无明文 token。校园密码不会被默认视为 `/rest/auth` password。
+**验收**：自习室账号按历史成功模式通过 direct 或 WebVPN verify；图书馆账号通过 WebVPN verify；错误凭据失败；DB 中无明文凭据；日志中无明文 token。校园密码不会被默认视为 `/rest/auth` password。
 
 ### Phase 4: 预约任务管理（2 天）
 
@@ -874,7 +874,7 @@ seat.rglens.com {
 - [x] 运行日志页：按任务筛选、详情展示
 - [x] 管理员页：邀请码管理、用户列表、全局概览
 
-**验收**：平台账号注册到创建任务全流程可用；管理员可创建邀请码；自习室 direct 与图书馆 webvpn 两条服务路线分别完成绑定、刷新和真实预约验证。2026-09-03 的 WebVPN 生产测试曾成功获得学校回执。
+**验收**：平台账号注册到创建任务全流程可用；管理员可创建邀请码；自习室 direct/WebVPN 与图书馆 WebVPN 服务路线分别完成绑定、刷新和真实预约验证。2026-09-03、09-04 的 WebVPN 自习室生产测试均获得学校回执。
 
 ### Phase 7: 打磨和文档（1-2 天）
 

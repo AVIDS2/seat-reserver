@@ -2,7 +2,7 @@
 
 目标：确认新用户能否使用学校身份完成座位系统首次绑定，并拿到后续可在对应认证模式下验证和预约的业务 token。
 
-截至 2026-09-03，自习室公网直连路线已在 VPS 完成真实预约验证；WebVPN 仅作为历史兼容和图书馆路线。平台自习室新增、修改、刷新和预约前刷新均使用 `cczukaoyan/rest/auth` 获取直连 Token，图书馆连接才通过 WebVPN 和校园 SSO；用户端只填写学号和密码。
+截至 2026-09-04，自习室公网直连和 WebVPN/SSO 两条路线都在 VPS 完成过真实预约验证；平台按账号保存实际成功模式，图书馆固定使用 WebVPN/SSO。新账号自动探测，用户端只填写学号和密码。
 
 ## 边界
 
@@ -107,11 +107,11 @@ python tools/binding_discovery/analyze_capture.py tools/binding_discovery/captur
 
 ## 已确认结论
 
-1. 平台和脚本都使用 `/cczukaoyan/rest/auth` 处理自习室；现有一考即过凭据在 VPS 上已验证 direct 刷新和预约请求。图书馆单独使用 WebVPN 路线。
-2. webvpn 模式使用校园账号密码完成网关登录和校园 SSO；图书馆依赖这条路线，自习室不需要 SwordAgent、Windows VM、TUN 或修改 VPS 路由。
+1. 平台和脚本都使用 `/cczukaoyan/rest/auth` 处理 direct 自习室账号；另有自习室 WebVPN/SSO 账号路线，二者都已在 VPS 真实预约验证。图书馆单独使用 WebVPN 路线。
+2. webvpn 模式使用校园账号密码完成网关登录和校园 SSO；direct 模式不需要 SwordAgent、Windows VM、TUN 或修改 VPS 路由。
 3. 图书馆目标需要经 WebVPN 访问；其代理入口和签名种子由 CAS 最终回跳动态提取，不硬编码代理哈希或签名种子。自习室直连不经过该代理。
 4. WebVPN Cookie、代理上下文和签名上下文以加密快照保存到服务连接；内存会话只作为运行时缓存，API 重启后先尝试恢复未过期快照。
-5. 05:59:50 预热会按服务恢复或刷新认证：自习室刷新直连 Token，图书馆恢复或重建 WebVPN 会话；学校主动注销、会话过期或网络不可达时仍需要重新认证。
+5. 05:59:50 预热会按账号保存的模式恢复或刷新认证：direct 刷新公网 Token，webvpn 恢复或重建 WebVPN 会话；学校主动注销、会话过期或网络不可达时仍需要重新认证。
 6. 2026-09-03 生产测试账号通过该路线在第一次尝试成功预约 5 号楼智能自习室 148 号，学校接口返回 HTTP 200、业务码 `0` 和真实回执。
 
 ## 后续实现目标

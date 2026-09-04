@@ -99,7 +99,6 @@ export class PlatformServiceConnectionsService {
     if (!ownerId) {
       throw new UnprocessableEntityException('校园账号归属信息不完整');
     }
-    const requiredMode = serviceType === 'library' ? 'webvpn' : 'direct';
     let connection = await this.connections.findOne({
       where: {
         schoolAccount: { id: account.id },
@@ -107,11 +106,13 @@ export class PlatformServiceConnectionsService {
         serviceType,
       },
     });
+    const preferredMode =
+      serviceType === 'library' ? 'webvpn' : connection?.authMode;
 
     if (
       !forceRefresh &&
       connection?.encryptedToken &&
-      connection.authMode === requiredMode
+      connection.authMode === preferredMode
     ) {
       try {
         const token = this.crypto.decrypt(connection.encryptedToken);
@@ -168,7 +169,7 @@ export class PlatformServiceConnectionsService {
       const authenticated = await this.schoolAuth.authenticate(
         account.schoolUsername,
         password,
-        requiredMode,
+        preferredMode,
         serviceType,
       );
       const verified = await this.schoolAuth.verifyToken(
