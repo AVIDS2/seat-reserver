@@ -142,7 +142,7 @@ export class PlatformBookingExecutor {
       const timeoutMs = Math.min(3000, remainingMs);
       const response = await this.schoolAuth.book(
         token,
-        account.authMode || 'direct',
+        service.mode,
         run.targetDate,
         candidate,
         timeoutMs,

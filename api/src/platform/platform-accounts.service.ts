@@ -104,7 +104,7 @@ export class PlatformAccountsService {
       const authenticated = await this.schoolAuth.authenticate(
         account.schoolUsername,
         password,
-        account.authMode,
+        'direct',
       );
       const verified = await this.schoolAuth.verifyToken(
         authenticated.token,
@@ -168,7 +168,7 @@ export class PlatformAccountsService {
       const authenticated = await this.schoolAuth.authenticate(
         username,
         password,
-        account.authMode,
+        'direct',
       );
       const verified = await this.schoolAuth.verifyToken(
         authenticated.token,

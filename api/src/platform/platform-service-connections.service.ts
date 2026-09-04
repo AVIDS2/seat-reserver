@@ -99,6 +99,7 @@ export class PlatformServiceConnectionsService {
     if (!ownerId) {
       throw new UnprocessableEntityException('校园账号归属信息不完整');
     }
+    const requiredMode = serviceType === 'library' ? 'webvpn' : 'direct';
     let connection = await this.connections.findOne({
       where: {
         schoolAccount: { id: account.id },
@@ -107,7 +108,11 @@ export class PlatformServiceConnectionsService {
       },
     });
 
-    if (!forceRefresh && connection?.encryptedToken) {
+    if (
+      !forceRefresh &&
+      connection?.encryptedToken &&
+      connection.authMode === requiredMode
+    ) {
       try {
         const token = this.crypto.decrypt(connection.encryptedToken);
         if (
@@ -154,17 +159,16 @@ export class PlatformServiceConnectionsService {
           };
         }
       } catch {
-        // Re-authenticate below. WebVPN sessions are intentionally process-local.
+        // Re-authenticate below when the stored token or session cannot be used.
       }
     }
 
     try {
       const password = this.crypto.decrypt(account.encryptedSchoolPassword);
-      const preferredMode = connection?.authMode;
       const authenticated = await this.schoolAuth.authenticate(
         account.schoolUsername,
         password,
-        preferredMode,
+        requiredMode,
         serviceType,
       );
       const verified = await this.schoolAuth.verifyToken(
