@@ -22,7 +22,7 @@ function AutomationExample() {
           <p className='text-muted-foreground text-xs font-medium tracking-[0.16em] uppercase'>
             Daily execution
           </p>
-          <p className='mt-2 text-lg font-semibold'>明早的预约窗口</p>
+          <p className='mt-2 text-lg font-semibold'>自动执行流程</p>
         </div>
         <span className='bg-secondary/15 text-secondary inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium'>
           <span className='size-1.5 rounded-full bg-current' />
@@ -32,21 +32,21 @@ function AutomationExample() {
       <div className='mt-6 space-y-3'>
         <TimelineRow
           icon={<Icons.shield />}
-          time='05:59:50'
+          time='已完成'
           title='授权预热'
           detail='检查账号连接与预约偏好'
           tone='success'
         />
         <TimelineRow
           icon={<Icons.clock />}
-          time='06:00:00'
-          title='预约窗口开始'
+          time='进行中'
+          title='预约执行'
           detail='按候选顺序提交策略'
           tone='active'
         />
         <TimelineRow
           icon={<Icons.history />}
-          time='06:00:20'
+          time='待同步'
           title='结果写入'
           detail='保存回执、状态和运行记录'
           tone='muted'

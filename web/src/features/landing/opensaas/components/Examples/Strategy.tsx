@@ -28,9 +28,9 @@ function StrategyExample() {
         </span>
       </div>
       <div className='mt-6 space-y-3'>
-        <CandidateRow order='01' title='靠窗座位' detail='18:00 — 22:00 / 首选位置' active />
-        <CandidateRow order='02' title='安静区域' detail='18:00 — 22:00 / 备选位置' />
-        <CandidateRow order='03' title='同层可用座位' detail='14:00 — 22:00 / 弹性时间' />
+        <CandidateRow order='01' title='靠窗座位' detail='晚间时段 · 首选位置' active />
+        <CandidateRow order='02' title='安静区域' detail='晚间时段 · 备选位置' />
+        <CandidateRow order='03' title='同层可用座位' detail='弹性时段 · 顺序尝试' />
       </div>
       <div className='text-muted-foreground mt-5 flex items-center gap-2 border-t pt-4 text-xs'>
         <Icons.clock className='size-4' />

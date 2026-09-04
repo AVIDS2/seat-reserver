@@ -5,12 +5,13 @@ export const workspacesInfoContent: InfobarContent = {
   sections: [
     {
       title: '资源隔离',
-      description: '每个用户拥有独立的学校账号、预约任务、运行记录和通知。管理员工作台用于管理平台成员和邀请码。',
+      description:
+        '每个用户拥有独立的学校账号、预约任务、运行记录和通知。管理员工作台用于管理平台成员和邀请码。',
       links: []
     },
     {
       title: '自动执行',
-      description: '启用的任务在北京时间每天 05:59:50 预热 Token，并在 06:00 加入预约队列。',
+      description: '启用的任务会在预约开放前检查连接和偏好，并在开放后自动执行。',
       links: []
     }
   ]

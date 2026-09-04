@@ -1,3 +1,5 @@
+'use client';
+
 import {
   IconArmchair2,
   IconCalendarCheck,
@@ -6,6 +8,7 @@ import {
   IconListCheck,
   IconShieldCheck
 } from '@tabler/icons-react';
+import { useEffect, useState } from 'react';
 import type { ComponentType, CSSProperties } from 'react';
 
 interface OrbitIconConfig {
@@ -40,6 +43,17 @@ const ringGradients = [
 ];
 
 export function Orbit() {
+  const [now, setNow] = useState<Date | null>(null);
+
+  useEffect(() => {
+    const update = () => setNow(new Date());
+    update();
+    const timer = window.setInterval(update, 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const secondsToSync = now ? 60 - now.getSeconds() : 60;
+
   return (
     <div className='relative flex h-[500px] w-[500px] items-center justify-center'>
       <style>{`
@@ -50,10 +64,17 @@ export function Orbit() {
       `}</style>
 
       <div className='absolute flex flex-col items-center gap-2'>
-        <p className='font-mono text-6xl leading-none font-black text-amber-600 dark:text-amber-400'>
-          06:00
+        <p className='text-muted-foreground text-xs font-semibold tracking-[0.16em] uppercase'>
+          系统在线
         </p>
-        <p className='text-muted-foreground text-lg'>自动执行</p>
+        <p className='font-mono text-5xl leading-none font-black text-amber-600 tabular-nums dark:text-amber-400'>
+          {formatClock(now)}
+        </p>
+        <div className='text-muted-foreground flex items-center gap-2 text-xs'>
+          <span className='size-1.5 rounded-full bg-emerald-500' />
+          <span>下一次状态同步</span>
+          <span className='font-mono tabular-nums'>{formatCountdown(secondsToSync)}</span>
+        </div>
       </div>
 
       {circles.map((circle, circleIndex) => (
@@ -107,4 +128,20 @@ export function Orbit() {
       })}
     </div>
   );
+}
+
+function formatClock(value: Date | null): string {
+  if (!value) return '--:--';
+  return new Intl.DateTimeFormat('zh-CN', {
+    timeZone: 'Asia/Shanghai',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23'
+  }).format(value);
+}
+
+function formatCountdown(seconds: number): string {
+  const minutes = Math.floor(seconds / 60);
+  const remainder = seconds % 60;
+  return `${String(minutes).padStart(2, '0')}:${String(remainder).padStart(2, '0')}`;
 }

@@ -30,22 +30,22 @@ function RunsExample() {
         <RunRow
           icon={<Icons.check />}
           title='预约完成'
-          detail='回执 0131-600-1 · 座位 044 · 18:00 — 22:00'
-          time='06:00:03'
+          detail='回执已写入 · 主座位已确认'
+          time='刚刚'
           tone='success'
         />
         <RunRow
           icon={<Icons.shield />}
           title='授权预热'
           detail='校园账号连接正常，预约准备完成'
-          time='05:59:50'
+          time='2 分钟前'
           tone='active'
         />
         <RunRow
           icon={<Icons.info />}
           title='候选检查'
           detail='已载入 3 个座位和时间候选'
-          time='05:59:45'
+          time='已记录'
           tone='muted'
         />
       </div>
