@@ -1,6 +1,7 @@
 import { describe, expect, it } from '@jest/globals';
 import { CookieJar } from 'tough-cookie';
 import {
+  proxyApiUrl,
   WebVpnSeatClientService,
   type WebVpnSessionState,
 } from './webvpn-seat-client.service';
@@ -44,5 +45,15 @@ describe('WebVpnSeatClientService session persistence', () => {
 
     expect(service.restoreSession('expired-token', state)).toBe(false);
     expect(service.getSessionState('expired-token')).toBeNull();
+  });
+
+  it('should preserve query parameters and use the bare WebVPN flag', () => {
+    const url = proxyApiUrl(
+      'https://zmvpn.cczu.edu.cn/http/webvpn/example',
+      '/rest/v2/history/1/50?page=1',
+      'business.token',
+    );
+
+    expect(url.search).toBe('?page=1&token=business.token&enlink-vpn');
   });
 });

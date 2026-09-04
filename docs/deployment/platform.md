@@ -42,6 +42,8 @@
 
 WebVPN 网关登录会先读取当前登录页下发的会话密钥，再按网关页面的 AES 参数提交账号密码；登录后的 `clientInfo` Cookie 按 `/enlink/` 路径读取，以兼容网关更新后的 Cookie 作用域。
 
+WebVPN 代理 API 必须保留裸查询标志 `enlink-vpn`；平台在追加业务 Token 时保留原有分页等查询参数，并生成 `...?page=1&token=...&enlink-vpn`，不能序列化为 `enlink-vpn=`。
+
 已有学校账号恢复连接时沿用账号服务连接中最后一次成功的模式：`direct` 只刷新公网 Token，`webvpn` 恢复或重建网关会话；首次添加账号才执行 direct 优先、失败后 WebVPN 回退的自动探测。
 
 2026-09-04 的故障排查确认：伯乐和董自创此前曾通过 WebVPN/SSO 真实预约自习室；后续把自习室强制改为 direct，导致已有 WebVPN 账号被错误切断。现已恢复按账号模式路由。API 重启会清空 WebVPN 的进程内运行对象，但会把加密后的 Cookie、代理上下文和过期时间保存到服务连接，并在重启后按需恢复；恢复失败才重新登录。VPS 当前到 `sso.cczu.edu.cn` 的公网连接超时，因此 WebVPN 路线仍依赖学校统一认证链路可达且凭据有效；direct 路线不依赖它。

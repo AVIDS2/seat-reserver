@@ -777,10 +777,15 @@ function proxyUrl(proxyBase: string, path: string): URL {
   return new URL(`${proxyBase}${path.startsWith('/') ? path : `/${path}`}`);
 }
 
-function proxyApiUrl(proxyBase: string, path: string, token: string): URL {
+export function proxyApiUrl(
+  proxyBase: string,
+  path: string,
+  token: string,
+): URL {
   const url = proxyUrl(proxyBase, path);
   url.searchParams.set('token', token);
-  url.searchParams.set('enlink-vpn', '');
+  const query = url.searchParams.toString();
+  url.search = `${query ? `?${query}&` : '?'}enlink-vpn`;
   return url;
 }
 
