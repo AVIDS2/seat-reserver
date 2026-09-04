@@ -1,6 +1,7 @@
 import {
   Injectable,
   NotFoundException,
+  Optional,
   UnprocessableEntityException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -16,6 +17,8 @@ import { PlatformCryptoService } from './platform-crypto.service';
 import { SchoolAuthenticationService } from './school-authentication.service';
 import type { SeatServiceType } from './entities/school-service-connection.entity';
 import { PlatformServiceConnectionsService } from './platform-service-connections.service';
+import { PlatformMembershipService } from './platform-membership.service';
+import { PlatformRewardsService } from './platform-rewards.service';
 
 export type SchoolAccountView = {
   id: string;
@@ -44,6 +47,10 @@ export class PlatformAccountsService {
     private readonly crypto: PlatformCryptoService,
     private readonly schoolAuth: SchoolAuthenticationService,
     private readonly serviceConnections: PlatformServiceConnectionsService,
+    @Optional()
+    private readonly membership?: PlatformMembershipService,
+    @Optional()
+    private readonly rewards?: PlatformRewardsService,
   ) {}
 
   async list(userId: number): Promise<SchoolAccountView[]> {
@@ -61,6 +68,7 @@ export class PlatformAccountsService {
   ): Promise<SchoolAccountView> {
     const label = requireText(dto.label, '账号名称');
     const username = requireText(dto.schoolUsername, '学校账号');
+    await this.membership?.assertCanCreateSchoolAccount(userId);
     const authenticated = await this.schoolAuth.authenticate(
       username,
       dto.schoolPassword,
@@ -76,7 +84,7 @@ export class PlatformAccountsService {
       throw new UnprocessableEntityException('学校账号验证失败');
     }
 
-    const account = this.accounts.create({
+    const accountData = {
       label,
       schoolUsername: username,
       encryptedSchoolPassword: this.crypto.encrypt(dto.schoolPassword),
@@ -86,9 +94,15 @@ export class PlatformAccountsService {
       tokenRefreshedAt: new Date(),
       lastVerifiedAt: new Date(),
       user: { id: userId } as UserEntity,
-    });
-
-    const saved = await this.accounts.save(account);
+    };
+    const membership = this.membership;
+    const saved = membership
+      ? await this.accounts.manager.transaction(async (manager) => {
+          await membership.assertCanCreateSchoolAccount(userId, manager);
+          const repository = manager.getRepository(SchoolAccountEntity);
+          return repository.save(repository.create(accountData));
+        })
+      : await this.accounts.save(this.accounts.create(accountData));
     await this.serviceConnections.saveAuthenticated(
       saved,
       'study_room',
@@ -96,6 +110,8 @@ export class PlatformAccountsService {
       authenticated.mode,
       authenticated.webVpnSession,
     );
+    await this.rewards?.recordVerifiedActivity(userId);
+    await this.rewards?.qualifyReferral(userId);
     return this.toView(saved);
   }
 
@@ -127,6 +143,8 @@ export class PlatformAccountsService {
         authenticated.mode,
         authenticated.webVpnSession,
       );
+      await this.rewards?.recordVerifiedActivity(userId);
+      await this.rewards?.qualifyReferral(userId);
       return this.toView(saved);
     } catch (error: unknown) {
       account.status = 'attention';
@@ -190,6 +208,8 @@ export class PlatformAccountsService {
         authenticated.mode,
         authenticated.webVpnSession,
       );
+      await this.rewards?.recordVerifiedActivity(userId);
+      await this.rewards?.qualifyReferral(userId);
     }
     account.label = label;
     return this.toView(await this.accounts.save(account));

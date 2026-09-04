@@ -20,10 +20,18 @@ import { PlatformInvitationsController } from './platform-invitations.controller
 import { PlatformInvitationsService } from './platform-invitations.service';
 import { PlatformNotificationsController } from './platform-notifications.controller';
 import { PlatformNotificationsService } from './platform-notifications.service';
+import { PlatformRewardsController } from './platform-rewards.controller';
+import { PlatformRewardsService } from './platform-rewards.service';
+import { PlatformMembershipService } from './platform-membership.service';
 import { BookingRunEntity } from './entities/booking-run.entity';
 import { BookingTaskEntity } from './entities/booking-task.entity';
 import { PlatformInvitationEntity } from './entities/platform-invitation.entity';
 import { PlatformInvitationUseEntity } from './entities/platform-invitation-use.entity';
+import { PlatformMembershipEntity } from './entities/platform-membership.entity';
+import { PlatformPointsLedgerEntity } from './entities/platform-points-ledger.entity';
+import { PlatformPointsWalletEntity } from './entities/platform-points-wallet.entity';
+import { PlatformProRequestEntity } from './entities/platform-pro-request.entity';
+import { PlatformReferralEntity } from './entities/platform-referral.entity';
 import { PlatformNotificationEntity } from './entities/platform-notification.entity';
 import { SchoolAccountEntity } from './entities/school-account.entity';
 import { SchoolServiceConnectionEntity } from './entities/school-service-connection.entity';
@@ -61,7 +69,12 @@ import { WebVpnSeatClientService } from './webvpn-seat-client.service';
       BookingTaskEntity,
       PlatformInvitationEntity,
       PlatformInvitationUseEntity,
+      PlatformMembershipEntity,
       PlatformNotificationEntity,
+      PlatformPointsLedgerEntity,
+      PlatformPointsWalletEntity,
+      PlatformProRequestEntity,
+      PlatformReferralEntity,
       SchoolAccountEntity,
       SchoolServiceConnectionEntity,
       UserEntity,
@@ -75,6 +88,7 @@ import { WebVpnSeatClientService } from './webvpn-seat-client.service';
     PlatformHealthController,
     PlatformInvitationsController,
     PlatformNotificationsController,
+    PlatformRewardsController,
     PlatformRunsController,
     PlatformReservationsController,
     PlatformTasksController,
@@ -89,9 +103,11 @@ import { WebVpnSeatClientService } from './webvpn-seat-client.service';
     PlatformDashboardService,
     PlatformInvitationsService,
     PlatformNotificationsService,
+    PlatformMembershipService,
     PlatformProcessor,
     PlatformQueueService,
     PlatformRedisService,
+    PlatformRewardsService,
     PlatformRunsService,
     PlatformReservationsService,
     PlatformScheduler,

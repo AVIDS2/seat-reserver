@@ -5,6 +5,7 @@
 ## 当前进度
 
 2026-09-04 平台加入统一实时场馆目录和可视化座位图：楼栋、空间、日期、座位号、占用状态均来自学校接口，系统 ID 不再暴露给普通用户；控制台新增独立“座位图”页面，可在不创建任务的情况下浏览实时状态。任意真实座位都可作为自动任务候选，颜色只表示当前状态；直接预约会再通过座位时段接口判断所选日期的可用时间。一个校园账号可建立彼此独立的自习室与图书馆服务连接，任务支持每天、工作日、自定义星期和多个指定日期执行，候选时间按学校实时开放窗口生成，单次时长按服务限制，数据库兼容历史单次任务。任务编辑拆为“账号与空间”和“座位与时间”两步，第一步不能触发保存；第二步明确展示可添加的候选时间段与日期规则。桌面端使用宽内容区和自适应高度，移动端弹窗使用稳定小视口和内部滚动，账号/楼栋/空间菜单使用紧凑内容宽，避免选择弹层造成整页回流；学校 `00:00-05:00` 维护响应会被明确显示为维护状态。新增实时预约记录、在线取消和座位图直接预约接口，并保留当前用户到学校账号的归属校验。自习室自动预约链路保持生产可用；图书馆目录、布局和时间数据已经接通，直接预约支持在平台内获取学校点选验证码、由用户完成一次人工点选、服务端校验成功后自动提交预约。图书馆周期任务仍保持暂停，直到确认验证码是否可跨预约复用或接入无需逐次验证的合法业务链路。
+2026-09-04 平台新增会员与邀请权益链路：普通用户最多绑定 1 个校园账号，Pro 用户最多绑定 3 个，Pro 定价为人民币 20 元、一次开通永久有效；权益由服务端统一计算，管理员确认开通申请后才写入永久权益。用户完成每日有效账号验证获得可配置积分，受邀用户完成首次账号验证后邀请人获得积分，积分兑换的一次性邀请码默认 30 天有效且仅显示一次。积分使用钱包行锁和不可变流水，邀请关系、Pro 申请和管理员开通记录均保留审计信息；当前不接入第三方自动收款，外部人工确认后由管理员在后台授予 Pro。
 
 前端底座决策：使用 Next.js 16、Tailwind CSS 4、shadcn/ui、TanStack Query/Table、Motion 和 Tabler Icons。后端底座决策：使用 NestJS 11、TypeORM、PostgreSQL、JWT/HttpOnly Cookie、Swagger 和 Docker；预约执行层使用 Redis + BullMQ，并由 Nest Schedule 生成每日任务。生产模式下前端通过同域 `/api/v1` 访问 API，真实预约请求不会进入浏览器。生产字体使用主题定义的离线系统回退；落地页图片使用预生成 AVIF/WebP 响应式资源，不在运行时处理原始 4K PNG。
 
@@ -91,7 +92,7 @@ docker-compose.yml
 - 学校账号密码和缓存 token 必须使用 AES-256-GCM 加密存储，密钥来自环境变量 `CREDENTIAL_ENCRYPTION_KEY`。
 - 日志中禁止打印学校密码、token、邀请码明文。
 - 普通用户只能访问自己的学校账号、任务和运行日志。
-- 管理员才能创建邀请码、查看全局任务状态。
+- 管理员才能创建注册邀请码、查看全局任务状态和授予 Pro 权益；普通用户只能用积分兑换自己的单次邀请码。
 - 任务数量限制按后续运营需要增加；当前先通过邀请制和管理员权限控制规模。
 
 ## 数据模型
@@ -129,6 +130,16 @@ id
 invitation_id
 used_by_user_id
 used_at
+```
+
+### platform_growth
+
+```text
+platform_membership: user_id, plan(free|pro), pro_activated_at, pro_expires_at(NULL=permanent), source, granted_by_user_id
+platform_points_wallet: user_id(unique), points_balance
+platform_points_ledger: user_id, amount, balance_after, event_type, event_key(unique), metadata, created_at
+platform_referral: referrer_user_id, referred_user_id(unique), invitation_id, status, qualified_at
+platform_pro_request: user_id, price_cents(2000), status, handled_by_user_id, handled_at
 ```
 
 ### school_accounts
@@ -351,8 +362,15 @@ booking-task:{task_id}:{date}:{run_type}
 
 - 邀请码列表。
 - 创建邀请码。
+- Pro 开通申请和授予记录。
 - 用户列表。
 - 全局任务运行状态。
+
+### 会员与邀请
+
+- 展示当前方案、校园账号额度、Pro 价格和永久有效状态。
+- 展示积分余额、邀请进度、积分流水和已兑换邀请码状态。
+- 支持提交 Pro 开通申请和用积分兑换一次性邀请码。
 
 ## UI 选择
 
@@ -401,6 +419,8 @@ GET /api/v1/platform/health 返回 ok
 - [x] 实现用户注册/登录和 HttpOnly Cookie。
 - [x] 实现邀请码注册和管理员权限。
 - [x] 实现可选管理员种子账号。
+- [x] 实现永久 Pro 权益、校园账号数量限制、积分流水和邀请奖励。
+- [x] 实现 Pro 开通申请、管理员授予和用户会员邀请页面。
 
 验收：
 
@@ -465,6 +485,7 @@ booking job 成功/失败都会写 booking_runs
 - [x] 任务页。
 - [x] 日志页。
 - [x] 管理员工作台：用户状态、邀请码和全局运行统计。
+- [x] 管理员工作台：Pro 申请、方案状态和运营统计。
 - [x] 管理员脱敏查看全局账号、任务和运行记录。
 - [x] 关闭 brocoders 模板遗留的公开注册、社交登录和通用用户管理路由，平台统一走邀请制认证。
 - [x] 数据库复合外键约束任务/运行记录与账号所属用户一致。
@@ -476,7 +497,7 @@ booking job 成功/失败都会写 booking_runs
 可以完成从注册到创建任务的全流程
 可以手动 verify 学校账号
 可以查看运行日志
-管理员可以创建邀请码、查看成员并启用/禁用用户
+管理员可以创建邀请码、查看成员、处理 Pro 申请并启用/禁用用户
 ```
 
 已有账号的 direct Token 刷新、`/rest/v2/user` 校验和真实预约 POST 已在 VPS 验证；自习室 WebVPN 网关登录、校园 SSO、代理入口、`ssoAuth` 和真实预约 POST 也已验证。账号恢复时沿用历史成功模式。

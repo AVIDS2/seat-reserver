@@ -40,6 +40,13 @@ export const navGroups: NavGroup[] = [
         items: []
       },
       {
+        title: '会员与邀请',
+        url: '/dashboard/membership',
+        icon: 'pro',
+        shortcut: ['m', 'm'],
+        items: []
+      },
+      {
         title: '运行记录',
         url: '/dashboard/runs',
         icon: 'history',

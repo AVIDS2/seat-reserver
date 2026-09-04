@@ -58,6 +58,66 @@ export type PlatformUser = {
   status: 'active' | 'disabled';
 };
 
+export type MembershipPlan = 'free' | 'pro' | 'admin';
+
+export type Membership = {
+  plan: MembershipPlan;
+  planLabel: string;
+  isPro: boolean;
+  isPermanent: boolean;
+  accountLimit: number;
+  accountCount: number;
+  priceCents: number;
+  priceLabel: string;
+};
+
+export type ProRequest = {
+  id: string;
+  userId: string;
+  userName: string;
+  userEmail: string | null;
+  priceCents: number;
+  status: 'pending' | 'approved' | 'rejected' | 'cancelled';
+  note: string | null;
+  createdAt: string;
+  handledAt: string | null;
+};
+
+export type CommunityInvitation = {
+  id: string;
+  maxUses: number;
+  usedCount: number;
+  status: 'active' | 'disabled' | 'exhausted' | 'expired';
+  expiresAt: string | null;
+  createdAt: string;
+};
+
+export type PointsLedgerEntry = {
+  id: string;
+  amount: number;
+  balanceAfter: number;
+  eventType: string;
+  description: string;
+  createdAt: string;
+};
+
+export type RewardsSnapshot = {
+  membership: Membership;
+  pointsBalance: number;
+  invitePointsCost: number;
+  dailyActivityPoints: number;
+  referralRewardPoints: number;
+  inviteValidDays: number;
+  proRequest: ProRequest | null;
+  referrals: {
+    pending: number;
+    qualified: number;
+    total: number;
+  };
+  invitations: CommunityInvitation[];
+  ledger: PointsLedgerEntry[];
+};
+
 export type AdminOverview = {
   users: number;
   activeUsers: number;
@@ -68,6 +128,8 @@ export type AdminOverview = {
   runsToday: number;
   successfulRunsToday: number;
   failedRunsToday: number;
+  proUsers: number;
+  pendingProRequests: number;
   queueStatus: 'ok' | 'degraded';
   serverTime: string;
 };
@@ -124,6 +186,7 @@ export type AdminUser = {
   email: string | null;
   displayName: string;
   role: 'admin' | 'user';
+  plan: MembershipPlan;
   status: 'active' | 'disabled';
   accountCount: number;
   taskCount: number;
@@ -135,10 +198,13 @@ export type Invitation = {
   code?: string;
   maxUses: number;
   usedCount: number;
+  source: 'admin' | 'community';
   status: string;
   expiresAt: string | null;
   createdAt: string;
 };
+
+export type AdminProRequest = ProRequest;
 
 export type DryRunResult = {
   taskId: string;
@@ -578,6 +644,65 @@ export async function disableInvitation(id: string): Promise<Invitation> {
     }
   );
   return response.invitation;
+}
+
+export async function getRewardsSnapshot(): Promise<RewardsSnapshot> {
+  return platformRequest<RewardsSnapshot>('/platform/rewards');
+}
+
+export async function redeemInviteCode(): Promise<{
+  invitation: CommunityInvitation;
+  code: string;
+  pointsBalance: number;
+}> {
+  const response = await platformRequest<{
+    result: {
+      invitation: CommunityInvitation;
+      code: string;
+      pointsBalance: number;
+    };
+  }>('/platform/rewards/invite-codes', { method: 'POST' });
+  return response.result;
+}
+
+export async function requestPro(): Promise<{
+  membership: Membership;
+  request: ProRequest | null;
+  message: string;
+}> {
+  return platformRequest('/platform/rewards/pro-request', { method: 'POST' });
+}
+
+export async function getAdminProRequests(): Promise<AdminProRequest[]> {
+  const response = await platformRequest<{ requests: AdminProRequest[] }>(
+    '/platform/admin/pro-requests'
+  );
+  return response.requests;
+}
+
+export async function grantAdminPro(userId: string, note?: string): Promise<Membership> {
+  const response = await platformRequest<{ membership: Membership }>(
+    `/platform/admin/users/${userId}/pro`,
+    {
+      method: 'POST',
+      body: JSON.stringify(note ? { note } : {})
+    }
+  );
+  return response.membership;
+}
+
+export async function rejectAdminProRequest(
+  requestId: string,
+  note?: string
+): Promise<AdminProRequest> {
+  const response = await platformRequest<{ request: AdminProRequest }>(
+    `/platform/admin/pro-requests/${requestId}/reject`,
+    {
+      method: 'POST',
+      body: JSON.stringify(note ? { note } : {})
+    }
+  );
+  return response.request;
 }
 
 export async function signInPlatform(email: string, password: string): Promise<void> {

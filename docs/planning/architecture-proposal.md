@@ -10,6 +10,7 @@
 选择这套组合是因为 Kiranism 与 brocoders 的职责边界清晰，避免把两个 Next.js 全栈模板合并；`ixartz/SaaS-Boilerplate` 和 Wasp Open SaaS 作为参考，不作为本项目后端底座。对外产品名确定为“席定”，品牌标志使用 WUD 彩色标志，副标题为“高校座位预约平台”。
 
 2026-09-04 起，校园账号只保存身份凭据，每套预约系统通过 `platform_school_service_connection` 维护独立的业务 Token、认证模式和验证时间。自习室与图书馆共用统一目录适配层，对前端输出馆区/楼栋、空间、日期、座位图和时段；独立座位图页面和任务编辑器都复用这套实时数据，任务保存真实展示名称与内部 ID，并支持每天、工作日、自定义星期和多个指定日期调度，数据库保留历史单次日期字段以兼容旧任务。任务编辑拆成“账号与空间”和“座位与时间”两步，桌面端使用最多 `1040px` 的宽内容区并按内容自适应高度，选择器使用视口内非模态弹层，移动端菜单使用紧凑内容宽，避免打开下拉选项时发生视口跳动；学校 `00:00-05:00` 的维护响应在前端明确显示为维护状态。图书馆当前开启点选验证码：挑战图片与提示经平台 API 转发，挑战 Token 只在 Redis 中按用户和预约参数保存三分钟，用户提交原图坐标后由后端校验并立即预约；浏览器不接触学校业务 Token，挑战一次使用后销毁。周期图书馆任务仍暂停，避免把逐次人工验证误报为无人值守自动化。
+2026-09-04 新增增长与权益域：普通用户绑定校园账号上限为 1，Pro 为 3；Pro 价格为人民币 20 元且永久有效。会员、积分钱包、不可变积分流水、邀请关系和 Pro 开通申请均使用独立平台表，不污染模板用户领域；账号新增事务使用 PostgreSQL advisory lock 复核额度。用户每日有效账号验证奖励积分，受邀用户完成首次账号验证后才结算邀请奖励，用户兑换的一次性邀请码只在生成响应中返回明文并默认 30 天有效。当前 Pro 采用人工确认开通，站内明码标价和申请状态完整可见，但没有伪造在线支付成功；后续接入支付时只需把支付回调映射到同一授予权益服务。
 
 ---
 
@@ -41,7 +42,7 @@
 - **不做手机端** — 响应式 Web 即可，不做原生 App
 - **不替换现有 CLI** — `seat_reserver.py` 继续可用，VPS cron 继续运行
 - **不做高可用/自动扩缩容** — 单机 Docker Compose 足够
-- **不做支付/商业化** — 纯个人/小圈子工具
+- **暂不接入自动支付/第三方收款** — Pro 价格和申请状态在站内透明展示，管理员人工确认后授予永久权益；邀请码仅用于注册和积分兑换，不提供站内直售。
 
 ---
 
@@ -118,7 +119,8 @@
 | 模块 | 职责 | 不做什么 |
 |---|---|---|
 | **auth** | 平台用户注册/登录/JWT/session | 不处理学校账号认证 |
-| **invitations** | 邀请码 CRUD 和校验 | 不自动分发 |
+| **invitations** | 邀请码 CRUD、校验和邀请关系 | 管理员创建注册码，用户积分兑换好友码 |
+| **growth** | 会员权益、积分钱包/流水、邀请奖励和 Pro 申请 | 不处理第三方收款；服务端强制账号额度 |
 | **school_accounts** | 学校账号 CRUD、密码加密存储、token 缓存 | 不直接预约 |
 | **booking_tasks** | 任务 CRUD、候选策略配置、启用/禁用 | 不执行预约 |
 | **booking_runs** | 运行日志查询（只读，由 worker 写入） | 不触发执行 |
@@ -193,6 +195,11 @@ users 1──N invitations (created_by)
 booking_tasks N──1 school_accounts
 booking_tasks 1──N booking_runs
 invitations 1──N invitation_uses
+users 1──1 memberships
+users 1──1 points_wallets
+users 1──N points_ledger
+users 1──N referrals (referrer)
+users 1──N pro_requests
 ```
 
 平台不另造 workspace 表：本产品是一人一套预约资源的邀请制工具，`user.id` 就是租户根。所有账号、任务、运行记录和通知都直接归属于用户；管理员仅通过独立守卫访问脱敏的全局读模型。
@@ -389,6 +396,12 @@ GET    /api/v1/platform/admin/runs                    全局运行记录（只�
 GET    /api/v1/platform/invitations                    邀请码列表
 POST   /api/v1/platform/invitations                    创建邀请码
 DELETE /api/v1/platform/invitations/{id}               停用邀请码
+GET    /api/v1/platform/rewards                       会员、积分和邀请概览
+POST   /api/v1/platform/rewards/invite-codes           用积分兑换一次性邀请码
+POST   /api/v1/platform/rewards/pro-request            提交 Pro 永久开通申请
+GET    /api/v1/platform/admin/pro-requests              Pro 开通申请列表
+POST   /api/v1/platform/admin/users/{id}/pro             管理员授予永久 Pro
+POST   /api/v1/platform/admin/pro-requests/{id}/reject   管理员关闭 Pro 申请
 ```
 
 #### Health
@@ -807,12 +820,12 @@ seat.rglens.com {
 
 **目标**：用户能注册和登录
 
-- [x] TypeORM entities: users, invitations, school_accounts, booking_tasks, booking_runs, notifications
+- [x] TypeORM entities: users, invitations, school_accounts, booking_tasks, booking_runs, notifications, memberships, points, referrals, Pro requests
 - [x] TypeORM migration
 - [x] POST /platform/auth/register（首个账号免邀请码，之后需邀请码）
 - [x] POST /platform/auth/login（HttpOnly cookie + JWT）
 - [x] GET /platform/auth/me
-- [x] Admin: 邀请码、成员状态和全局概览
+- [x] Admin: 邀请码、成员状态、Pro 申请和全局概览
 - [x] 管理员种子账号（可选环境变量）
 - [x] 后端关键单元测试：加密、绑定前验证、用户归属、停用任务跳过、成功预约记录
 
@@ -874,7 +887,7 @@ seat.rglens.com {
 - [x] 运行日志页：按任务筛选、详情展示
 - [x] 管理员页：邀请码管理、用户列表、全局概览
 
-**验收**：平台账号注册到创建任务全流程可用；管理员可创建邀请码；自习室 direct/WebVPN 与图书馆 WebVPN 服务路线分别完成绑定、刷新和真实预约验证。2026-09-03、09-04 的 WebVPN 自习室生产测试均获得学校回执。
+**验收**：平台账号注册到创建任务全流程可用；普通用户只能绑定 1 个校园账号，Pro 用户只能绑定 3 个；管理员可创建邀请码、处理 Pro 申请并授予永久权益；用户可查看积分流水并用积分兑换一次性邀请码。自习室 direct/WebVPN 与图书馆 WebVPN 服务路线分别完成绑定、刷新和真实预约验证。2026-09-03、09-04 的 WebVPN 自习室生产测试均获得学校回执。
 
 ### Phase 7: 打磨和文档（1-2 天）
 

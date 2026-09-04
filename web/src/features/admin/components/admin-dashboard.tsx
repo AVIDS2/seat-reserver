@@ -36,12 +36,16 @@ import {
   getAdminRuns,
   getAdminTasks,
   getAdminUsers,
+  getAdminProRequests,
   getInvitations,
+  grantAdminPro,
+  rejectAdminProRequest,
   type AdminAccount,
   setAdminUserEnabled,
   type AdminRun,
   type AdminTask,
   type AdminOverview,
+  type AdminProRequest,
   type AdminUser,
   type Invitation
 } from '@/features/booking/api/service';
@@ -53,6 +57,7 @@ export type AdminSnapshot = {
   accounts: AdminAccount[];
   tasks: AdminTask[];
   runs: AdminRun[];
+  proRequests: AdminProRequest[];
 };
 
 export default function AdminDashboard({ initialData }: { initialData: AdminSnapshot }) {
@@ -63,32 +68,43 @@ export default function AdminDashboard({ initialData }: { initialData: AdminSnap
   const [accounts, setAccounts] = useState(initialData.accounts);
   const [tasks, setTasks] = useState(initialData.tasks);
   const [runs, setRuns] = useState(initialData.runs);
+  const [proRequests, setProRequests] = useState(initialData.proRequests);
   const [createOpen, setCreateOpen] = useState(false);
   const [maxUses, setMaxUses] = useState('1');
   const [validDays, setValidDays] = useState('30');
   const [generatedCode, setGeneratedCode] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [busyUserId, setBusyUserId] = useState<string | null>(null);
+  const [busyProUserId, setBusyProUserId] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
   const refreshAdminData = async () => {
     setRefreshing(true);
     try {
-      const [nextOverview, nextUsers, nextInvitations, nextAccounts, nextTasks, nextRuns] =
-        await Promise.all([
-          getAdminOverview(),
-          getAdminUsers(),
-          getInvitations(),
-          getAdminAccounts(),
-          getAdminTasks(),
-          getAdminRuns()
-        ]);
+      const [
+        nextOverview,
+        nextUsers,
+        nextInvitations,
+        nextAccounts,
+        nextTasks,
+        nextRuns,
+        nextProRequests
+      ] = await Promise.all([
+        getAdminOverview(),
+        getAdminUsers(),
+        getInvitations(),
+        getAdminAccounts(),
+        getAdminTasks(),
+        getAdminRuns(),
+        getAdminProRequests()
+      ]);
       setOverview(nextOverview);
       setUsers(nextUsers);
       setInvitations(nextInvitations);
       setAccounts(nextAccounts);
       setTasks(nextTasks);
       setRuns(nextRuns);
+      setProRequests(nextProRequests);
       toast.success('管理员数据已刷新');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : '刷新管理员数据失败');
@@ -137,6 +153,58 @@ export default function AdminDashboard({ initialData }: { initialData: AdminSnap
       toast.success('邀请码已停用');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : '停用邀请码失败');
+    }
+  };
+
+  const grantUserPro = async (user: AdminUser) => {
+    setBusyProUserId(user.id);
+    try {
+      await grantAdminPro(user.id, '管理员确认开通');
+      setUsers((current) =>
+        current.map((item) => (item.id === user.id ? { ...item, plan: 'pro' } : item))
+      );
+      setProRequests((current) =>
+        current.map((item) =>
+          item.userId === user.id && item.status === 'pending'
+            ? { ...item, status: 'approved', handledAt: new Date().toISOString() }
+            : item
+        )
+      );
+      setOverview((current) => ({
+        ...current,
+        proUsers: current.proUsers + (user.plan === 'pro' ? 0 : 1),
+        pendingProRequests: Math.max(
+          0,
+          current.pendingProRequests -
+            (proRequests.some((item) => item.userId === user.id && item.status === 'pending')
+              ? 1
+              : 0)
+        )
+      }));
+      toast.success(`${user.displayName} 已永久开通 Pro`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : '开通 Pro 失败');
+    } finally {
+      setBusyProUserId(null);
+    }
+  };
+
+  const rejectPro = async (request: AdminProRequest) => {
+    setBusyProUserId(request.userId);
+    try {
+      const updated = await rejectAdminProRequest(request.id, '管理员关闭申请');
+      setProRequests((current) =>
+        current.map((item) => (item.id === updated.id ? updated : item))
+      );
+      setOverview((current) => ({
+        ...current,
+        pendingProRequests: Math.max(0, current.pendingProRequests - 1)
+      }));
+      toast.success('Pro 申请已关闭');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : '关闭 Pro 申请失败');
+    } finally {
+      setBusyProUserId(null);
     }
   };
 
@@ -192,14 +260,14 @@ export default function AdminDashboard({ initialData }: { initialData: AdminSnap
                 size='sm'
                 onClick={() => void copyCode()}
               >
-                <Icons.share data-icon='inline-start' />
+                <Icons.copy data-icon='inline-start' />
                 复制邀请码
               </Button>
             </AlertDescription>
           </Alert>
         )}
 
-        <div className='grid gap-3 sm:grid-cols-2 xl:grid-cols-4'>
+        <div className='grid gap-3 sm:grid-cols-2 xl:grid-cols-5'>
           <StatCard
             label='平台用户'
             value={`${overview.activeUsers} / ${overview.users}`}
@@ -224,6 +292,12 @@ export default function AdminDashboard({ initialData }: { initialData: AdminSnap
             detail={`${overview.failedRunsToday} 次未成功 · 自动执行${overview.queueStatus === 'ok' ? '正常' : '需检查'}`}
             icon={Icons.history}
           />
+          <StatCard
+            label='Pro 会员'
+            value={`${overview.proUsers} 人`}
+            detail={`${overview.pendingProRequests} 个申请待处理`}
+            icon={Icons.pro}
+          />
         </div>
 
         <div className='grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(360px,0.65fr)]'>
@@ -237,7 +311,7 @@ export default function AdminDashboard({ initialData }: { initialData: AdminSnap
                 <TableHeader>
                   <TableRow>
                     <TableHead>用户</TableHead>
-                    <TableHead>角色</TableHead>
+                    <TableHead>角色 / 方案</TableHead>
                     <TableHead>资源</TableHead>
                     <TableHead>状态</TableHead>
                     <TableHead className='text-right'>操作</TableHead>
@@ -261,9 +335,18 @@ export default function AdminDashboard({ initialData }: { initialData: AdminSnap
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Badge variant={user.role === 'admin' ? 'default' : 'secondary'}>
-                            {user.role === 'admin' ? '管理员' : '普通用户'}
-                          </Badge>
+                          <div className='flex flex-wrap gap-1.5'>
+                            <Badge variant={user.role === 'admin' ? 'default' : 'secondary'}>
+                              {user.role === 'admin' ? '管理员' : '普通用户'}
+                            </Badge>
+                            <Badge variant={user.plan === 'pro' ? 'outline' : 'secondary'}>
+                              {user.plan === 'pro'
+                                ? 'Pro'
+                                : user.plan === 'admin'
+                                  ? '全权限'
+                                  : '基础版'}
+                            </Badge>
+                          </div>
                         </TableCell>
                         <TableCell className='text-muted-foreground text-xs'>
                           {user.accountCount} 账号 · {user.taskCount} 任务
@@ -317,6 +400,13 @@ export default function AdminDashboard({ initialData }: { initialData: AdminSnap
                           <div className='mt-3 flex flex-wrap items-center gap-2'>
                             <Badge variant={user.role === 'admin' ? 'default' : 'secondary'}>
                               {user.role === 'admin' ? '管理员' : '普通用户'}
+                            </Badge>
+                            <Badge variant={user.plan === 'pro' ? 'outline' : 'secondary'}>
+                              {user.plan === 'pro'
+                                ? 'Pro'
+                                : user.plan === 'admin'
+                                  ? '全权限'
+                                  : '基础版'}
                             </Badge>
                             <Badge variant={user.status === 'active' ? 'outline' : 'destructive'}>
                               {user.status === 'active' ? '正常' : '已禁用'}
@@ -399,6 +489,79 @@ export default function AdminDashboard({ initialData }: { initialData: AdminSnap
             </CardContent>
           </Card>
         </div>
+
+        <Card className='shadow-none'>
+          <CardHeader className='border-b'>
+            <div className='flex items-start justify-between gap-3'>
+              <div>
+                <CardTitle className='text-xl'>Pro 开通申请</CardTitle>
+                <CardDescription>确认外部收款后，在这里授予永久 Pro 权益。</CardDescription>
+              </div>
+              <Badge
+                variant={
+                  proRequests.some((item) => item.status === 'pending') ? 'default' : 'secondary'
+                }
+              >
+                {proRequests.filter((item) => item.status === 'pending').length} 待处理
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent className='pt-4'>
+            {proRequests.length === 0 ? (
+              <p className='text-muted-foreground py-8 text-center text-sm'>
+                暂时没有 Pro 开通申请
+              </p>
+            ) : (
+              <div className='flex flex-col gap-3'>
+                {proRequests.map((request) => (
+                  <div
+                    key={request.id}
+                    className='flex flex-col gap-3 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between'
+                  >
+                    <div className='min-w-0'>
+                      <div className='flex flex-wrap items-center gap-2'>
+                        <p className='font-medium'>{request.userName}</p>
+                        <Badge variant={request.status === 'pending' ? 'outline' : 'secondary'}>
+                          {request.status === 'pending'
+                            ? '待确认'
+                            : request.status === 'approved'
+                              ? '已开通'
+                              : '已关闭'}
+                        </Badge>
+                      </div>
+                      <p className='text-muted-foreground mt-1 truncate text-xs'>
+                        {request.userEmail || '未设置邮箱'} · ¥{request.priceCents / 100} / 永久 ·{' '}
+                        {formatDateTime(request.createdAt)}
+                      </p>
+                    </div>
+                    {request.status === 'pending' && (
+                      <div className='grid w-full grid-cols-2 gap-2 sm:w-auto'>
+                        <Button
+                          size='sm'
+                          onClick={() => {
+                            const user = users.find((item) => item.id === request.userId);
+                            if (user) void grantUserPro(user);
+                          }}
+                          disabled={busyProUserId === request.userId}
+                        >
+                          {busyProUserId === request.userId ? '处理中' : '确认并开通'}
+                        </Button>
+                        <Button
+                          size='sm'
+                          variant='outline'
+                          onClick={() => void rejectPro(request)}
+                          disabled={busyProUserId === request.userId}
+                        >
+                          关闭申请
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         <Tabs defaultValue='runs' className='w-full'>
           <TabsList className='sticky top-16 z-10 -mx-4 w-[calc(100%+2rem)] max-w-none overflow-x-auto rounded-none border-b bg-background/95 px-4 py-2 backdrop-blur sm:static sm:mx-0 sm:w-fit sm:max-w-full sm:rounded-lg sm:border-0 sm:bg-muted sm:p-[3px]'>

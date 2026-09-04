@@ -10,6 +10,7 @@ import { UserEntity } from '../users/infrastructure/persistence/relational/entit
 import { CreateInvitationDto } from './dto/invitation.dto';
 import { PlatformInvitationEntity } from './entities/platform-invitation.entity';
 import { PlatformInvitationUseEntity } from './entities/platform-invitation-use.entity';
+import { PlatformReferralEntity } from './entities/platform-referral.entity';
 import { PlatformCryptoService } from './platform-crypto.service';
 
 export type InvitationView = {
@@ -17,6 +18,7 @@ export type InvitationView = {
   code?: string;
   maxUses: number;
   usedCount: number;
+  source: 'admin' | 'community';
   status: string;
   expiresAt: string | null;
   createdAt: string;
@@ -40,6 +42,7 @@ export class PlatformInvitationsService {
       codeHash: this.crypto.digest(code),
       maxUses: dto.maxUses ?? 1,
       usedCount: 0,
+      source: 'admin',
       status: 'active',
       expiresAt: new Date(Date.now() + validDays * 24 * 60 * 60 * 1000),
       createdByUser: { id: userId } as UserEntity,
@@ -62,6 +65,7 @@ export class PlatformInvitationsService {
     const invitation = await repository
       .createQueryBuilder('invitation')
       .setLock('pessimistic_write')
+      .leftJoinAndSelect('invitation.createdByUser', 'creator')
       .where('invitation."codeHash" = :codeHash', {
         codeHash: this.crypto.digest(code.trim()),
       })
@@ -90,6 +94,13 @@ export class PlatformInvitationsService {
     invitationId: number,
     userId: number,
   ): Promise<void> {
+    const invitation = await manager
+      .getRepository(PlatformInvitationEntity)
+      .findOne({
+        where: { id: invitationId },
+        relations: ['createdByUser'],
+      });
+    if (!invitation) throw new NotFoundException('邀请码不存在');
     await manager.getRepository(PlatformInvitationUseEntity).save(
       manager.getRepository(PlatformInvitationUseEntity).create({
         invitation: { id: invitationId },
@@ -98,6 +109,23 @@ export class PlatformInvitationsService {
         userId,
       }),
     );
+    const referrerUserId =
+      invitation.createdByUser?.id ?? invitation.createdByUserId;
+    if (
+      invitation.source === 'community' &&
+      referrerUserId &&
+      referrerUserId !== userId
+    ) {
+      await manager.getRepository(PlatformReferralEntity).save(
+        manager.getRepository(PlatformReferralEntity).create({
+          status: 'pending',
+          qualifiedAt: null,
+          referrerUser: { id: referrerUserId } as UserEntity,
+          referredUser: { id: userId } as UserEntity,
+          invitation: { id: invitationId } as PlatformInvitationEntity,
+        }),
+      );
+    }
   }
 
   async list(): Promise<InvitationView[]> {
@@ -121,6 +149,7 @@ export class PlatformInvitationsService {
       invitation.expiresAt < new Date();
     return {
       id: String(invitation.id),
+      source: invitation.source,
       maxUses: invitation.maxUses,
       usedCount: invitation.usedCount,
       status: expired ? 'expired' : invitation.status,

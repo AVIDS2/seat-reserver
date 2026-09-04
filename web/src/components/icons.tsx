@@ -28,6 +28,7 @@ import {
   IconClipboardText,
   IconClock,
   IconCode,
+  IconCopy,
   IconCommand,
   IconCreditCard,
   IconDeviceLaptop,
@@ -44,6 +45,7 @@ import {
   IconFileZip,
   IconFolder,
   IconGripVertical,
+  IconGift,
   IconHistory,
   IconHelpCircle,
   IconInfoCircle,
@@ -186,6 +188,8 @@ export const Icons = {
 
   // Actions
   add: IconPlus,
+  copy: IconCopy,
+  gift: IconGift,
   edit: IconEdit,
   upload: IconUpload,
   share: IconShare,

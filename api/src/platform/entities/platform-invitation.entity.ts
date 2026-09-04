@@ -30,6 +30,9 @@ export class PlatformInvitationEntity extends EntityRelationalHelper {
   @Column({ type: String, length: 20, default: 'active' })
   status: 'active' | 'disabled' | 'exhausted';
 
+  @Column({ type: String, length: 20, default: 'admin' })
+  source: 'admin' | 'community';
+
   @ManyToOne(() => UserEntity, { onDelete: 'SET NULL', nullable: true })
   @JoinColumn({ name: 'createdByUserId' })
   createdByUser: UserEntity | null;

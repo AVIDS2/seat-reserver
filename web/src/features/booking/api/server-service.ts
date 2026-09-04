@@ -6,8 +6,10 @@ import type {
   AdminRun,
   AdminTask,
   AdminUser,
+  AdminProRequest,
   Invitation,
-  PlatformUser
+  PlatformUser,
+  RewardsSnapshot
 } from './service';
 
 const baseUrl = process.env.INTERNAL_API_URL || 'http://api:3001/api/v1';
@@ -19,6 +21,7 @@ export type AdminSnapshot = {
   accounts: AdminAccount[];
   tasks: AdminTask[];
   runs: AdminRun[];
+  proRequests: AdminProRequest[];
 };
 
 export async function getBookingSnapshot(): Promise<BookingSnapshot> {
@@ -50,14 +53,16 @@ export async function getAdminSnapshot(): Promise<AdminSnapshot> {
     invitationResponse,
     accountsResponse,
     tasksResponse,
-    runsResponse
+    runsResponse,
+    proRequestsResponse
   ] = await Promise.all([
     platformServerRequest<AdminOverview>('/platform/admin/overview'),
     platformServerRequest<{ users: AdminUser[] }>('/platform/admin/users'),
     platformServerRequest<{ invitations: Invitation[] }>('/platform/invitations'),
     platformServerRequest<{ accounts: AdminAccount[] }>('/platform/admin/accounts'),
     platformServerRequest<{ tasks: AdminTask[] }>('/platform/admin/tasks'),
-    platformServerRequest<{ runs: AdminRun[] }>('/platform/admin/runs')
+    platformServerRequest<{ runs: AdminRun[] }>('/platform/admin/runs'),
+    platformServerRequest<{ requests: AdminProRequest[] }>('/platform/admin/pro-requests')
   ]);
   return {
     overview,
@@ -65,8 +70,13 @@ export async function getAdminSnapshot(): Promise<AdminSnapshot> {
     invitations: invitationResponse.invitations,
     accounts: accountsResponse.accounts,
     tasks: tasksResponse.tasks,
-    runs: runsResponse.runs
+    runs: runsResponse.runs,
+    proRequests: proRequestsResponse.requests
   };
+}
+
+export async function getRewardsSnapshotServer(): Promise<RewardsSnapshot> {
+  return platformServerRequest<RewardsSnapshot>('/platform/rewards');
 }
 
 async function platformServerRequest<T>(path: string): Promise<T> {

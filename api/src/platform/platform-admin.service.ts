@@ -13,12 +13,17 @@ import { UserEntity } from '../users/infrastructure/persistence/relational/entit
 import { BookingRunEntity } from './entities/booking-run.entity';
 import { BookingTaskEntity } from './entities/booking-task.entity';
 import { SchoolAccountEntity } from './entities/school-account.entity';
+import {
+  MembershipPlan,
+  PlatformMembershipService,
+} from './platform-membership.service';
 
 export type AdminUserView = {
   id: string;
   email: string | null;
   displayName: string;
   role: 'admin' | 'user';
+  plan: MembershipPlan;
   status: 'active' | 'disabled';
   accountCount: number;
   taskCount: number;
@@ -35,6 +40,8 @@ export type AdminOverview = {
   runsToday: number;
   successfulRunsToday: number;
   failedRunsToday: number;
+  proUsers: number;
+  pendingProRequests: number;
   queueStatus: 'ok' | 'degraded';
   serverTime: string;
 };
@@ -103,6 +110,7 @@ export class PlatformAdminService {
     private readonly tasks: Repository<BookingTaskEntity>,
     @InjectRepository(BookingRunEntity)
     private readonly runs: Repository<BookingRunEntity>,
+    private readonly memberships: PlatformMembershipService,
     private readonly sessions: SessionService,
   ) {}
 
@@ -128,6 +136,7 @@ export class PlatformAdminService {
     ]);
     const today = getShanghaiDate();
     const todaysRuns = await this.runs.find({ where: { targetDate: today } });
+    const membershipSummary = await this.memberships.adminSummary();
     return {
       users,
       activeUsers,
@@ -140,6 +149,8 @@ export class PlatformAdminService {
         .length,
       failedRunsToday: todaysRuns.filter((run) => run.status === 'failed')
         .length,
+      proUsers: membershipSummary.proUsers,
+      pendingProRequests: membershipSummary.pendingProRequests,
       queueStatus,
       serverTime: new Date().toISOString(),
     };
@@ -149,11 +160,12 @@ export class PlatformAdminService {
     const users = await this.users.find({ order: { createdAt: 'ASC' } });
     return Promise.all(
       users.map(async (user) => {
-        const [accountCount, taskCount] = await Promise.all([
+        const [accountCount, taskCount, plan] = await Promise.all([
           this.accounts.count({ where: { user: { id: user.id } } }),
           this.tasks.count({ where: { user: { id: user.id } } }),
+          this.memberships.getPlanForUser(user.id),
         ]);
-        return this.toView(user, accountCount, taskCount);
+        return this.toView(user, accountCount, taskCount, plan);
       }),
     );
   }
@@ -311,17 +323,19 @@ export class PlatformAdminService {
     } as StatusEntity;
     const saved = await this.users.save(user);
     if (status === 'disabled') await this.sessions.deleteByUserId({ userId });
-    const [accountCount, taskCount] = await Promise.all([
+    const [accountCount, taskCount, plan] = await Promise.all([
       this.accounts.count({ where: { user: { id: userId } } }),
       this.tasks.count({ where: { user: { id: userId } } }),
+      this.memberships.getPlanForUser(userId),
     ]);
-    return this.toView(saved, accountCount, taskCount);
+    return this.toView(saved, accountCount, taskCount, plan);
   }
 
   private toView(
     user: UserEntity,
     accountCount: number,
     taskCount: number,
+    plan: MembershipPlan,
   ): AdminUserView {
     const isAdmin = Number(user.role?.id) === RoleEnum.admin;
     return {
@@ -331,6 +345,7 @@ export class PlatformAdminService {
         [user.firstName, user.lastName].filter(Boolean).join(' ') ||
         '未命名用户',
       role: isAdmin ? 'admin' : 'user',
+      plan,
       status:
         Number(user.status?.id) === StatusEnum.active ? 'active' : 'disabled',
       accountCount,

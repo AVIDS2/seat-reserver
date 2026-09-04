@@ -1,4 +1,5 @@
 import {
+  Body,
   Controller,
   Get,
   Param,
@@ -13,6 +14,8 @@ import { JwtPayloadType } from '../auth/strategies/types/jwt-payload.type';
 import { RequestWithUser } from '../utils/types/request-with-user.type';
 import { PlatformAdminGuard } from './platform-admin.guard';
 import { PlatformAdminService } from './platform-admin.service';
+import { GrantProDto } from './dto/platform-growth.dto';
+import { PlatformMembershipService } from './platform-membership.service';
 import { PlatformRedisService } from './platform-redis.service';
 
 @ApiTags('Platform Admin')
@@ -22,6 +25,7 @@ import { PlatformRedisService } from './platform-redis.service';
 export class PlatformAdminController {
   constructor(
     private readonly admin: PlatformAdminService,
+    private readonly membership: PlatformMembershipService,
     private readonly redis: PlatformRedisService,
   ) {}
 
@@ -48,6 +52,41 @@ export class PlatformAdminController {
   @Get('runs')
   async runs() {
     return { runs: await this.admin.listRuns() };
+  }
+
+  @Get('pro-requests')
+  async proRequests() {
+    return { requests: await this.membership.listProRequests() };
+  }
+
+  @Post('users/:id/pro')
+  async grantPro(
+    @Request() request: RequestWithUser<JwtPayloadType>,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: GrantProDto,
+  ) {
+    return {
+      membership: await this.membership.grantPro(
+        Number(request.user.id),
+        id,
+        dto.note,
+      ),
+    };
+  }
+
+  @Post('pro-requests/:id/reject')
+  async rejectProRequest(
+    @Request() request: RequestWithUser<JwtPayloadType>,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: GrantProDto,
+  ) {
+    return {
+      request: await this.membership.rejectProRequest(
+        Number(request.user.id),
+        id,
+        dto.note,
+      ),
+    };
   }
 
   @Post('users/:id/enable')
