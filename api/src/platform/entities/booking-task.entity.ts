@@ -39,10 +39,13 @@ export class BookingTaskEntity extends EntityRelationalHelper {
   roomId: string | null;
 
   @Column({ length: 20, default: 'daily' })
-  scheduleMode: 'daily' | 'weekdays' | 'weekly' | 'once';
+  scheduleMode: 'daily' | 'weekdays' | 'weekly' | 'dates' | 'once';
 
   @Column({ type: 'jsonb', default: () => "'[1,2,3,4,5]'" })
   scheduleWeekdays: number[];
+
+  @Column({ type: 'jsonb', default: () => "'[]'" })
+  scheduleDates: string[];
 
   @Column({ type: 'date', nullable: true })
   targetDate: string | null;

@@ -64,7 +64,7 @@ WebVPN 代理 API 必须保留裸查询标志 `enlink-vpn`；平台在追加业�
 
 图书馆服务使用独立的 `cczu` 连接，经学校外部 WebVPN 的应用代理访问 `http://zuowei.cczu.edu.cn`，可读取科教城校区馆、西太湖校区馆和无门禁空间的楼层、房间、座位布局与时段。该链路不要求 VPS 建立系统级校园网 TUN，但依赖可续期的 WebVPN 应用会话。
 
-2026-09-04 的生产实测确认：图书馆登录、`/rest/v2/user`、实时目录和验证码挑战均可从 VPS 经 WebVPN 正常访问；`/rest/v2/settings` 返回 `isCaptchaOpen=true`，`POST /cap/captcha/<业务Token>` 返回挑战底图、文字提示图、点击数量和 32 字符挑战 Token。使用空 `authid` 发起真实 `freeBook` 时，学校返回 HTTP 200、业务码 `1`、“验证码错误”，没有创建预约，因此也没有可取消记录。学校当前前端会先让用户按顺序点选图片，通过 `/cap/checkCaptcha` 后再把挑战 Token 作为 `authid` 提交预约。平台在接入同等人工点选确认前保持图书馆自动任务暂停，不把接口可达误报为预约成功。
+2026-09-04 的生产实测确认：图书馆登录、`/rest/v2/user`、实时目录和验证码挑战均可从 VPS 经 WebVPN 正常访问；`/rest/v2/settings` 返回 `isCaptchaOpen=true`，`POST /cap/captcha/<业务Token>` 返回挑战底图、文字提示图、点击数量和 32 字符挑战 Token。使用空 `authid` 发起真实 `freeBook` 时，学校返回 HTTP 200、业务码 `1`、“验证码错误”，没有创建预约，因此也没有可取消记录。平台现已实现官方同等人工点选流程：`POST /api/v1/platform/reservations/captcha` 创建与当前用户、账号和预约参数绑定的三分钟挑战；`POST /api/v1/platform/reservations/captcha/<id>/verify` 接收原图坐标，通过学校 `/cap/checkCaptcha` 后把内部挑战 Token 作为 `authid` 自动提交预约。挑战 Token 不返回浏览器且一次使用后立即删除。该流程需要公网人工验收一次真实成功预约；周期图书馆任务在此之前继续保持暂停。
 
 校园账号在平台内没有“脚本账号”和“通用账号”之分；每个账号都可分别建立自习室与图书馆连接。2026-09-04 对张涛账号的单次图书馆连接诊断由学校 WebVPN 明确返回用户名或密码错误并提示剩余 2 次，因此立即停止重试；该账号现有自习室 direct Token 仍正常。此状态说明已保存密码不被 WebVPN/统一认证接受，需要用户在账号编辑中重新填写当前学校统一认证密码，不能通过自习室业务 Token 恢复或反推出密码。
 

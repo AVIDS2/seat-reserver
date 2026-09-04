@@ -1,6 +1,9 @@
 import { Type } from 'class-transformer';
 import {
+  ArrayMaxSize,
+  ArrayMinSize,
   IsDateString,
+  IsArray,
   IsIn,
   IsInt,
   IsNotEmpty,
@@ -8,6 +11,7 @@ import {
   Max,
   MaxLength,
   Min,
+  ValidateNested,
 } from 'class-validator';
 import {
   BOOKABLE_END_MINUTES,
@@ -44,4 +48,27 @@ export class ImmediateReservationDto extends ReservationAccountDto {
   @Min(BOOKABLE_START_MINUTES)
   @Max(BOOKABLE_END_MINUTES)
   endTime: number;
+}
+
+export class BookingCaptchaPointDto {
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  @Max(2000)
+  x: number;
+
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  @Max(2000)
+  y: number;
+}
+
+export class VerifyBookingCaptchaDto {
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(8)
+  @ValidateNested({ each: true })
+  @Type(() => BookingCaptchaPointDto)
+  points: BookingCaptchaPointDto[];
 }

@@ -18,6 +18,15 @@ import {
   CardTitle
 } from '@/components/ui/card';
 import PageContainer from '@/components/layout/page-container';
+import {
+  Item,
+  ItemActions,
+  ItemContent,
+  ItemDescription,
+  ItemGroup,
+  ItemMedia,
+  ItemTitle
+} from '@/components/ui/item';
 import { cn } from '@/lib/utils';
 
 import type { BookingSnapshot, BookingTask } from '../types';
@@ -28,8 +37,8 @@ import { RunStatusBadge, TaskStatusBadge } from './status-badge';
 async function runTask(task: BookingTask) {
   try {
     await runBookingTask(task.id);
-    toast.success(`${task.name} 已加入执行队列`, {
-      description: '后台 worker 将按策略执行预约。'
+    toast.success(`${task.name} 已开始执行`, {
+      description: '系统正在按你设置的座位和时间尝试预约，结果会显示在运行记录中。'
     });
   } catch (error) {
     toast.error(error instanceof Error ? error.message : '运行任务失败');
@@ -38,39 +47,41 @@ async function runTask(task: BookingTask) {
 
 function TaskRow({ task }: { task: BookingTask }) {
   return (
-    <div className='group flex flex-col gap-3 border-b py-4 last:border-b-0 sm:flex-row sm:items-center sm:justify-between'>
-      <div className='flex min-w-0 items-start gap-3'>
-        <div className='bg-muted flex size-9 shrink-0 items-center justify-center rounded-lg'>
+    <motion.div layout initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}>
+      <Item variant='outline' className='items-start sm:items-center'>
+        <ItemMedia variant='icon' className='bg-muted size-9 rounded-lg'>
           <Icons.target className='size-4' />
-        </div>
-        <div className='min-w-0'>
-          <div className='flex flex-wrap items-center gap-2'>
-            <p className='truncate text-sm font-medium'>{task.name}</p>
+        </ItemMedia>
+        <ItemContent className='min-w-0'>
+          <ItemTitle className='max-w-full'>
+            <span className='truncate'>{task.name}</span>
             <TaskStatusBadge status={task.status} />
-          </div>
-          <p className='text-muted-foreground mt-1 text-xs'>
+          </ItemTitle>
+          <ItemDescription>
             {task.account} · {task.seat} · {task.time}
-          </p>
-          <p className='text-muted-foreground mt-1 truncate text-xs'>
+          </ItemDescription>
+          <ItemDescription>
             {formatLocation(task.building, task.venueType, task.roomName)}
-          </p>
-        </div>
-      </div>
-      <div className='flex items-center justify-between gap-3 pl-12 sm:justify-end sm:pl-0'>
-        <div className='text-left sm:text-right'>
-          <p className='text-xs font-medium'>{task.nextRun}</p>
-          <p className='text-muted-foreground mt-1 text-[11px]'>{task.lastMessage}</p>
-        </div>
-        <Button
-          variant='outline'
-          size='icon-sm'
-          aria-label={`立即运行${task.name}`}
-          onClick={() => runTask(task)}
-        >
-          <Icons.play />
-        </Button>
-      </div>
-    </div>
+          </ItemDescription>
+        </ItemContent>
+        <ItemActions className='ml-auto min-w-0 items-center'>
+          <div className='min-w-0 text-right'>
+            <p className='text-xs font-medium'>{task.nextRun}</p>
+            <p className='text-muted-foreground mt-1 line-clamp-1 text-[11px]'>
+              {task.lastMessage}
+            </p>
+          </div>
+          <Button
+            variant='outline'
+            size='icon-sm'
+            aria-label={`立即运行${task.name}`}
+            onClick={() => runTask(task)}
+          >
+            <Icons.play />
+          </Button>
+        </ItemActions>
+      </Item>
+    </motion.div>
   );
 }
 
@@ -257,18 +268,22 @@ export default function BookingDashboard({ initialData }: { initialData: Booking
                 </Link>
               </CardAction>
             </CardHeader>
-            <CardContent className='divide-border divide-y pt-1'>
-              {snapshot.runs.slice(0, 3).map((run) => (
-                <div key={run.id} className='flex items-center justify-between gap-3 py-3.5'>
-                  <div className='min-w-0'>
-                    <p className='truncate text-sm font-medium'>{run.account}</p>
-                    <p className='text-muted-foreground mt-1 truncate text-xs'>
-                      {run.targetDate} · {run.attempts} 次尝试
-                    </p>
-                  </div>
-                  <RunStatusBadge status={run.status} />
-                </div>
-              ))}
+            <CardContent>
+              <ItemGroup className='gap-2'>
+                {snapshot.runs.slice(0, 3).map((run) => (
+                  <Item key={run.id} variant='outline' size='sm'>
+                    <ItemContent className='min-w-0'>
+                      <ItemTitle>{run.account}</ItemTitle>
+                      <ItemDescription>
+                        {run.targetDate} · 已尝试 {run.attempts} 次
+                      </ItemDescription>
+                    </ItemContent>
+                    <ItemActions>
+                      <RunStatusBadge status={run.status} />
+                    </ItemActions>
+                  </Item>
+                ))}
+              </ItemGroup>
             </CardContent>
           </Card>
         </div>
@@ -288,10 +303,12 @@ export default function BookingDashboard({ initialData }: { initialData: Booking
               </Link>
             </CardAction>
           </CardHeader>
-          <CardContent className='pt-1'>
-            {snapshot.tasks.map((task) => (
-              <TaskRow key={task.id} task={task} />
-            ))}
+          <CardContent>
+            <ItemGroup className='gap-2'>
+              {snapshot.tasks.map((task) => (
+                <TaskRow key={task.id} task={task} />
+              ))}
+            </ItemGroup>
           </CardContent>
         </Card>
       </div>

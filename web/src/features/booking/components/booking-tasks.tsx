@@ -74,12 +74,13 @@ import type {
   VenueType
 } from '../types';
 import { SeatMapPicker } from './seat-map-picker';
+import { ScheduleDatePicker } from './schedule-date-picker';
 import { getSchoolAvailabilityNotice } from './school-status';
 import { TaskStatusBadge } from './status-badge';
 import { TimeRangePicker } from './time-range-picker';
 
 type EditorPayload = Omit<TaskPayload, 'enabled'>;
-type ScheduleMode = 'daily' | 'weekdays' | 'weekly';
+type ScheduleMode = 'daily' | 'weekdays' | 'weekly' | 'dates';
 
 const WEEKDAYS = [
   { value: '1', label: '周一' },
@@ -96,8 +97,8 @@ const DEFAULT_TIME_CANDIDATES: TimeCandidate[] = [{ start: 480, end: 1320 }];
 async function runTask(task: BookingTask) {
   try {
     await runBookingTask(task.id);
-    toast.success(`${task.name} 已加入执行队列`, {
-      description: '后台 worker 将按策略执行。'
+    toast.success(`${task.name} 已开始执行`, {
+      description: '系统正在按你设置的座位和时间尝试预约，完成后会通知结果。'
     });
   } catch (error) {
     toast.error(error instanceof Error ? error.message : '运行任务失败');
@@ -107,7 +108,7 @@ async function runTask(task: BookingTask) {
 async function prewarmTask(task: BookingTask) {
   try {
     await prewarmBookingTask(task.id);
-    toast.success(`${task.name} 已加入连接检查队列`);
+    toast.success(`${task.name} 正在检查账号连接`);
   } catch (error) {
     toast.error(error instanceof Error ? error.message : '预热任务失败');
   }
@@ -136,6 +137,7 @@ function TaskEditorDialog({
   const [previewDate, setPreviewDate] = useState('');
   const [scheduleMode, setScheduleMode] = useState<ScheduleMode>('daily');
   const [scheduleWeekdays, setScheduleWeekdays] = useState<number[]>([1, 2, 3, 4, 5]);
+  const [scheduleDates, setScheduleDates] = useState<string[]>([]);
   const [selectedSeatIds, setSelectedSeatIds] = useState<string[]>([]);
   const [catalog, setCatalog] = useState<SeatCatalog | null>(null);
   const [layout, setLayout] = useState<SeatLayout | null>(null);
@@ -162,8 +164,15 @@ function TaskEditorDialog({
     setBuildingId(task?.buildingId || draft?.buildingId || '');
     setRoomId(task?.roomId || draft?.roomId || '');
     setPreviewDate('');
-    setScheduleMode(task?.scheduleMode === 'once' ? 'daily' : task?.scheduleMode || 'daily');
+    setScheduleMode(task?.scheduleMode === 'once' ? 'dates' : task?.scheduleMode || 'daily');
     setScheduleWeekdays(task?.scheduleWeekdays?.length ? task.scheduleWeekdays : [1, 2, 3, 4, 5]);
+    setScheduleDates(
+      task?.scheduleDates?.length
+        ? task.scheduleDates
+        : task?.scheduleMode === 'once' && task.targetDate
+          ? [task.targetDate]
+          : []
+    );
     setSelectedSeatIds(task ? [task.seatId, ...task.backupSeatIds] : draft?.seatIds || []);
     setCatalog(null);
     setLayout(null);
@@ -307,6 +316,10 @@ function TaskEditorDialog({
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (step !== 2) {
+      handleContinue();
+      return;
+    }
     if (!name.trim() || !selectedSeatIds[0] || !accountId || !selectedRoom || !selectedBuilding) {
       toast.error('请选择账号、场馆和至少一个座位');
       return;
@@ -318,6 +331,10 @@ function TaskEditorDialog({
     const normalizedScheduleMode = scheduleMode;
     if (normalizedScheduleMode === 'weekly' && !scheduleWeekdays.length) {
       toast.error('请至少选择一个执行日');
+      return;
+    }
+    if (normalizedScheduleMode === 'dates' && !scheduleDates.length) {
+      toast.error('请至少选择一个预约日期');
       return;
     }
     setSaving(true);
@@ -334,6 +351,7 @@ function TaskEditorDialog({
           scheduleMode: normalizedScheduleMode,
           targetDate: null,
           scheduleWeekdays,
+          scheduleDates,
           primarySeatLabel: selectedNodes[0]?.label || task?.seatLabel || null,
           primarySeatId: selectedSeatIds[0],
           backupSeatIds: selectedSeatIds.slice(1),
@@ -381,7 +399,7 @@ function TaskEditorDialog({
             <span className='flex size-5 items-center justify-center rounded-full bg-current/10 text-xs'>
               1
             </span>
-            选择位置
+            账号与空间
           </ToggleGroupItem>
           <ToggleGroupItem
             value='2'
@@ -391,7 +409,7 @@ function TaskEditorDialog({
             <span className='flex size-5 items-center justify-center rounded-full bg-current/10 text-xs'>
               2
             </span>
-            设置策略
+            座位与时间
           </ToggleGroupItem>
         </ToggleGroup>
         <div className='min-h-0 flex-1 overflow-y-auto overscroll-contain px-0.5'>
@@ -643,7 +661,7 @@ function TaskEditorDialog({
                           }
                           variant='outline'
                           spacing={0}
-                          className='grid w-full grid-cols-3'
+                          className='grid w-full grid-cols-2 sm:grid-cols-4'
                         >
                           <ToggleGroupItem value='daily' className='w-full'>
                             每天
@@ -652,7 +670,10 @@ function TaskEditorDialog({
                             工作日
                           </ToggleGroupItem>
                           <ToggleGroupItem value='weekly' className='w-full'>
-                            自定义
+                            按星期
+                          </ToggleGroupItem>
+                          <ToggleGroupItem value='dates' className='w-full'>
+                            指定日期
                           </ToggleGroupItem>
                         </ToggleGroup>
                       </Field>
@@ -683,13 +704,21 @@ function TaskEditorDialog({
                           </ToggleGroup>
                         </Field>
                       )}
+                      {scheduleMode === 'dates' && (
+                        <Field>
+                          <FieldLabel>预约日期</FieldLabel>
+                          <ScheduleDatePicker value={scheduleDates} onChange={setScheduleDates} />
+                        </Field>
+                      )}
                     </FieldGroup>
                     <div className='mt-4 rounded-lg bg-muted/40 px-3 py-2 text-xs text-muted-foreground'>
                       {scheduleMode === 'daily'
                         ? '每天按照下面的时间段自动尝试。'
                         : scheduleMode === 'weekdays'
                           ? '周一至周五自动尝试。'
-                          : '只在选中的星期自动尝试。'}
+                          : scheduleMode === 'weekly'
+                            ? '只在选中的星期自动尝试。'
+                            : '只在日历中选中的日期自动尝试。'}
                     </div>
                   </section>
                 </div>
@@ -772,8 +801,16 @@ function TaskEditorDialog({
             )}
           </Button>
           {step === 1 ? (
-            <Button type='button' onClick={handleContinue} disabled={!canContinue}>
-              继续选座
+            <Button
+              type='button'
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                handleContinue();
+              }}
+              disabled={!canContinue}
+            >
+              下一步：座位与时间
               <Icons.arrowRight data-icon='inline-end' />
             </Button>
           ) : (
@@ -891,7 +928,11 @@ export default function BookingTasksPage({
     try {
       const updated = await setBookingTaskEnabled(id, enabled);
       setTasks((current) => current.map((task) => (task.id === id ? updated : task)));
-      toast.success(enabled ? '任务已启用' : '任务已暂停');
+      toast.success(enabled ? '任务已启用' : '任务已暂停', {
+        description: enabled
+          ? '系统会在下一次开放时按你的设置自动预约。'
+          : '暂停后不会再自动预约，已有预约不会被取消。'
+      });
     } catch (error) {
       setTasks(previousTasks);
       toast.error(error instanceof Error ? error.message : '更新任务失败');

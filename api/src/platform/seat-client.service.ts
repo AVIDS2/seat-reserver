@@ -20,6 +20,7 @@ export type SeatCandidate = {
   seatId: string;
   startTime: number;
   endTime: number;
+  authId?: string;
 };
 
 export type SeatServiceType = 'study_room' | 'library';
@@ -97,7 +98,7 @@ export class SeatClientService {
       date,
       startTime: String(candidate.startTime),
       endTime: String(candidate.endTime),
-      authid: '',
+      authid: candidate.authId || '',
     });
 
     return this.request(new URL(this.apiUrl), {

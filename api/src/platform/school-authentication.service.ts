@@ -1,6 +1,8 @@
 import { Injectable, UnprocessableEntityException } from '@nestjs/common';
 import { SeatClientService } from './seat-client.service';
 import {
+  type BookingCaptchaChallenge,
+  type BookingCaptchaPoint,
   WebVpnSeatClientService,
   type WebVpnSessionState,
 } from './webvpn-seat-client.service';
@@ -133,6 +135,22 @@ export class SchoolAuthenticationService {
     return mode === 'webvpn' || serviceType === 'library'
       ? this.webVpnSeatClient.get(token, path)
       : this.seatClient.get(token, path);
+  }
+
+  createBookingCaptcha(token: string): Promise<BookingCaptchaChallenge> {
+    return this.webVpnSeatClient.createBookingCaptcha(token);
+  }
+
+  verifyBookingCaptcha(
+    token: string,
+    challengeToken: string,
+    points: BookingCaptchaPoint[],
+  ): Promise<SeatResponse> {
+    return this.webVpnSeatClient.verifyBookingCaptcha(
+      token,
+      challengeToken,
+      points,
+    );
   }
 
   restoreWebVpnSession(token: string, state: WebVpnSessionState): boolean {

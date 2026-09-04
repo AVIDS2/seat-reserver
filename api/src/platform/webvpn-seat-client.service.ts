@@ -70,6 +70,15 @@ export type WebVpnSessionState = {
   username?: string;
 };
 
+export type BookingCaptchaPoint = { x: number; y: number };
+
+export type BookingCaptchaChallenge = {
+  image: string;
+  wordImage: string;
+  requiredClicks: number;
+  token: string;
+};
+
 @Injectable()
 export class WebVpnSeatClientService {
   private readonly sessions = new Map<string, WebVpnSession>();
@@ -218,7 +227,7 @@ export class WebVpnSeatClientService {
     body.set('date', date);
     body.set('userId', session?.userId || '');
     body.set('username', session?.username || '');
-    body.set('authid', '');
+    body.set('authid', candidate.authId || '');
     return this.signedSeatRequest(
       token,
       'POST',
@@ -231,6 +240,55 @@ export class WebVpnSeatClientService {
   async get(token: string, path: string): Promise<SeatResponse> {
     const response = await this.signedSeatRequest(token, 'GET', path);
     return response;
+  }
+
+  async createBookingCaptcha(token: string): Promise<BookingCaptchaChallenge> {
+    const session = await this.readySession(token);
+    const response = await this.signedSeatRequest(
+      token,
+      'POST',
+      `/cap/captcha/${encodeURIComponent(token)}?username=${encodeURIComponent(session.username)}`,
+    );
+    if (!response.success || !response.payload) {
+      throw new UnprocessableEntityException(
+        response.message || '图书馆预约验证加载失败',
+      );
+    }
+    const image = imageData(response.payload.image);
+    const wordImage = imageData(response.payload.wordImage);
+    const requiredClicks = Number(response.payload.wordCheckCount);
+    const challengeToken = response.payload.token;
+    if (
+      !image ||
+      !wordImage ||
+      !Number.isInteger(requiredClicks) ||
+      requiredClicks < 1 ||
+      requiredClicks > 8 ||
+      typeof challengeToken !== 'string' ||
+      !/^[a-zA-Z0-9_-]{16,128}$/.test(challengeToken)
+    ) {
+      throw new ServiceUnavailableException('图书馆预约验证格式已变化');
+    }
+    return { image, wordImage, requiredClicks, token: challengeToken };
+  }
+
+  async verifyBookingCaptcha(
+    token: string,
+    challengeToken: string,
+    points: BookingCaptchaPoint[],
+  ): Promise<SeatResponse> {
+    const session = await this.readySession(token);
+    const params = new URLSearchParams({
+      a: Buffer.from(JSON.stringify(points), 'utf8').toString('base64'),
+      token: challengeToken,
+      userId: session.userId,
+      username: session.username,
+    });
+    return this.signedSeatRequest(
+      token,
+      'GET',
+      `/cap/checkCaptcha?${params.toString()}`,
+    );
   }
 
   getSessionState(token: string): WebVpnSessionState | null {
@@ -287,6 +345,25 @@ export class WebVpnSeatClientService {
     } catch {
       return false;
     }
+  }
+
+  private async readySession(
+    token: string,
+  ): Promise<WebVpnSession & { userId: string; username: string }> {
+    let session = this.sessions.get(token);
+    if (!session?.userId || !session.username) {
+      const verified = await this.verifyToken(token);
+      if (!verified.success) {
+        throw new UnprocessableEntityException(
+          verified.message || '学校账号授权已失效',
+        );
+      }
+      session = this.sessions.get(token);
+    }
+    if (!session?.userId || !session.username) {
+      throw new ServiceUnavailableException('学校账号信息暂时不可用');
+    }
+    return session as WebVpnSession & { userId: string; username: string };
   }
 
   private async loginToGateway(
@@ -784,10 +861,21 @@ export function proxyApiUrl(
   token: string,
 ): URL {
   const url = proxyUrl(proxyBase, path);
-  url.searchParams.set('token', token);
+  if (!url.searchParams.has('token')) url.searchParams.set('token', token);
   const query = url.searchParams.toString();
   url.search = `${query ? `?${query}&` : '?'}enlink-vpn`;
   return url;
+}
+
+function imageData(value: unknown): string | null {
+  if (
+    typeof value !== 'string' ||
+    value.length > 1_000_000 ||
+    !/^data:image\/(?:png|jpe?g);base64,[a-zA-Z0-9+/=]+$/.test(value)
+  ) {
+    return null;
+  }
+  return value;
 }
 
 function extractProxyBase(pageUrl: URL, gateway: URL, appPath: string): string {

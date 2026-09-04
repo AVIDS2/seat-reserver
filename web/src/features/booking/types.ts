@@ -21,8 +21,9 @@ export type BookingTask = {
   roomName: string;
   buildingId: string | null;
   roomId: string | null;
-  scheduleMode: 'daily' | 'weekdays' | 'weekly' | 'once';
+  scheduleMode: 'daily' | 'weekdays' | 'weekly' | 'dates' | 'once';
   scheduleWeekdays: number[];
+  scheduleDates: string[];
   targetDate: string | null;
   seatLabel: string | null;
   account: string;
@@ -117,6 +118,14 @@ export type BookingReservation = {
   statusLabel: string;
   checkedIn: boolean;
   canCancel: boolean;
+};
+
+export type BookingCaptchaChallenge = {
+  id: string;
+  image: string;
+  wordImage: string;
+  requiredClicks: number;
+  expiresAt: string;
 };
 
 export type BookingRun = {

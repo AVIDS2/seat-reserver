@@ -35,6 +35,29 @@ export class PlatformRedisService implements OnModuleDestroy {
     }
   }
 
+  async setJson(
+    key: string,
+    value: unknown,
+    ttlSeconds: number,
+  ): Promise<void> {
+    await this.client.set(key, JSON.stringify(value), 'EX', ttlSeconds);
+  }
+
+  async getJson<T>(key: string): Promise<T | null> {
+    const value = await this.client.get(key);
+    if (!value) return null;
+    try {
+      return JSON.parse(value) as T;
+    } catch {
+      await this.client.del(key);
+      return null;
+    }
+  }
+
+  async delete(key: string): Promise<void> {
+    await this.client.del(key);
+  }
+
   async onModuleDestroy(): Promise<void> {
     await this.client.quit();
   }

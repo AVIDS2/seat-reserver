@@ -221,7 +221,7 @@ export default function AdminDashboard({ initialData }: { initialData: AdminSnap
           <StatCard
             label='今日运行'
             value={`${overview.successfulRunsToday} 成功`}
-            detail={`${overview.failedRunsToday} 次未成功 · 队列 ${overview.queueStatus === 'ok' ? '正常' : '异常'}`}
+            detail={`${overview.failedRunsToday} 次未成功 · 自动执行${overview.queueStatus === 'ok' ? '正常' : '需检查'}`}
             icon={Icons.history}
           />
         </div>
@@ -232,7 +232,7 @@ export default function AdminDashboard({ initialData }: { initialData: AdminSnap
               <CardTitle className='text-xl'>成员管理</CardTitle>
               <CardDescription>普通用户只能访问自己的账号、任务和运行记录。</CardDescription>
             </CardHeader>
-            <CardContent className='pt-0'>
+            <CardContent className='pt-2'>
               <Table className='hidden min-w-[680px] lg:table'>
                 <TableHeader>
                   <TableRow>
@@ -294,7 +294,7 @@ export default function AdminDashboard({ initialData }: { initialData: AdminSnap
                   })}
                 </TableBody>
               </Table>
-              <div className='divide-border divide-y lg:hidden'>
+              <div className='flex flex-col gap-2 lg:hidden'>
                 {users.length === 0 ? (
                   <p className='text-muted-foreground py-12 text-center text-sm'>暂无成员</p>
                 ) : (
@@ -304,7 +304,7 @@ export default function AdminDashboard({ initialData }: { initialData: AdminSnap
                     return (
                       <div
                         key={user.id}
-                        className='flex min-w-0 items-start justify-between gap-3 py-4'
+                        className='flex min-w-0 items-start justify-between gap-3 rounded-lg border p-3'
                       >
                         <div className='min-w-0'>
                           <p className='truncate font-medium'>
@@ -415,7 +415,7 @@ export default function AdminDashboard({ initialData }: { initialData: AdminSnap
                   仅显示运行结果和归属信息，不显示学校密码、Token 或原始敏感请求。
                 </CardDescription>
               </CardHeader>
-              <CardContent className='overflow-x-auto p-0'>
+              <CardContent className='overflow-x-auto px-3 pt-3 sm:px-4'>
                 <Table className='hidden min-w-[880px] lg:table'>
                   <TableHeader>
                     <TableRow>
@@ -475,12 +475,15 @@ export default function AdminDashboard({ initialData }: { initialData: AdminSnap
                     )}
                   </TableBody>
                 </Table>
-                <div className='divide-border divide-y lg:hidden'>
+                <div className='flex flex-col gap-2 lg:hidden'>
                   {runs.length === 0 ? (
                     <p className='text-muted-foreground py-12 text-center text-sm'>暂无运行记录</p>
                   ) : (
                     runs.map((run) => (
-                      <div key={run.id} className='flex min-w-0 flex-col gap-3 py-4'>
+                      <div
+                        key={run.id}
+                        className='flex min-w-0 flex-col gap-3 rounded-lg border p-3'
+                      >
                         <div className='flex min-w-0 items-start justify-between gap-3'>
                           <div className='min-w-0'>
                             <p className='truncate text-sm font-medium'>{run.task}</p>
@@ -536,7 +539,7 @@ export default function AdminDashboard({ initialData }: { initialData: AdminSnap
                   管理员可以检查所有成员的任务状态，但任务仍由所属成员独立管理。
                 </CardDescription>
               </CardHeader>
-              <CardContent className='overflow-x-auto p-0'>
+              <CardContent className='overflow-x-auto px-3 pt-3 sm:px-4'>
                 <Table className='hidden min-w-[820px] lg:table'>
                   <TableHeader>
                     <TableRow>
@@ -603,12 +606,15 @@ export default function AdminDashboard({ initialData }: { initialData: AdminSnap
                     )}
                   </TableBody>
                 </Table>
-                <div className='divide-border divide-y lg:hidden'>
+                <div className='flex flex-col gap-2 lg:hidden'>
                   {tasks.length === 0 ? (
                     <p className='text-muted-foreground py-12 text-center text-sm'>暂无任务</p>
                   ) : (
                     tasks.map((task) => (
-                      <div key={task.id} className='flex min-w-0 flex-col gap-3 py-4'>
+                      <div
+                        key={task.id}
+                        className='flex min-w-0 flex-col gap-3 rounded-lg border p-3'
+                      >
                         <div className='flex min-w-0 items-start justify-between gap-3'>
                           <div className='min-w-0'>
                             <p className='truncate text-sm font-medium'>{task.name}</p>
@@ -676,7 +682,7 @@ export default function AdminDashboard({ initialData }: { initialData: AdminSnap
                   账号标识已脱敏，管理员只查看连接状态和归属，不接触凭据。
                 </CardDescription>
               </CardHeader>
-              <CardContent className='overflow-x-auto p-0'>
+              <CardContent className='overflow-x-auto px-3 pt-3 sm:px-4'>
                 <Table className='hidden min-w-[760px] lg:table'>
                   <TableHeader>
                     <TableRow>
@@ -730,12 +736,15 @@ export default function AdminDashboard({ initialData }: { initialData: AdminSnap
                     )}
                   </TableBody>
                 </Table>
-                <div className='divide-border divide-y lg:hidden'>
+                <div className='flex flex-col gap-2 lg:hidden'>
                   {accounts.length === 0 ? (
                     <p className='text-muted-foreground py-12 text-center text-sm'>暂无学校账号</p>
                   ) : (
                     accounts.map((account) => (
-                      <div key={account.id} className='flex min-w-0 flex-col gap-3 py-4'>
+                      <div
+                        key={account.id}
+                        className='flex min-w-0 flex-col gap-3 rounded-lg border p-3'
+                      >
                         <div className='flex min-w-0 items-start justify-between gap-3'>
                           <div className='min-w-0'>
                             <p className='truncate text-sm font-medium'>{account.label}</p>

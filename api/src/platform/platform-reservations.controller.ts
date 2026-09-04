@@ -5,6 +5,7 @@ import {
   HttpCode,
   HttpStatus,
   Param,
+  ParseUUIDPipe,
   Post,
   Query,
   Request,
@@ -17,6 +18,7 @@ import { RequestWithUser } from '../utils/types/request-with-user.type';
 import {
   ImmediateReservationDto,
   ReservationAccountDto,
+  VerifyBookingCaptchaDto,
 } from './dto/reservation.dto';
 import { PlatformReservationsService } from './platform-reservations.service';
 
@@ -49,6 +51,35 @@ export class PlatformReservationsController {
   ) {
     return {
       reservation: await this.reservations.book(Number(request.user.id), dto),
+    };
+  }
+
+  @Post('captcha')
+  @HttpCode(HttpStatus.CREATED)
+  async createCaptcha(
+    @Request() request: RequestWithUser<JwtPayloadType>,
+    @Body() dto: ImmediateReservationDto,
+  ) {
+    return {
+      challenge: await this.reservations.createCaptcha(
+        Number(request.user.id),
+        dto,
+      ),
+    };
+  }
+
+  @Post('captcha/:id/verify')
+  async verifyCaptcha(
+    @Request() request: RequestWithUser<JwtPayloadType>,
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body() dto: VerifyBookingCaptchaDto,
+  ) {
+    return {
+      reservation: await this.reservations.verifyCaptchaAndBook(
+        Number(request.user.id),
+        id,
+        dto.points,
+      ),
     };
   }
 

@@ -56,4 +56,14 @@ describe('WebVpnSeatClientService session persistence', () => {
 
     expect(url.search).toBe('?page=1&token=business.token&enlink-vpn');
   });
+
+  it('should preserve a captcha challenge token in the query', () => {
+    const url = proxyApiUrl(
+      'https://zmvpn.cczu.edu.cn/http/webvpn/example',
+      '/cap/checkCaptcha?a=points&token=challenge-token',
+      'business-token',
+    );
+
+    expect(url.search).toBe('?a=points&token=challenge-token&enlink-vpn');
+  });
 });

@@ -69,6 +69,7 @@ export class PlatformScheduler {
 
 export function isTaskDue(task: BookingTaskEntity, date: string): boolean {
   if (task.scheduleMode === 'once') return task.targetDate === date;
+  if (task.scheduleMode === 'dates') return task.scheduleDates.includes(date);
   if (task.scheduleMode === 'daily') return true;
   const weekday = new Date(`${date}T12:00:00+08:00`).getUTCDay();
   if (task.scheduleMode === 'weekdays') return weekday >= 1 && weekday <= 5;

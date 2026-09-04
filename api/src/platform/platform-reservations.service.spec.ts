@@ -3,8 +3,9 @@ import { PlatformReservationsService } from './platform-reservations.service';
 
 type SchoolResponse = {
   httpStatus: number;
-  payload: { status: string; code: string; data: unknown };
+  payload: { status: string | boolean; code?: string; data?: unknown };
   message: string;
+  success?: boolean;
 };
 
 type GetFunction = (
@@ -21,6 +22,19 @@ type BookFunction = (
   candidate: { seatId: string; startTime: number; endTime: number },
   timeoutMs: number,
   serviceType: 'study_room' | 'library',
+) => Promise<SchoolResponse>;
+
+type CreateCaptchaFunction = () => Promise<{
+  image: string;
+  wordImage: string;
+  requiredClicks: number;
+  token: string;
+}>;
+
+type VerifyCaptchaFunction = (
+  token: string,
+  challengeToken: string,
+  points: Array<{ x: number; y: number }>,
 ) => Promise<SchoolResponse>;
 
 function makeService(
@@ -45,9 +59,16 @@ function makeService(
   const schoolAuth = {
     get,
     book: jest.fn<BookFunction>(),
+    createBookingCaptcha: jest.fn<CreateCaptchaFunction>(),
+    verifyBookingCaptcha: jest.fn<VerifyCaptchaFunction>(),
   };
   const catalog = {
     invalidateAccount: jest.fn(),
+  };
+  const redis = {
+    setJson: jest.fn(),
+    getJson: jest.fn<(key: string) => Promise<unknown>>(),
+    delete: jest.fn(),
   };
   return {
     service: new PlatformReservationsService(
@@ -55,10 +76,12 @@ function makeService(
       connections as never,
       schoolAuth as never,
       catalog as never,
+      redis as never,
     ),
     accounts,
     connections,
     schoolAuth,
+    redis,
   };
 }
 
@@ -203,6 +226,107 @@ describe('PlatformReservationsService', () => {
       { seatId: '197', startTime: 480, endTime: 600 },
       10_000,
       'study_room',
+    );
+  });
+
+  it('should create a short-lived library booking challenge', async () => {
+    const { service, schoolAuth, redis } = makeService();
+    schoolAuth.createBookingCaptcha.mockResolvedValue({
+      image: 'data:image/jpg;base64,aW1hZ2U=',
+      wordImage: 'data:image/jpg;base64,d29yZA==',
+      requiredClicks: 3,
+      token: 'challenge-token-value',
+    });
+
+    const challenge = await service.createCaptcha(7, {
+      accountId: 4,
+      serviceType: 'library',
+      seatId: '197',
+      date: '2026-09-05',
+      startTime: 480,
+      endTime: 600,
+    });
+
+    expect(challenge).toEqual(
+      expect.objectContaining({
+        image: 'data:image/jpg;base64,aW1hZ2U=',
+        wordImage: 'data:image/jpg;base64,d29yZA==',
+        requiredClicks: 3,
+      }),
+    );
+    expect(challenge).not.toHaveProperty('token');
+    expect(redis.setJson).toHaveBeenCalledWith(
+      expect.stringMatching(/^platform:booking-captcha:/),
+      expect.objectContaining({
+        userId: 7,
+        challengeToken: 'challenge-token-value',
+        requiredClicks: 3,
+      }),
+      180,
+    );
+  });
+
+  it('should verify captcha points once and submit the bound booking', async () => {
+    const { service, schoolAuth, redis } = makeService();
+    redis.getJson.mockResolvedValue({
+      userId: 7,
+      booking: {
+        accountId: 4,
+        serviceType: 'library',
+        seatId: '197',
+        date: '2026-09-05',
+        startTime: 480,
+        endTime: 600,
+      },
+      challengeToken: 'challenge-token-value',
+      requiredClicks: 2,
+    });
+    schoolAuth.verifyBookingCaptcha.mockResolvedValue({
+      httpStatus: 200,
+      payload: { status: 'OK' },
+      message: '',
+      success: true,
+    });
+    schoolAuth.book.mockResolvedValue(
+      response({
+        id: 735601,
+        onDate: '2026年09月05日',
+        begin: '08:00',
+        end: '10:00',
+        location: '西太湖校区馆一楼学习空间，座位号001',
+      }),
+    );
+
+    await expect(
+      service.verifyCaptchaAndBook(7, 'challenge-id', [
+        { x: 40, y: 80 },
+        { x: 120, y: 60 },
+      ]),
+    ).resolves.toEqual(
+      expect.objectContaining({
+        id: '735601',
+        venueType: 'library',
+        status: 'upcoming',
+      }),
+    );
+    expect(redis.delete).toHaveBeenCalledWith(
+      'platform:booking-captcha:challenge-id',
+    );
+    expect(schoolAuth.verifyBookingCaptcha).toHaveBeenCalledWith(
+      'hidden-token',
+      'challenge-token-value',
+      [
+        { x: 40, y: 80 },
+        { x: 120, y: 60 },
+      ],
+    );
+    expect(schoolAuth.book).toHaveBeenCalledWith(
+      'hidden-token',
+      'direct',
+      '2026-09-05',
+      expect.objectContaining({ authId: 'challenge-token-value' }),
+      10_000,
+      'library',
     );
   });
 });

@@ -1,5 +1,6 @@
 import type {
   BookingAccount,
+  BookingCaptchaChallenge,
   BookingRun,
   BookingReservation,
   BookingSnapshot,
@@ -30,9 +31,10 @@ export type TaskPayload = {
   roomName: string;
   buildingId?: string | null;
   roomId?: string | null;
-  scheduleMode: 'daily' | 'weekdays' | 'weekly' | 'once';
+  scheduleMode: 'daily' | 'weekdays' | 'weekly' | 'dates' | 'once';
   targetDate?: string | null;
   scheduleWeekdays: number[];
+  scheduleDates: string[];
   primarySeatLabel?: string | null;
   primarySeatId: string;
   backupSeatIds: string[];
@@ -442,6 +444,38 @@ export async function bookBookingReservation(input: {
     {
       method: 'POST',
       body: JSON.stringify({ ...input, accountId: Number(input.accountId) })
+    }
+  );
+  clearBookingDataCache();
+  return response.reservation;
+}
+
+export async function createBookingCaptchaChallenge(input: {
+  accountId: string;
+  serviceType: VenueType;
+  seatId: string;
+  date: string;
+  startTime: number;
+  endTime: number;
+}): Promise<BookingCaptchaChallenge> {
+  const response = await platformRequest<{
+    challenge: BookingCaptchaChallenge;
+  }>('/platform/reservations/captcha', {
+    method: 'POST',
+    body: JSON.stringify({ ...input, accountId: Number(input.accountId) })
+  });
+  return response.challenge;
+}
+
+export async function verifyBookingCaptchaChallenge(
+  challengeId: string,
+  points: Array<{ x: number; y: number }>
+): Promise<BookingReservation> {
+  const response = await platformRequest<{ reservation: BookingReservation }>(
+    `/platform/reservations/captcha/${encodeURIComponent(challengeId)}/verify`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ points })
     }
   );
   clearBookingDataCache();

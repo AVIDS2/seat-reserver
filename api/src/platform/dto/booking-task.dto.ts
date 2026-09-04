@@ -80,12 +80,12 @@ export class CreateBookingTaskDto {
   roomId?: string | null;
 
   @ApiProperty({
-    enum: ['daily', 'weekdays', 'weekly', 'once'],
+    enum: ['daily', 'weekdays', 'weekly', 'dates', 'once'],
     required: false,
   })
   @IsOptional()
-  @IsIn(['daily', 'weekdays', 'weekly', 'once'])
-  scheduleMode?: 'daily' | 'weekdays' | 'weekly' | 'once';
+  @IsIn(['daily', 'weekdays', 'weekly', 'dates', 'once'])
+  scheduleMode?: 'daily' | 'weekdays' | 'weekly' | 'dates' | 'once';
 
   @ApiProperty({ example: [1, 2, 3, 4, 5], required: false })
   @IsOptional()
@@ -96,6 +96,14 @@ export class CreateBookingTaskDto {
   @ArrayMaxSize(7)
   @ArrayUnique()
   scheduleWeekdays?: number[];
+
+  @ApiProperty({ example: ['2026-09-05', '2026-09-08'], required: false })
+  @IsOptional()
+  @IsArray()
+  @IsDateString({}, { each: true })
+  @ArrayMaxSize(31)
+  @ArrayUnique()
+  scheduleDates?: string[];
 
   @ApiProperty({ required: false })
   @IsOptional()

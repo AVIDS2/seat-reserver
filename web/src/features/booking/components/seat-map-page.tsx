@@ -42,13 +42,32 @@ import { cn } from '@/lib/utils';
 
 import {
   bookBookingReservation,
+  createBookingCaptchaChallenge,
   getSeatCatalog,
   getSeatLayout,
-  getSeatTimes
+  getSeatTimes,
+  verifyBookingCaptchaChallenge
 } from '../api/service';
-import type { BookingAccount, SeatCatalog, SeatLayout, SeatTimes, VenueType } from '../types';
+import type {
+  BookingAccount,
+  BookingCaptchaChallenge,
+  SeatCatalog,
+  SeatLayout,
+  SeatTimes,
+  VenueType
+} from '../types';
+import { LibraryCaptchaDialog } from './library-captcha-dialog';
 import { SeatMapPicker } from './seat-map-picker';
 import { getSchoolAvailabilityNotice } from './school-status';
+
+type InstantBookingInput = {
+  accountId: string;
+  serviceType: VenueType;
+  seatId: string;
+  date: string;
+  startTime: number;
+  endTime: number;
+};
 
 export default function SeatMapPage({ initialAccounts }: { initialAccounts: BookingAccount[] }) {
   const [accountId, setAccountId] = useState(initialAccounts[0]?.id || '');
@@ -74,6 +93,11 @@ export default function SeatMapPage({ initialAccounts }: { initialAccounts: Book
   const [instantLoading, setInstantLoading] = useState(false);
   const [instantSubmitting, setInstantSubmitting] = useState(false);
   const [instantError, setInstantError] = useState('');
+  const [captchaOpen, setCaptchaOpen] = useState(false);
+  const [captchaChallenge, setCaptchaChallenge] = useState<BookingCaptchaChallenge | null>(null);
+  const [captchaBooking, setCaptchaBooking] = useState<InstantBookingInput | null>(null);
+  const [captchaLoading, setCaptchaLoading] = useState(false);
+  const [captchaError, setCaptchaError] = useState('');
 
   useEffect(() => {
     if (!accountId) {
@@ -271,25 +295,72 @@ export default function SeatMapPage({ initialAccounts }: { initialAccounts: Book
 
   const submitInstantBooking = async () => {
     if (!instantSeatId || !instantStartTime || !instantEndTime) return;
+    const input: InstantBookingInput = {
+      accountId,
+      serviceType: venueType,
+      seatId: instantSeatId,
+      date,
+      startTime: Number(instantStartTime),
+      endTime: Number(instantEndTime)
+    };
     setInstantSubmitting(true);
     try {
-      const reservation = await bookBookingReservation({
-        accountId,
-        serviceType: venueType,
-        seatId: instantSeatId,
-        date,
-        startTime: Number(instantStartTime),
-        endTime: Number(instantEndTime)
-      });
+      if (venueType === 'library' && catalog?.captchaRequired) {
+        const challenge = await createBookingCaptchaChallenge(input);
+        setCaptchaBooking(input);
+        setCaptchaChallenge(challenge);
+        setCaptchaError('');
+        setInstantConfirmOpen(false);
+        setCaptchaOpen(true);
+        return;
+      }
+      const reservation = await bookBookingReservation(input);
       setInstantConfirmOpen(false);
       setInstantOpen(false);
       toast.success('预约已提交', {
         description: `${reservation.location} · ${reservation.startTime}-${reservation.endTime}`
       });
+      refreshLayout();
     } catch (reason) {
       toast.error(reason instanceof Error ? reason.message : '预约提交失败');
     } finally {
       setInstantSubmitting(false);
+    }
+  };
+
+  const refreshCaptcha = async () => {
+    if (!captchaBooking) return;
+    setCaptchaLoading(true);
+    setCaptchaError('');
+    try {
+      setCaptchaChallenge(await createBookingCaptchaChallenge(captchaBooking));
+    } catch (reason) {
+      setCaptchaChallenge(null);
+      setCaptchaError(reason instanceof Error ? reason.message : '验证图片加载失败');
+    } finally {
+      setCaptchaLoading(false);
+    }
+  };
+
+  const verifyCaptcha = async (points: Array<{ x: number; y: number }>) => {
+    if (!captchaChallenge) return;
+    setCaptchaLoading(true);
+    setCaptchaError('');
+    try {
+      const reservation = await verifyBookingCaptchaChallenge(captchaChallenge.id, points);
+      setCaptchaOpen(false);
+      setCaptchaChallenge(null);
+      setCaptchaBooking(null);
+      setInstantOpen(false);
+      toast.success('图书馆预约成功', {
+        description: `${reservation.location} · ${reservation.startTime}-${reservation.endTime}`
+      });
+      refreshLayout();
+    } catch (reason) {
+      setCaptchaChallenge(null);
+      setCaptchaError(reason instanceof Error ? reason.message : '验证失败，请换一张后重试');
+    } finally {
+      setCaptchaLoading(false);
     }
   };
 
@@ -677,6 +748,23 @@ export default function SeatMapPage({ initialAccounts }: { initialAccounts: Book
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <LibraryCaptchaDialog
+        open={captchaOpen}
+        onOpenChange={(nextOpen) => {
+          setCaptchaOpen(nextOpen);
+          if (!nextOpen) {
+            setCaptchaChallenge(null);
+            setCaptchaBooking(null);
+            setCaptchaError('');
+          }
+        }}
+        challenge={captchaChallenge}
+        loading={captchaLoading}
+        error={captchaError}
+        onRefresh={() => void refreshCaptcha()}
+        onVerify={(points) => void verifyCaptcha(points)}
+      />
     </PageContainer>
   );
 }
