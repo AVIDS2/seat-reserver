@@ -40,7 +40,7 @@
 
 不要把校园统一身份认证密码默认等同于 `/cczukaoyan/rest/auth` 的 `password`。webvpn 模式的业务 Token 只能在 `202.195.100.14` 对应的 WebVPN 代理入口使用；实测将它交给 `leosys.cn/cczukaoyan` 的 PC 或 APPLET 请求都会返回业务码 `12`。
 
-平台现已把校园凭据与预约服务连接拆开：同一个校园账号下，`study_room/cczukaoyan` 与 `library/cczu` 分别保存加密业务 Token、认证模式和验证时间，避免跨服务误用凭证。图书馆只读目录、空间布局、座位状态和可选时间已接通；`/rest/v2/settings` 当前返回 `isCaptchaOpen=true`，因此预约提交必须先完成人工验证码验证，不能沿用自习室的完全无人值守承诺。
+平台现已把校园凭据与预约服务连接拆开：同一个校园账号下，`study_room/cczukaoyan` 与 `library/cczu` 分别保存加密业务 Token、认证模式和验证时间，避免跨服务误用凭证。图书馆只读目录、空间布局、座位状态和可选时间已接通；`/rest/v2/settings` 当前返回 `isCaptchaOpen=true`。2026-09-04 的生产探测进一步确认 `/cap/captcha/<业务Token>` 能返回挑战底图、文字提示图、点击数量和挑战 Token，空 `authid` 的真实预约会被学校明确拒绝为“验证码错误”。图书馆预约必须先完成官方页面同款的人工点选校验，再将已验证的挑战 Token 作为 `authid` 提交，不能沿用自习室空 `authid` 的完全无人值守流程。
 
 图书馆协议覆盖参考了校友项目 [CCZU-OSSA/CCZU-Lib-Book](https://github.com/CCZU-OSSA/CCZU-Lib-Book) 的公开接口清单与归一化思路。该仓库使用 AGPL-3.0；本项目本次实现没有复制其源码或引入其运行时，避免在当前仓库许可证未统一前形成代码级衍生依赖。
 
