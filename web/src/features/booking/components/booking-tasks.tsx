@@ -353,7 +353,7 @@ function TaskEditorDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className='flex h-[calc(100svh-1rem)] max-h-[calc(100svh-1rem)] w-[calc(100%-1rem)] max-w-[1040px] flex-col overflow-hidden overscroll-contain p-3 sm:h-[min(900px,calc(100svh-2rem))] sm:max-h-[calc(100svh-2rem)] sm:p-5'>
+      <DialogContent className='flex h-[calc(100svh-1rem)] max-h-[calc(100svh-1rem)] w-[calc(100%-1rem)] max-w-[calc(100%-1rem)] flex-col overflow-hidden overscroll-contain p-3 sm:h-auto sm:max-h-[min(900px,calc(100svh-2rem))] sm:w-[min(1040px,calc(100%-2rem))] sm:max-w-[1040px] sm:p-5'>
         <DialogHeader className='shrink-0 pr-8'>
           <DialogTitle>{task ? '编辑预约任务' : '新建预约任务'}</DialogTitle>
           <DialogDescription>配置一次预约任务，系统会按规则自动执行。</DialogDescription>
@@ -429,7 +429,10 @@ function TaskEditorDialog({
                       <SelectTrigger id='task-account' className='w-full'>
                         <SelectValue placeholder='选择学校账号' />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent
+                        align='start'
+                        className='w-max min-w-48 max-w-[calc(100vw-2rem)] sm:w-(--anchor-width)'
+                      >
                         <SelectGroup>
                           <SelectLabel>学校账号</SelectLabel>
                           {accounts.map((account) => (
@@ -487,7 +490,10 @@ function TaskEditorDialog({
                       <SelectTrigger id='task-building' className='w-full'>
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent
+                        align='start'
+                        className='w-max min-w-48 max-w-[calc(100vw-2rem)] sm:w-(--anchor-width)'
+                      >
                         <SelectGroup>
                           <SelectLabel>{venueType === 'library' ? '馆区' : '楼栋'}</SelectLabel>
                           {catalog?.buildings.map((building) => (
@@ -516,7 +522,10 @@ function TaskEditorDialog({
                       <SelectTrigger id='task-room' className='w-full'>
                         <SelectValue placeholder='选择空间' />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent
+                        align='start'
+                        className='w-max min-w-48 max-w-[calc(100vw-2rem)] sm:w-(--anchor-width)'
+                      >
                         <SelectGroup>
                           <SelectLabel>可预约空间</SelectLabel>
                           {rooms.map((room) => (
