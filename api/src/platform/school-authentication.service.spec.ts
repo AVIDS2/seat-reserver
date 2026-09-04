@@ -30,6 +30,22 @@ describe('SchoolAuthenticationService', () => {
     );
   });
 
+  it('should not retry WebVPN after an explicit credential rejection', async () => {
+    const directAuthenticate = jest.fn(() =>
+      Promise.reject(new UnprocessableEntityException('用户名或密码不正确')),
+    );
+    const webVpnAuthenticate = jest.fn();
+    const service = new SchoolAuthenticationService(
+      { authenticate: directAuthenticate } as never,
+      { authenticate: webVpnAuthenticate } as never,
+    );
+
+    await expect(
+      service.authenticate('student', 'wrong-password'),
+    ).rejects.toThrow('用户名或密码不正确');
+    expect(webVpnAuthenticate).not.toHaveBeenCalled();
+  });
+
   it('should prefer direct authentication when credentials are accepted', async () => {
     const directAuthenticate = jest.fn<
       (

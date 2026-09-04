@@ -256,6 +256,15 @@ export class WebVpnSeatClientService {
     if (!result.response.ok && !result.response.redirected) {
       throw new UnprocessableEntityException('学校 WebVPN 账号或密码错误');
     }
+    const clientInfoCookie = (
+      await jar.getCookies(new URL('/enlink/', this.gateway).toString())
+    ).find((cookie) => cookie.key === 'clientInfo');
+    if (!clientInfoCookie) {
+      const gatewayMessage = await readGatewayLoginMessage(result.response);
+      if (gatewayMessage) {
+        throw new UnprocessableEntityException(`学校 WebVPN ${gatewayMessage}`);
+      }
+    }
     return this.initializeGatewaySession(client, jar);
   }
 
@@ -741,6 +750,24 @@ function extractGatewayLoginKey(html: string): string | null {
   }
 
   return null;
+}
+
+async function readGatewayLoginMessage(
+  response: Response,
+): Promise<string | null> {
+  const contentType = response.headers.get('content-type') || '';
+  if (!contentType.toLowerCase().includes('text/html')) return null;
+
+  const html = await response.text();
+  const match = html.match(/var\s+errMsg\s*=\s*(.*?);/);
+  if (!match) return null;
+
+  try {
+    const value: unknown = JSON.parse(match[1]);
+    return typeof value === 'string' && value ? value : null;
+  } catch {
+    return null;
+  }
 }
 
 function numberSetting(value: string | undefined, fallback: number): number {
