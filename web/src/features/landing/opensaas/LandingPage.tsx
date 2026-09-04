@@ -3,6 +3,7 @@ import type { PlatformUser } from '@/features/booking/api/service';
 import { Admin, Auth, Automation, Runs, Strategy } from './components/Examples';
 import { Announcement } from './components/Announcement';
 import { Clients } from './components/Clients';
+import { CampusStories } from './components/CampusStories';
 import { ExamplesCarousel } from './components/ExamplesCarousel';
 import { FAQ } from './components/FAQ';
 import { FeaturesGrid } from './components/FeaturesGrid';
@@ -23,6 +24,7 @@ export function LandingPage({ user }: { user: PlatformUser | null }) {
       <main className='isolate'>
         <Hero user={user} />
         <Clients />
+        <CampusStories />
         <ExamplesCarousel examples={examples} />
         <Automation />
         <Auth />

@@ -17,7 +17,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle
 } from '@/components/ui/alert-dialog';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import {
   Card,
   CardAction,
@@ -92,8 +92,6 @@ const WEEKDAYS = [
   { value: '0', label: '周日' }
 ];
 
-const DEFAULT_TIME_CANDIDATES: TimeCandidate[] = [{ start: 480, end: 1320 }];
-
 async function runTask(task: BookingTask) {
   try {
     await runBookingTask(task.id);
@@ -146,7 +144,9 @@ function TaskEditorDialog({
   const [timesLoading, setTimesLoading] = useState(false);
   const [availableStartTimes, setAvailableStartTimes] = useState<number[]>([]);
   const [catalogError, setCatalogError] = useState('');
-  const [timeCandidates, setTimeCandidates] = useState<TimeCandidate[]>(DEFAULT_TIME_CANDIDATES);
+  const [timeCandidates, setTimeCandidates] = useState<TimeCandidate[]>(
+    defaultTimeCandidates('study_room')
+  );
   const [maxAttempts, setMaxAttempts] = useState('12');
   const [delay, setDelay] = useState('1.2');
   const [windowSeconds, setWindowSeconds] = useState('20');
@@ -178,7 +178,14 @@ function TaskEditorDialog({
     setLayout(null);
     setAvailableStartTimes([]);
     setCatalogError('');
-    setTimeCandidates(task?.timeCandidates?.length ? task.timeCandidates : DEFAULT_TIME_CANDIDATES);
+    const taskVenue = task?.venueType || draft?.venueType || 'study_room';
+    setTimeCandidates(
+      normalizeTimeCandidates(
+        task?.timeCandidates?.length ? task.timeCandidates : defaultTimeCandidates(taskVenue),
+        maxDurationHours(taskVenue),
+        defaultWindow(taskVenue)
+      )
+    );
     setMaxAttempts(String(task?.maxAttempts || 12));
     setDelay(String(task?.attemptDelaySeconds ?? 1.2));
     setWindowSeconds(String(task?.bookingWindowSeconds || 20));
@@ -477,7 +484,9 @@ function TaskEditorDialog({
                       value={[venueType]}
                       onValueChange={(value) => {
                         if (!value[0] || value[0] === venueType) return;
-                        setVenueType(value[0] as VenueType);
+                        const nextVenue = value[0] as VenueType;
+                        setVenueType(nextVenue);
+                        setTimeCandidates(defaultTimeCandidates(nextVenue));
                         resetLocationSelection();
                       }}
                       variant='outline'
@@ -639,6 +648,9 @@ function TaskEditorDialog({
                       value={timeCandidates}
                       onChange={setTimeCandidates}
                       availableStartTimes={availableStartTimes}
+                      maxDurationHours={catalog?.hours || maxDurationHours(venueType)}
+                      windowStartMinutes={catalog?.windowStart || defaultWindow(venueType).start}
+                      windowEndMinutes={catalog?.windowEnd || defaultWindow(venueType).end}
                     />
                     {selectedSeatIds[0] && (
                       <p className='text-muted-foreground mt-2 text-xs'>
@@ -1093,16 +1105,20 @@ export default function BookingTasksPage({
                       <Icons.edit data-icon='inline-start' />
                       编辑
                     </Button>
-                    <Button
-                      variant='ghost'
-                      size='sm'
-                      onClick={() => void runTask(task)}
-                      disabled={task.venueType === 'library'}
-                      title={task.venueType === 'library' ? '图书馆需要预约前人工验证' : undefined}
-                    >
-                      <Icons.play data-icon='inline-start' />
-                      立即运行
-                    </Button>
+                    {task.venueType === 'library' ? (
+                      <Link
+                        href={taskBookingHref(task)}
+                        className={buttonVariants({ variant: 'default', size: 'sm' })}
+                      >
+                        <Icons.shield data-icon='inline-start' />
+                        验证并预约
+                      </Link>
+                    ) : (
+                      <Button variant='ghost' size='sm' onClick={() => void runTask(task)}>
+                        <Icons.play data-icon='inline-start' />
+                        立即运行
+                      </Button>
+                    )}
                     <Button
                       variant='ghost'
                       size='sm'
@@ -1188,6 +1204,23 @@ function clampNumber(value: string, min: number, max: number, fallback: number):
   return Number.isFinite(parsed) ? Math.min(max, Math.max(min, parsed)) : fallback;
 }
 
+function taskBookingHref(task: BookingTask): string {
+  const maximumMinutes = task.venueType === 'library' ? 4 * 60 : 8 * 60;
+  const firstTime =
+    task.timeCandidates.find((candidate) => candidate.end - candidate.start <= maximumMinutes) ||
+    { start: 480, end: 480 + maximumMinutes };
+  const query = new URLSearchParams({
+    accountId: task.accountId,
+    serviceType: task.venueType,
+    ...(task.buildingId ? { buildingId: task.buildingId } : {}),
+    ...(task.roomId ? { roomId: task.roomId } : {}),
+    seatId: task.seatId,
+    ...(firstTime ? { startTime: String(firstTime.start), endTime: String(firstTime.end) } : {}),
+    book: '1'
+  });
+  return `/dashboard/seats?${query.toString()}`;
+}
+
 function formatTime(minutes: number): string {
   return `${Math.floor(minutes / 60)
     .toString()
@@ -1205,4 +1238,35 @@ function tokenStatusLabel(status: DryRunResult['tokenStatus']): string {
 
 function venueLabel(venueType: VenueType): string {
   return { library: '图书馆', study_room: '自习室' }[venueType];
+}
+
+function maxDurationHours(venueType: VenueType): number {
+  return venueType === 'library' ? 4 : 8;
+}
+
+function defaultWindow(venueType: VenueType): { start: number; end: number } {
+  return venueType === 'library' ? { start: 420, end: 1380 } : { start: 420, end: 1320 };
+}
+
+function defaultTimeCandidates(venueType: VenueType): TimeCandidate[] {
+  return [{ start: 480, end: venueType === 'library' ? 720 : 840 }];
+}
+
+function normalizeTimeCandidates(
+  candidates: TimeCandidate[],
+  durationHours: number,
+  window: { start: number; end: number }
+): TimeCandidate[] {
+  const maxMinutes = durationHours * 60;
+  return candidates.map((candidate) => ({
+    start: Math.max(window.start, Math.min(candidate.start, window.end - 30)),
+    end: Math.max(
+      Math.max(window.start, Math.min(candidate.start, window.end - 30)) + 30,
+      Math.min(
+        candidate.end,
+        Math.max(window.start, Math.min(candidate.start, window.end - 30)) + maxMinutes,
+        window.end
+      )
+    )
+  }));
 }

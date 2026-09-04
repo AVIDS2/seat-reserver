@@ -32,6 +32,7 @@ import { cn } from '@/lib/utils';
 import type { BookingSnapshot, BookingTask } from '../types';
 import { getClientSnapshot, runBookingTask } from '../api/service';
 import { MetricCard } from './metric-card';
+import { BookingOpenCountdown } from './booking-open-countdown';
 import { RunStatusBadge, TaskStatusBadge } from './status-badge';
 
 async function runTask(task: BookingTask) {
@@ -209,12 +210,7 @@ export default function BookingDashboard({ initialData }: { initialData: Booking
             </CardHeader>
             <CardContent className='pt-5'>
               <div className='flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between'>
-                <div>
-                  <div className='text-4xl font-semibold tracking-[-0.06em] tabular-nums sm:text-5xl'>
-                    {summary.executionTime}
-                  </div>
-                  <p className='text-muted-foreground mt-2 text-sm'>学校开放后 · 自动提交</p>
-                </div>
+                <BookingOpenCountdown />
                 <div className='grid grid-cols-2 gap-x-8 gap-y-3 text-sm'>
                   <div>
                     <p className='text-muted-foreground text-xs'>准备阶段</p>

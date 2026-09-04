@@ -16,10 +16,7 @@ import { PlatformAccountsService } from './platform-accounts.service';
 import { PlatformQueueService } from './platform-queue.service';
 import { SeatClientService } from './seat-client.service';
 import { PlatformServiceConnectionsService } from './platform-service-connections.service';
-import {
-  BOOKABLE_END_MINUTES,
-  BOOKABLE_START_MINUTES,
-} from './booking-time.constants';
+import { bookingWindow, maxBookingMinutes } from './booking-time.constants';
 
 export type BookingTaskView = {
   id: string;
@@ -95,7 +92,8 @@ export class PlatformTasksService {
     userId: number,
     dto: CreateBookingTaskDto,
   ): Promise<BookingTaskView> {
-    validateTimeCandidates(dto.timeCandidates);
+    const venueType = dto.venueType ?? 'study_room';
+    validateTimeCandidates(dto.timeCandidates, venueType);
     const scheduleMode = dto.scheduleMode ?? 'daily';
     const scheduleWeekdays = normalizeWeekdays(dto.scheduleWeekdays);
     const scheduleDates = normalizeDates(dto.scheduleDates);
@@ -108,11 +106,11 @@ export class PlatformTasksService {
     const account = await this.accounts.findOwned(userId, dto.accountId);
     await this.serviceConnections.ensureReady(
       account,
-      dto.venueType === 'library' ? 'library' : 'study_room',
+      venueType === 'library' ? 'library' : 'study_room',
     );
     const task = this.tasks.create({
       name: requireText(dto.name, '任务名称'),
-      venueType: dto.venueType ?? 'study_room',
+      venueType,
       building: optionalText(dto.building, '未指定'),
       roomName: optionalText(dto.roomName, '未指定'),
       buildingId: nullableText(dto.buildingId),
@@ -131,10 +129,7 @@ export class PlatformTasksService {
       bookingWindowSeconds: dto.bookingWindowSeconds ?? 20,
       prewarmOffsetSeconds: dto.prewarmOffsetSeconds ?? 0,
       runOffsetSeconds: dto.runOffsetSeconds ?? 1,
-      enabled:
-        (dto.venueType ?? 'study_room') === 'library'
-          ? false
-          : (dto.enabled ?? true),
+      enabled: venueType === 'library' ? false : (dto.enabled ?? true),
       user: { id: userId } as UserEntity,
       schoolAccount: account,
     });
@@ -148,7 +143,9 @@ export class PlatformTasksService {
     dto: UpdateBookingTaskDto,
   ): Promise<BookingTaskView> {
     const task = await this.findOwned(userId, id);
-    if (dto.timeCandidates) validateTimeCandidates(dto.timeCandidates);
+    const targetVenueType = dto.venueType ?? task.venueType;
+    if (dto.timeCandidates)
+      validateTimeCandidates(dto.timeCandidates, targetVenueType);
     const scheduleMode = dto.scheduleMode ?? task.scheduleMode;
     const scheduleWeekdays = normalizeWeekdays(
       dto.scheduleWeekdays === undefined
@@ -168,7 +165,6 @@ export class PlatformTasksService {
       dto.accountId === undefined
         ? task.schoolAccount
         : await this.accounts.findOwned(userId, dto.accountId);
-    const targetVenueType = dto.venueType ?? task.venueType;
     const enabled =
       targetVenueType === 'library' ? false : (dto.enabled ?? task.enabled);
     if (enabled && (dto.enabled === true || dto.accountId !== undefined)) {
@@ -458,7 +454,9 @@ function scheduleLabel(task: BookingTaskEntity): string {
 
 function validateTimeCandidates(
   candidates: Array<{ start: number; end: number }>,
+  venueType: string,
 ) {
+  const window = bookingWindow(venueType);
   if (!candidates.length)
     throw new UnprocessableEntityException('至少配置一个时间段');
   if (
@@ -466,12 +464,24 @@ function validateTimeCandidates(
       ({ start, end }) =>
         !Number.isInteger(start) ||
         !Number.isInteger(end) ||
-        start < BOOKABLE_START_MINUTES ||
-        end > BOOKABLE_END_MINUTES ||
+        start < window.start ||
+        end > window.end ||
         end <= start,
     )
   )
-    throw new UnprocessableEntityException('结束时间必须晚于开始时间');
+    throw new UnprocessableEntityException(
+      `可预约时间为 ${formatTime(window.start)}–${formatTime(window.end)}，且结束时间必须晚于开始时间`,
+    );
+  if (
+    candidates.some(
+      ({ start, end }) => end - start > maxBookingMinutes(venueType),
+    )
+  )
+    throw new UnprocessableEntityException(
+      venueType === 'library'
+        ? '图书馆单次预约最长 4 小时'
+        : '自习室单次预约最长 8 小时',
+    );
 }
 
 function normalizeSeatIds(seats: string[]): string[] {

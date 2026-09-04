@@ -18,23 +18,23 @@ import {
   ValidateNested,
 } from 'class-validator';
 import {
-  BOOKABLE_END_MINUTES,
-  BOOKABLE_START_MINUTES,
+  MAX_SUPPORTED_BOOKING_MINUTES,
+  MIN_SUPPORTED_BOOKING_MINUTES,
 } from '../booking-time.constants';
 
 export class TimeCandidateDto {
   @ApiProperty({ example: 480, description: 'Minutes after midnight.' })
   @Type(() => Number)
   @IsInt()
-  @Min(BOOKABLE_START_MINUTES)
-  @Max(BOOKABLE_END_MINUTES)
+  @Min(MIN_SUPPORTED_BOOKING_MINUTES)
+  @Max(MAX_SUPPORTED_BOOKING_MINUTES)
   start: number;
 
   @ApiProperty({ example: 1320, description: 'Minutes after midnight.' })
   @Type(() => Number)
   @IsInt()
-  @Min(BOOKABLE_START_MINUTES)
-  @Max(BOOKABLE_END_MINUTES)
+  @Min(MIN_SUPPORTED_BOOKING_MINUTES)
+  @Max(MAX_SUPPORTED_BOOKING_MINUTES)
   end: number;
 }
 

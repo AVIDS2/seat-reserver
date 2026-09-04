@@ -10,10 +10,7 @@ import { SchoolAuthenticationService } from './school-authentication.service';
 import { PlatformSeatCatalogService } from './platform-seat-catalog.service';
 import type { ImmediateReservationDto } from './dto/reservation.dto';
 import type { SeatServiceType } from './entities/school-service-connection.entity';
-import {
-  BOOKABLE_END_MINUTES,
-  BOOKABLE_START_MINUTES,
-} from './booking-time.constants';
+import { bookingWindow, maxBookingMinutes } from './booking-time.constants';
 import { PlatformRedisService } from './platform-redis.service';
 import type { BookingCaptchaPointDto } from './dto/reservation.dto';
 
@@ -204,15 +201,23 @@ export class PlatformReservationsService {
   }
 
   private validateBooking(dto: ImmediateReservationDto): void {
+    const window = bookingWindow(dto.serviceType);
     if (
       !Number.isInteger(dto.startTime) ||
       !Number.isInteger(dto.endTime) ||
-      dto.startTime < BOOKABLE_START_MINUTES ||
-      dto.endTime > BOOKABLE_END_MINUTES ||
+      dto.startTime < window.start ||
+      dto.endTime > window.end ||
       dto.endTime <= dto.startTime
     ) {
       throw new UnprocessableEntityException(
-        '可预约时间为 08:00–22:00，且结束时间必须晚于开始时间',
+        `可预约时间为 ${formatTime(window.start)}–${formatTime(window.end)}，且结束时间必须晚于开始时间`,
+      );
+    }
+    if (dto.endTime - dto.startTime > maxBookingMinutes(dto.serviceType)) {
+      throw new UnprocessableEntityException(
+        dto.serviceType === 'library'
+          ? '图书馆单次预约最长 4 小时'
+          : '自习室单次预约最长 8 小时',
       );
     }
   }

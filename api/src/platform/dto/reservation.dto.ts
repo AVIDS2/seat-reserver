@@ -14,8 +14,8 @@ import {
   ValidateNested,
 } from 'class-validator';
 import {
-  BOOKABLE_END_MINUTES,
-  BOOKABLE_START_MINUTES,
+  MAX_SUPPORTED_BOOKING_MINUTES,
+  MIN_SUPPORTED_BOOKING_MINUTES,
 } from '../booking-time.constants';
 
 export class ReservationAccountDto {
@@ -39,14 +39,14 @@ export class ImmediateReservationDto extends ReservationAccountDto {
 
   @Type(() => Number)
   @IsInt()
-  @Min(BOOKABLE_START_MINUTES)
-  @Max(BOOKABLE_END_MINUTES)
+  @Min(MIN_SUPPORTED_BOOKING_MINUTES)
+  @Max(MAX_SUPPORTED_BOOKING_MINUTES)
   startTime: number;
 
   @Type(() => Number)
   @IsInt()
-  @Min(BOOKABLE_START_MINUTES)
-  @Max(BOOKABLE_END_MINUTES)
+  @Min(MIN_SUPPORTED_BOOKING_MINUTES)
+  @Max(MAX_SUPPORTED_BOOKING_MINUTES)
   endTime: number;
 }
 
@@ -54,13 +54,13 @@ export class BookingCaptchaPointDto {
   @Type(() => Number)
   @IsInt()
   @Min(0)
-  @Max(2000)
+  @Max(4000)
   x: number;
 
   @Type(() => Number)
   @IsInt()
   @Min(0)
-  @Max(2000)
+  @Max(4000)
   y: number;
 }
 

@@ -278,7 +278,23 @@ describe('PlatformReservationsService', () => {
         startTime: Number.NaN,
         endTime: 600,
       }),
-    ).rejects.toThrow('可预约时间为 08:00–22:00');
+    ).rejects.toThrow('可预约时间为 07:00–23:00');
+    expect(schoolAuth.createBookingCaptcha).not.toHaveBeenCalled();
+  });
+
+  it('should enforce the live maximum duration for each reservation service', async () => {
+    const { service, schoolAuth } = makeService();
+
+    await expect(
+      service.createCaptcha(7, {
+        accountId: 4,
+        serviceType: 'library',
+        seatId: '197',
+        date: '2026-09-05',
+        startTime: 480,
+        endTime: 750,
+      }),
+    ).rejects.toThrow('图书馆单次预约最长 4 小时');
     expect(schoolAuth.createBookingCaptcha).not.toHaveBeenCalled();
   });
 

@@ -23,15 +23,9 @@ import {
 } from '@/components/ui/select';
 import type { TimeCandidate } from '../types';
 
-export const BOOKABLE_START_MINUTES = 8 * 60;
+export const BOOKABLE_START_MINUTES = 7 * 60;
 export const BOOKABLE_END_MINUTES = 22 * 60;
 
-const TIME_OPTIONS = Array.from(
-  {
-    length: (BOOKABLE_END_MINUTES - BOOKABLE_START_MINUTES) / 30 + 1
-  },
-  (_, index) => BOOKABLE_START_MINUTES + index * 30
-);
 const QUICK_RANGES: TimeCandidate[] = [
   { start: 480, end: 720 },
   { start: 540, end: 900 },
@@ -42,27 +36,42 @@ const QUICK_RANGES: TimeCandidate[] = [
 export function TimeRangePicker({
   value,
   onChange,
-  availableStartTimes
+  availableStartTimes,
+  maxDurationHours = 8,
+  windowStartMinutes = BOOKABLE_START_MINUTES,
+  windowEndMinutes = BOOKABLE_END_MINUTES
 }: {
   value: TimeCandidate[];
   onChange: (value: TimeCandidate[]) => void;
   availableStartTimes?: number[];
+  maxDurationHours?: number;
+  windowStartMinutes?: number;
+  windowEndMinutes?: number;
 }) {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
+  const maxDurationMinutes = Math.max(30, maxDurationHours * 60);
+  const timeOptions = useMemo(
+    () => buildTimeOptions(windowStartMinutes, windowEndMinutes),
+    [windowEndMinutes, windowStartMinutes]
+  );
   const liveStartTimes = useMemo(
     () =>
       new Set(
         (availableStartTimes ?? []).filter(
-          (time) => time >= BOOKABLE_START_MINUTES && time <= BOOKABLE_END_MINUTES
+          (time) => time >= windowStartMinutes && time <= windowEndMinutes
         )
       ),
-    [availableStartTimes]
+    [availableStartTimes, windowEndMinutes, windowStartMinutes]
   );
 
   const addRange = () => {
     const existing = new Set(value.map((range) => `${range.start}-${range.end}`));
-    const suggested =
-      QUICK_RANGES.find((range) => !existing.has(`${range.start}-${range.end}`)) ?? QUICK_RANGES[0];
+    const suggested = QUICK_RANGES.filter(
+      (range) => range.end - range.start <= maxDurationMinutes
+    ).find((range) => !existing.has(`${range.start}-${range.end}`)) ?? {
+      start: windowStartMinutes,
+      end: Math.min(windowEndMinutes, windowStartMinutes + maxDurationMinutes)
+    };
     onChange([...value, suggested]);
     setOpenIndex(value.length);
   };
@@ -84,7 +93,8 @@ export function TimeRangePicker({
           <p className='text-sm font-medium'>候选时间段</p>
           <p className='text-muted-foreground mt-1 text-xs'>按座位优先级，再按时间顺序尝试。</p>
           <p className='text-muted-foreground mt-1 text-xs'>
-            自动任务在开放窗口提交；这里设置的是目标使用时段（08:00–22:00）。
+            自动任务在开放窗口提交；可选时段为 {formatTime(windowStartMinutes)}–
+            {formatTime(windowEndMinutes)}，单次最长 {maxDurationHours} 小时。
             {liveStartTimes.size ? '学校当前时段仅作为实时参考。' : ''}
           </p>
         </div>
@@ -141,11 +151,15 @@ export function TimeRangePicker({
                 <TimeSelect
                   label='开始'
                   value={range.start}
-                  options={TIME_OPTIONS.filter((option) => option < range.end)}
+                  options={timeOptions.filter((option) => option < range.end)}
                   onChange={(start) =>
                     updateRange(index, {
                       start,
-                      end: Math.max(range.end, start + 30)
+                      end: Math.min(
+                        Math.max(range.end, start + 30),
+                        start + maxDurationMinutes,
+                        windowEndMinutes
+                      )
                     })
                   }
                 />
@@ -153,7 +167,9 @@ export function TimeRangePicker({
                 <TimeSelect
                   label='结束'
                   value={range.end}
-                  options={TIME_OPTIONS.filter((option) => option > range.start)}
+                  options={timeOptions.filter(
+                    (option) => option > range.start && option <= range.start + maxDurationMinutes
+                  )}
                   onChange={(end) =>
                     updateRange(index, {
                       start: Math.min(range.start, end - 30),
@@ -165,7 +181,9 @@ export function TimeRangePicker({
               <div className='flex flex-col gap-2'>
                 <p className='text-muted-foreground text-xs'>常用时段</p>
                 <div className='grid grid-cols-2 gap-2'>
-                  {QUICK_RANGES.map((quickRange) => (
+                  {QUICK_RANGES.filter(
+                    (quickRange) => quickRange.end - quickRange.start <= maxDurationMinutes
+                  ).map((quickRange) => (
                     <Button
                       key={`${quickRange.start}-${quickRange.end}`}
                       type='button'
@@ -244,4 +262,13 @@ function formatTime(minutes: number): string {
   return `${Math.floor(minutes / 60)
     .toString()
     .padStart(2, '0')}:${(minutes % 60).toString().padStart(2, '0')}`;
+}
+
+function buildTimeOptions(start: number, end: number): number[] {
+  const first = Math.ceil(start / 30) * 30;
+  const last = Math.floor(end / 30) * 30;
+  return Array.from(
+    { length: Math.max(0, Math.floor((last - first) / 30) + 1) },
+    (_, index) => first + index * 30
+  );
 }

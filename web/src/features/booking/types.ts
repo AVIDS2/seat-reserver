@@ -13,6 +13,17 @@ export type BookingTaskDraft = {
   seatIds?: string[];
 };
 
+export type SeatMapDraft = {
+  accountId?: string;
+  venueType?: VenueType;
+  buildingId?: string;
+  roomId?: string;
+  seatId?: string;
+  startTime?: number;
+  endTime?: number;
+  openBooking?: boolean;
+};
+
 export type BookingTask = {
   id: string;
   name: string;
@@ -70,6 +81,8 @@ export type SeatCatalog = {
   dates: string[];
   captchaRequired: boolean;
   hours: number;
+  windowStart: number;
+  windowEnd: number;
 };
 
 export type SeatNode = {

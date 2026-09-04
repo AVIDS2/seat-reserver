@@ -42,6 +42,8 @@ describe('PlatformSeatCatalogService', () => {
       dates: ['2026-09-04'],
       captchaRequired: false,
       hours: 8,
+      windowStart: 420,
+      windowEnd: 1320,
     });
   });
 
@@ -93,6 +95,61 @@ describe('PlatformSeatCatalogService', () => {
         id: '197',
         label: '44',
         status: 'available',
+      }),
+    );
+  });
+
+  it('should expose the service window returned by the school settings', async () => {
+    const service = new PlatformSeatCatalogService(
+      {
+        findOwned: jest.fn(() => Promise.resolve({ id: 4, userId: 7 })),
+      } as never,
+      {
+        ensureReady: jest.fn(() =>
+          Promise.resolve({
+            token: 'hidden',
+            mode: 'webvpn',
+            serviceType: 'library',
+          }),
+        ),
+      } as never,
+      {
+        get: jest.fn((...args: unknown[]) => {
+          const path = String(args[2]);
+          return Promise.resolve({
+            success: true,
+            payload: path.endsWith('/settings')
+              ? {
+                  status: true,
+                  data: {
+                    buildingOpenClose: [
+                      [1, '07:00', '23:00'],
+                      [3, '07:00', '23:00'],
+                    ],
+                    isCaptchaOpen: true,
+                  },
+                }
+              : {
+                  status: 'success',
+                  code: '0',
+                  data: {
+                    buildings: [[1, '西太湖校区馆']],
+                    rooms: [[11, '二楼北区', 1, 2]],
+                    dates: ['2026-09-05'],
+                    hours: 4,
+                  },
+                },
+          });
+        }),
+      } as never,
+    );
+
+    await expect(service.filters(7, 4, 'library')).resolves.toEqual(
+      expect.objectContaining({
+        captchaRequired: true,
+        hours: 4,
+        windowStart: 420,
+        windowEnd: 1380,
       }),
     );
   });

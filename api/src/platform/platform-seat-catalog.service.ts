@@ -3,6 +3,7 @@ import { PlatformAccountsService } from './platform-accounts.service';
 import { PlatformServiceConnectionsService } from './platform-service-connections.service';
 import { SchoolAuthenticationService } from './school-authentication.service';
 import type { SeatServiceType } from './entities/school-service-connection.entity';
+import { bookingWindow } from './booking-time.constants';
 
 type JsonRecord = Record<string, unknown>;
 
@@ -40,6 +41,10 @@ export class PlatformSeatCatalogService {
         ]);
         const data = record(filters.payload?.data);
         const settingsData = record(settings.payload?.data);
+        const window = parseBookingWindow(
+          settingsData.buildingOpenClose,
+          bookingWindow(serviceType),
+        );
         return {
           serviceType,
           buildings: tuples(data.buildings).map((item) => ({
@@ -55,6 +60,8 @@ export class PlatformSeatCatalogService {
           dates: strings(data.dates),
           captchaRequired: settingsData.isCaptchaOpen === true,
           hours: Number(data.hours ?? 0),
+          windowStart: window.start,
+          windowEnd: window.end,
         };
       },
       refresh,
@@ -239,6 +246,34 @@ function strings(value: unknown): string[] {
   return Array.isArray(value)
     ? value.filter((item): item is string => typeof item === 'string')
     : [];
+}
+
+function parseBookingWindow(
+  value: unknown,
+  fallback: { start: number; end: number },
+): { start: number; end: number } {
+  const values = Array.isArray(value)
+    ? value
+        .filter(Array.isArray)
+        .flatMap((item) => [item[1], item[2]])
+        .map((item) => parseTime(item))
+        .filter((item): item is number => item !== null)
+    : [];
+  if (!values.length) return fallback;
+  return {
+    start: Math.min(...values),
+    end: Math.max(...values),
+  };
+}
+
+function parseTime(value: unknown): number | null {
+  if (typeof value !== 'string') return null;
+  const match = value.match(/^(\d{1,2}):(\d{2})$/);
+  if (!match) return null;
+  const hour = Number(match[1]);
+  const minute = Number(match[2]);
+  if (hour > 23 || minute > 59) return null;
+  return hour * 60 + minute;
 }
 
 function string(value: unknown): string | null {

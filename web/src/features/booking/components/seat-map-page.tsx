@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 
@@ -54,6 +54,7 @@ import type {
   SeatCatalog,
   SeatLayout,
   SeatTimes,
+  SeatMapDraft,
   VenueType
 } from '../types';
 import { LibraryCaptchaDialog } from './library-captcha-dialog';
@@ -69,9 +70,18 @@ type InstantBookingInput = {
   endTime: number;
 };
 
-export default function SeatMapPage({ initialAccounts }: { initialAccounts: BookingAccount[] }) {
-  const [accountId, setAccountId] = useState(initialAccounts[0]?.id || '');
-  const [venueType, setVenueType] = useState<VenueType>('study_room');
+export default function SeatMapPage({
+  initialAccounts,
+  initialDraft
+}: {
+  initialAccounts: BookingAccount[];
+  initialDraft?: SeatMapDraft;
+}) {
+  const initialAccountId = initialAccounts.some((account) => account.id === initialDraft?.accountId)
+    ? initialDraft?.accountId || ''
+    : initialAccounts[0]?.id || '';
+  const [accountId, setAccountId] = useState(initialAccountId);
+  const [venueType, setVenueType] = useState<VenueType>(initialDraft?.venueType || 'study_room');
   const [buildingId, setBuildingId] = useState('');
   const [roomId, setRoomId] = useState('');
   const [date, setDate] = useState('');
@@ -98,6 +108,7 @@ export default function SeatMapPage({ initialAccounts }: { initialAccounts: Book
   const [captchaBooking, setCaptchaBooking] = useState<InstantBookingInput | null>(null);
   const [captchaLoading, setCaptchaLoading] = useState(false);
   const [captchaError, setCaptchaError] = useState('');
+  const [draftApplied, setDraftApplied] = useState(false);
 
   useEffect(() => {
     if (!accountId) {
@@ -119,12 +130,21 @@ export default function SeatMapPage({ initialAccounts }: { initialAccounts: Book
     void getSeatCatalog(accountId, venueType)
       .then((nextCatalog) => {
         if (cancelled) return;
-        const nextBuildingId = nextCatalog.buildings[0]?.id || '';
-        const nextRoom = nextCatalog.rooms.find((room) => room.buildingId === nextBuildingId);
+        const preferredBuilding = nextCatalog.buildings.find(
+          (building) => building.id === initialDraft?.buildingId
+        );
+        const nextBuildingId = preferredBuilding?.id || nextCatalog.buildings[0]?.id || '';
+        const preferredRoom = nextCatalog.rooms.find(
+          (room) => room.id === initialDraft?.roomId && room.buildingId === nextBuildingId
+        );
+        const nextRoom =
+          preferredRoom || nextCatalog.rooms.find((room) => room.buildingId === nextBuildingId);
         setCatalog(nextCatalog);
         setBuildingId(nextBuildingId);
         setRoomId(nextRoom?.id || '');
-        setDate(nextCatalog.dates[0] || '');
+        setDate(
+          initialDraft?.openBooking ? nextCatalog.dates.at(-1) || '' : nextCatalog.dates[0] || ''
+        );
       })
       .catch((reason) => {
         if (!cancelled) setError(reason instanceof Error ? reason.message : '场馆目录加载失败');
@@ -134,7 +154,7 @@ export default function SeatMapPage({ initialAccounts }: { initialAccounts: Book
     return () => {
       cancelled = true;
     };
-  }, [accountId, venueType]);
+  }, [accountId, initialDraft, venueType]);
 
   const rooms = useMemo(
     () => catalog?.rooms.filter((room) => room.buildingId === buildingId) ?? [],
@@ -215,47 +235,73 @@ export default function SeatMapPage({ initialAccounts }: { initialAccounts: Book
     return `/dashboard/tasks?${params.toString()}`;
   }, [accountId, buildingId, roomId, selectedIds, venueType]);
 
-  const loadInstantTimes = async (seatId: string) => {
-    if (!accountId || !date) return;
-    setInstantSeatId(seatId);
-    setInstantTimes({ startTimes: [], endTimes: [] });
-    setInstantStartTime('');
-    setInstantEndTime('');
-    setInstantError('');
-    setInstantLoading(true);
-    try {
-      const times = await getSeatTimes({
-        accountId,
-        serviceType: venueType,
-        roomId,
-        seatId,
-        date
-      });
-      const usableStarts = times.startTimes.filter((item) => isBookableTime(item.id));
-      setInstantTimes({ ...times, startTimes: usableStarts });
-      const firstStart = usableStarts[0]?.id || '';
-      setInstantStartTime(firstStart);
-      if (firstStart) {
-        const endTimes = await getSeatTimes({
+  const loadInstantTimes = useCallback(
+    async (seatId: string, preferredStart?: number, preferredEnd?: number) => {
+      if (!accountId || !date) return;
+      setInstantSeatId(seatId);
+      setInstantTimes({ startTimes: [], endTimes: [] });
+      setInstantStartTime('');
+      setInstantEndTime('');
+      setInstantError('');
+      setInstantLoading(true);
+      try {
+        const times = await getSeatTimes({
           accountId,
           serviceType: venueType,
           roomId,
           seatId,
-          date,
-          startTime: firstStart
+          date
         });
-        setInstantTimes((current) => ({
-          ...current,
-          endTimes: endTimes.endTimes.filter((item) => isBookableTime(item.id))
-        }));
-        setInstantEndTime(endTimes.endTimes.find((item) => isBookableTime(item.id))?.id || '');
+        const usableStarts = times.startTimes.filter((item) =>
+          isBookableTime(item.id, catalog?.windowStart, catalog?.windowEnd)
+        );
+        setInstantTimes({ ...times, startTimes: usableStarts });
+        const firstStart =
+          usableStarts.find((item) => Number(item.id) === preferredStart)?.id ||
+          usableStarts[0]?.id ||
+          '';
+        setInstantStartTime(firstStart);
+        if (firstStart) {
+          const endTimes = await getSeatTimes({
+            accountId,
+            serviceType: venueType,
+            roomId,
+            seatId,
+            date,
+            startTime: firstStart
+          });
+          const usableEnds = endTimes.endTimes.filter((item) =>
+            isBookableTime(item.id, catalog?.windowStart, catalog?.windowEnd)
+          );
+          setInstantTimes((current) => ({ ...current, endTimes: usableEnds }));
+          setInstantEndTime(
+            usableEnds.find((item) => Number(item.id) === preferredEnd)?.id ||
+              usableEnds[0]?.id ||
+              ''
+          );
+        }
+      } catch (reason) {
+        setInstantError(reason instanceof Error ? reason.message : '可预约时段加载失败');
+      } finally {
+        setInstantLoading(false);
       }
-    } catch (reason) {
-      setInstantError(reason instanceof Error ? reason.message : '可预约时段加载失败');
-    } finally {
-      setInstantLoading(false);
+    },
+    [accountId, catalog?.windowEnd, catalog?.windowStart, date, roomId, venueType]
+  );
+
+  useEffect(() => {
+    if (draftApplied || !initialDraft?.seatId || !layout) return;
+    const seat = layout.nodes.find(
+      (node) => node.kind === 'seat' && node.id === initialDraft.seatId
+    );
+    if (!seat?.id) return;
+    setSelectedIds([seat.id]);
+    setDraftApplied(true);
+    if (initialDraft.openBooking) {
+      setInstantOpen(true);
+      void loadInstantTimes(seat.id, initialDraft.startTime, initialDraft.endTime);
     }
-  };
+  }, [draftApplied, initialDraft, layout, loadInstantTimes]);
 
   const openInstantBooking = () => {
     const seatId = selectedIds[0];
@@ -282,7 +328,9 @@ export default function SeatMapPage({ initialAccounts }: { initialAccounts: Book
       startTime: nextStart
     })
       .then((times) => {
-        const usableEnds = times.endTimes.filter((item) => isBookableTime(item.id));
+        const usableEnds = times.endTimes.filter((item) =>
+          isBookableTime(item.id, catalog?.windowStart, catalog?.windowEnd)
+        );
         setInstantTimes((current) => ({
           ...current,
           endTimes: usableEnds
@@ -632,6 +680,7 @@ export default function SeatMapPage({ initialAccounts }: { initialAccounts: Book
             <DialogTitle>直接预约</DialogTitle>
             <DialogDescription>
               为 {date ? formatDateLabel(date) : '所选日期'} 的座位读取学校实时可用时段。
+              {catalog?.hours ? `单次最长 ${catalog.hours} 小时。` : ''}
             </DialogDescription>
           </DialogHeader>
           <div className='flex flex-col gap-4'>
@@ -802,7 +851,7 @@ function findTimeLabel(items: Array<{ id: string; label: string }>, id: string):
   return items.find((item) => item.id === id)?.label || id;
 }
 
-function isBookableTime(value: string): boolean {
+function isBookableTime(value: string, start = 420, end = 1320): boolean {
   const minutes = Number(value);
-  return Number.isInteger(minutes) && minutes >= 480 && minutes <= 1320;
+  return Number.isInteger(minutes) && minutes >= start && minutes <= end;
 }
