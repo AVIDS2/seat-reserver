@@ -11,7 +11,7 @@ import {
   createHmac,
   randomUUID,
 } from 'node:crypto';
-import { CookieJar } from 'tough-cookie';
+import { CookieJar, type SerializedCookieJar } from 'tough-cookie';
 import type { SeatCandidate, SeatResponse } from './seat-client.service';
 import type { SeatServiceType } from './entities/school-service-connection.entity';
 
@@ -45,11 +45,23 @@ type SeatAuthResponse = {
 
 type WebVpnSession = {
   client: CookieFetch;
+  jar: CookieJar;
   proxyBase: string;
   targetOrigin: string;
   targetReferer: string;
   signingSecret: string;
   expiresAt: number;
+  userId?: string;
+  username?: string;
+};
+
+export type WebVpnSessionState = {
+  proxyBase: string;
+  targetOrigin: string;
+  targetReferer: string;
+  signingSecret: string;
+  expiresAt: number;
+  cookieJar: SerializedCookieJar;
   userId?: string;
   username?: string;
 };
@@ -83,7 +95,7 @@ export class WebVpnSeatClientService {
     username: string,
     password: string,
     serviceType: SeatServiceType = 'study_room',
-  ): Promise<{ token: string }> {
+  ): Promise<{ token: string; session?: WebVpnSessionState }> {
     const jar = new CookieJar();
     const client: CookieFetch = makeFetchCookie(fetch, jar, false);
 
@@ -136,6 +148,7 @@ export class WebVpnSeatClientService {
       );
       this.sessions.set(businessToken, {
         client,
+        jar,
         proxyBase,
         targetOrigin: new URL(seatProxy.serverUrl).origin,
         targetReferer: `${seatProxy.serverUrl}${this.seatAppPath}`,
@@ -143,7 +156,10 @@ export class WebVpnSeatClientService {
         expiresAt: Date.now() + 30 * 60 * 1000,
       });
       this.pruneSessions();
-      return { token: businessToken };
+      return {
+        token: businessToken,
+        session: this.getSessionState(businessToken) || undefined,
+      };
     } catch (error: unknown) {
       if (
         error instanceof UnprocessableEntityException ||
@@ -211,6 +227,62 @@ export class WebVpnSeatClientService {
   async get(token: string, path: string): Promise<SeatResponse> {
     const response = await this.signedSeatRequest(token, 'GET', path);
     return response;
+  }
+
+  getSessionState(token: string): WebVpnSessionState | null {
+    const session = this.sessions.get(token);
+    if (!session || session.expiresAt <= Date.now()) {
+      this.sessions.delete(token);
+      return null;
+    }
+
+    const cookieJar = session.jar.toJSON();
+    if (!cookieJar) return null;
+
+    return {
+      proxyBase: session.proxyBase,
+      targetOrigin: session.targetOrigin,
+      targetReferer: session.targetReferer,
+      signingSecret: session.signingSecret,
+      expiresAt: session.expiresAt,
+      cookieJar,
+      userId: session.userId,
+      username: session.username,
+    };
+  }
+
+  restoreSession(token: string, state: WebVpnSessionState): boolean {
+    if (
+      !token ||
+      !state.proxyBase ||
+      !state.targetOrigin ||
+      !state.targetReferer ||
+      !state.signingSecret ||
+      !Number.isFinite(state.expiresAt) ||
+      state.expiresAt <= Date.now()
+    ) {
+      return false;
+    }
+
+    try {
+      const jar = CookieJar.fromJSON(state.cookieJar);
+      const client: CookieFetch = makeFetchCookie(fetch, jar, false);
+      this.sessions.set(token, {
+        client,
+        jar,
+        proxyBase: state.proxyBase,
+        targetOrigin: state.targetOrigin,
+        targetReferer: state.targetReferer,
+        signingSecret: state.signingSecret,
+        expiresAt: state.expiresAt,
+        userId: state.userId,
+        username: state.username,
+      });
+      this.pruneSessions();
+      return this.sessions.has(token);
+    } catch {
+      return false;
+    }
   }
 
   private async loginToGateway(

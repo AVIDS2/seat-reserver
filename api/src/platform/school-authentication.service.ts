@@ -1,14 +1,18 @@
 import { Injectable, UnprocessableEntityException } from '@nestjs/common';
 import { SeatClientService } from './seat-client.service';
-import { WebVpnSeatClientService } from './webvpn-seat-client.service';
+import {
+  WebVpnSeatClientService,
+  type WebVpnSessionState,
+} from './webvpn-seat-client.service';
 import type { SeatCandidate, SeatResponse } from './seat-client.service';
 import type { SeatServiceType } from './entities/school-service-connection.entity';
 
 export type SchoolAuthMode = 'direct' | 'webvpn';
 
-type SchoolAuthenticationResult = {
+export type SchoolAuthenticationResult = {
   token: string;
   mode: SchoolAuthMode;
+  webVpnSession?: WebVpnSessionState;
 };
 
 @Injectable()
@@ -56,7 +60,11 @@ export class SchoolAuthenticationService {
         password,
         serviceType,
       );
-      return { token: result.token, mode: 'webvpn' };
+      return {
+        token: result.token,
+        mode: 'webvpn',
+        webVpnSession: result.session,
+      };
     }
     if (mode === 'direct') {
       const result = await this.seatClient.authenticate(username, password);
@@ -68,7 +76,11 @@ export class SchoolAuthenticationService {
         password,
         serviceType,
       );
-      return { token: result.token, mode };
+      return {
+        token: result.token,
+        mode,
+        webVpnSession: result.session,
+      };
     }
 
     try {
@@ -81,7 +93,11 @@ export class SchoolAuthenticationService {
         password,
         serviceType,
       );
-      return { token: result.token, mode: 'webvpn' };
+      return {
+        token: result.token,
+        mode: 'webvpn',
+        webVpnSession: result.session,
+      };
     }
   }
 
@@ -117,5 +133,13 @@ export class SchoolAuthenticationService {
     return mode === 'webvpn' || serviceType === 'library'
       ? this.webVpnSeatClient.get(token, path)
       : this.seatClient.get(token, path);
+  }
+
+  restoreWebVpnSession(token: string, state: WebVpnSessionState): boolean {
+    return this.webVpnSeatClient.restoreSession(token, state);
+  }
+
+  getWebVpnSession(token: string): WebVpnSessionState | null {
+    return this.webVpnSeatClient.getSessionState(token);
   }
 }

@@ -92,6 +92,7 @@ export class PlatformAccountsService {
       'study_room',
       authenticated.token,
       authenticated.mode,
+      authenticated.webVpnSession,
     );
     return this.toView(saved);
   }
@@ -123,10 +124,10 @@ export class PlatformAccountsService {
         'study_room',
         authenticated.token,
         authenticated.mode,
+        authenticated.webVpnSession,
       );
       return this.toView(saved);
     } catch (error: unknown) {
-      account.encryptedToken = null;
       account.status = 'attention';
       await this.accounts.save(account);
       throw error;
@@ -187,6 +188,7 @@ export class PlatformAccountsService {
         'study_room',
         authenticated.token,
         authenticated.mode,
+        authenticated.webVpnSession,
       );
     }
     account.label = label;

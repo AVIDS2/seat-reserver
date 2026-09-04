@@ -33,6 +33,9 @@ export class SchoolServiceConnectionEntity extends EntityRelationalHelper {
   @Column({ type: 'text', nullable: true })
   encryptedToken: string | null;
 
+  @Column({ type: 'text', nullable: true })
+  encryptedWebVpnSession: string | null;
+
   @Column({ length: 20, default: 'webvpn' })
   authMode: 'direct' | 'webvpn';
 
@@ -44,6 +47,9 @@ export class SchoolServiceConnectionEntity extends EntityRelationalHelper {
 
   @Column({ type: 'timestamp', nullable: true })
   lastVerifiedAt: Date | null;
+
+  @Column({ type: 'timestamp', nullable: true })
+  webVpnSessionUpdatedAt: Date | null;
 
   @ManyToOne(() => SchoolAccountEntity, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'schoolAccountId' })

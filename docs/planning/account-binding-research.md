@@ -110,8 +110,8 @@ python tools/binding_discovery/analyze_capture.py tools/binding_discovery/captur
 1. 平台和脚本都使用 `/cczukaoyan/rest/auth`，平台按 direct 优先、webvpn 回退自动选择；现有一考即过凭据在 VPS 上已验证 direct 刷新和预约请求。
 2. webvpn 模式使用校园账号密码完成网关登录和校园 SSO，不需要 SwordAgent、Windows VM、TUN 或修改 VPS 路由。
 3. 自习室目标固定为学校当前服务 `202.195.100.14`，WebVPN 代理哈希由 CAS 最终回跳动态提取；不硬编码代理哈希或签名种子。
-4. WebVPN Cookie 只保存在单次进程内存会话中；数据库只加密保存学校密码、业务 token 和认证模式。
-5. 05:59:50 预热会重建 WebVPN 会话，06:00 预约复用该会话；API 重启后会自动重新登录恢复。
+4. WebVPN Cookie、代理上下文和签名上下文以加密快照保存到服务连接；内存会话只作为运行时缓存，API 重启后先尝试恢复未过期快照。
+5. 05:59:50 预热会恢复或重建 WebVPN 会话，06:00 预约复用该会话；学校主动注销、会话过期或网络不可达时仍需要重新认证。
 6. 2026-09-03 生产测试账号通过该路线在第一次尝试成功预约 5 号楼智能自习室 148 号，学校接口返回 HTTP 200、业务码 `0` 和真实回执。
 
 ## 后续实现目标
