@@ -9,7 +9,6 @@ import {
   createCipheriv,
   createDecipheriv,
   createHmac,
-  randomInt,
   randomUUID,
 } from 'node:crypto';
 import { CookieJar } from 'tough-cookie';
@@ -220,9 +219,20 @@ export class WebVpnSeatClientService {
     username: string,
     password: string,
   ): Promise<string> {
-    const iv = Buffer.from(randomAsciiToken(16), 'utf8');
-    const key = Buffer.from(iv).reverse();
-    const token = key.toString('utf8');
+    const loginPage = await this.fetchFollowing(
+      client,
+      new URL('/enlink/sso/login', this.gateway),
+    );
+    if (!loginPage.response.ok) {
+      throw new ServiceUnavailableException('学校 WebVPN 登录页面不可用');
+    }
+    const loginKey = extractGatewayLoginKey(await loginPage.response.text());
+    if (!loginKey) {
+      throw new ServiceUnavailableException('学校 WebVPN 登录页面格式已变化');
+    }
+
+    const key = Buffer.from(loginKey, 'utf8');
+    const iv = Buffer.from(loginKey.split('').reverse().join(''), 'utf8');
     const cipher = createCipheriv('aes-128-cbc', key, iv);
     const encryptedPassword = Buffer.concat([
       cipher.update(Buffer.from(password, 'utf8')),
@@ -234,12 +244,12 @@ export class WebVpnSeatClientService {
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
         Origin: this.gateway.origin,
-        Refer: new URL('/enlink/sso/login', this.gateway).toString(),
+        Referer: new URL('/enlink/sso/login', this.gateway).toString(),
       },
       body: new URLSearchParams({
         username,
         password: encryptedPassword,
-        token,
+        token: loginKey,
         language: 'zh-CN,zh;q=0.9,en;q=0.8',
       }),
     });
@@ -254,7 +264,7 @@ export class WebVpnSeatClientService {
     jar: CookieJar,
   ): Promise<string> {
     const clientInfoCookie = (
-      await jar.getCookies(this.gateway.toString())
+      await jar.getCookies(new URL('/enlink/', this.gateway).toString())
     ).find((cookie) => cookie.key === 'clientInfo');
     if (!clientInfoCookie) {
       throw new UnprocessableEntityException('学校 WebVPN 登录失败');
@@ -713,15 +723,27 @@ function proxyTargetsOrigin(pageUrl: URL, target: URL): boolean {
   return pageUrl.pathname.toLowerCase().includes(host.toLowerCase());
 }
 
+function extractGatewayLoginKey(html: string): string | null {
+  const match = html.match(/var\s+indexConfig\s*=\s*(\{[\s\S]*?\});/);
+  if (!match) return null;
+
+  try {
+    const config: unknown = JSON.parse(match[1]);
+    if (
+      isRecord(config) &&
+      typeof config.key === 'string' &&
+      Buffer.byteLength(config.key, 'utf8') === 16
+    ) {
+      return config.key;
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
+}
+
 function numberSetting(value: string | undefined, fallback: number): number {
   const parsed = Number(value);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
-}
-
-function randomAsciiToken(length: number): string {
-  const alphabet = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
-  return Array.from(
-    { length },
-    () => alphabet[randomInt(alphabet.length)],
-  ).join('');
 }
