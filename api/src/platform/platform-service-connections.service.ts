@@ -19,6 +19,11 @@ export type ReadySeatConnection = {
 
 @Injectable()
 export class PlatformServiceConnectionsService {
+  private readonly readyFlights = new Map<
+    string,
+    Promise<ReadySeatConnection>
+  >();
+
   constructor(
     @InjectRepository(SchoolServiceConnectionEntity)
     private readonly connections: Repository<SchoolServiceConnectionEntity>,
@@ -64,6 +69,29 @@ export class PlatformServiceConnectionsService {
     if (!ownerId) {
       throw new UnprocessableEntityException('校园账号归属信息不完整');
     }
+    const key = `${ownerId}:${account.id}:${serviceType}:${forceRefresh ? 'force' : 'normal'}`;
+    const current = this.readyFlights.get(key);
+    if (current) return current;
+    const flight = this.ensureReadyOnce(
+      account,
+      serviceType,
+      forceRefresh,
+    ).finally(() => {
+      if (this.readyFlights.get(key) === flight) this.readyFlights.delete(key);
+    });
+    this.readyFlights.set(key, flight);
+    return flight;
+  }
+
+  private async ensureReadyOnce(
+    account: SchoolAccountEntity,
+    serviceType: SeatServiceType,
+    forceRefresh: boolean,
+  ): Promise<ReadySeatConnection> {
+    const ownerId = account.userId || account.user?.id;
+    if (!ownerId) {
+      throw new UnprocessableEntityException('校园账号归属信息不完整');
+    }
     let connection = await this.connections.findOne({
       where: {
         schoolAccount: { id: account.id },
@@ -75,6 +103,19 @@ export class PlatformServiceConnectionsService {
     if (!forceRefresh && connection?.encryptedToken) {
       try {
         const token = this.crypto.decrypt(connection.encryptedToken);
+        const recentlyVerified =
+          connection.authMode === 'direct' &&
+          connection.lastVerifiedAt &&
+          Date.now() - connection.lastVerifiedAt.getTime() < 60_000;
+        if (recentlyVerified) {
+          connection.status = 'active';
+          return {
+            token,
+            mode: connection.authMode,
+            serviceType,
+            connection,
+          };
+        }
         const verified = await this.schoolAuth.verifyToken(
           token,
           connection.authMode,

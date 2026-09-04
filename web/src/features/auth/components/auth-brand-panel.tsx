@@ -1,6 +1,6 @@
 import Link from 'next/link';
 
-import { Icons } from '@/components/icons';
+import { BrandMark } from '@/components/brand-mark';
 import { InteractiveGridPattern } from './interactive-grid';
 
 export default function AuthBrandPanel({
@@ -27,12 +27,10 @@ export default function AuthBrandPanel({
       <Link
         href='/'
         className='relative z-10 inline-flex w-fit items-center gap-2 text-sm font-semibold tracking-tight transition-opacity hover:opacity-75'
-        aria-label='返回一考即过首页'
+        aria-label='返回席定首页'
       >
-        <span className='flex size-8 items-center justify-center rounded-lg bg-white text-[#191a18]'>
-          <Icons.bolt className='size-4' />
-        </span>
-        一考即过
+        <BrandMark size={36} priority />
+        席定
       </Link>
 
       <div className='relative z-10 mt-auto max-w-xl'>
@@ -47,16 +45,16 @@ export default function AuthBrandPanel({
 
         <div className='mt-9 grid max-w-md grid-cols-3 border-t border-white/10 pt-5'>
           <div>
-            <p className='font-mono text-lg text-white'>05:59:50</p>
-            <p className='mt-1 text-[11px] text-white/40'>授权预热</p>
+            <p className='font-mono text-lg text-white'>自动</p>
+            <p className='mt-1 text-[11px] text-white/40'>连接检查</p>
           </div>
           <div className='border-l border-white/10 pl-4'>
-            <p className='font-mono text-lg text-white'>06:00:00</p>
-            <p className='mt-1 text-[11px] text-white/40'>开放执行</p>
+            <p className='font-mono text-lg text-white'>准时</p>
+            <p className='mt-1 text-[11px] text-white/40'>开放提交</p>
           </div>
           <div className='border-l border-white/10 pl-4'>
-            <p className='font-mono text-lg text-[#f2ad4c]'>20s</p>
-            <p className='mt-1 text-[11px] text-white/40'>策略窗口</p>
+            <p className='font-mono text-lg text-[#f2ad4c]'>自定义</p>
+            <p className='mt-1 text-[11px] text-white/40'>候选策略</p>
           </div>
         </div>
       </div>

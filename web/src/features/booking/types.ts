@@ -5,6 +5,14 @@ export type VenueType = 'library' | 'study_room';
 
 export type TimeCandidate = { start: number; end: number };
 
+export type BookingTaskDraft = {
+  accountId?: string;
+  venueType?: VenueType;
+  buildingId?: string;
+  roomId?: string;
+  seatIds?: string[];
+};
+
 export type BookingTask = {
   id: string;
   name: string;
@@ -90,6 +98,25 @@ export type SeatLayout = {
 export type SeatTimes = {
   startTimes: Array<{ id: string; label: string }>;
   endTimes: Array<{ id: string; label: string }>;
+};
+
+export type ReservationStatus = 'upcoming' | 'active' | 'completed' | 'cancelled' | 'unknown';
+
+export type BookingReservation = {
+  id: string;
+  receipt: string | null;
+  accountId: string;
+  account: string;
+  venueType: VenueType;
+  venueLabel: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  location: string;
+  status: ReservationStatus;
+  statusLabel: string;
+  checkedIn: boolean;
+  canCancel: boolean;
 };
 
 export type BookingRun = {

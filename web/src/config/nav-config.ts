@@ -26,6 +26,13 @@ export const navGroups: NavGroup[] = [
         items: []
       },
       {
+        title: '我的预约',
+        url: '/dashboard/reservations',
+        icon: 'calendar',
+        shortcut: ['b', 'b'],
+        items: []
+      },
+      {
         title: '账号与授权',
         url: '/dashboard/accounts',
         icon: 'shield',

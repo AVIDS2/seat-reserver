@@ -16,6 +16,10 @@ import { PlatformAccountsService } from './platform-accounts.service';
 import { PlatformQueueService } from './platform-queue.service';
 import { SeatClientService } from './seat-client.service';
 import { PlatformServiceConnectionsService } from './platform-service-connections.service';
+import {
+  BOOKABLE_END_MINUTES,
+  BOOKABLE_START_MINUTES,
+} from './booking-time.constants';
 
 export type BookingTaskView = {
   id: string;
@@ -362,7 +366,7 @@ export class PlatformTasksService {
       seatId: task.primarySeatId,
       time,
       nextRun: task.enabled
-        ? `${scheduleLabel(task)} ${formatScheduledTime(task.runOffsetSeconds)}`
+        ? `${scheduleLabel(task)} · 下次开放窗口`
         : requiresLibraryVerification
           ? '完成验证后可预约'
           : '已暂停',
@@ -435,8 +439,8 @@ function validateTimeCandidates(
       ({ start, end }) =>
         !Number.isInteger(start) ||
         !Number.isInteger(end) ||
-        start < 0 ||
-        end > 1440 ||
+        start < BOOKABLE_START_MINUTES ||
+        end > BOOKABLE_END_MINUTES ||
         end <= start,
     )
   )
@@ -464,16 +468,6 @@ function optionalText(value: string | undefined, fallback: string): string {
 function nullableText(value: string | null | undefined): string | null {
   const trimmed = value?.trim();
   return trimmed || null;
-}
-
-function formatScheduledTime(offsetSeconds: number): string {
-  const totalSeconds = 6 * 60 * 60 + Math.max(0, offsetSeconds);
-  const hour = Math.floor(totalSeconds / 3600) % 24;
-  const minute = Math.floor((totalSeconds % 3600) / 60);
-  const second = totalSeconds % 60;
-  return `${hour.toString().padStart(2, '0')}:${minute
-    .toString()
-    .padStart(2, '0')}:${second.toString().padStart(2, '0')}`;
 }
 
 function formatTime(minutes: number): string {

@@ -1,6 +1,6 @@
-# 一考即过座位预约 CLI
+# 席定高校座位预约平台
 
-一个用于“一考即过座位预约”小程序的个人预约 CLI 工具。
+席定是面向高校场景的座位预约平台；根目录同时保留底层个人预约 CLI，作为现有稳定自动执行链路。
 
 它的作用是把你自己账号在小程序里可以正常完成的预约请求，放到服务器上按时间自动执行。项目不包含验证码绕过、风控绕过、签名逆向、高频刷接口等能力。
 
@@ -16,7 +16,7 @@
 
 ## Web 预约控制台
 
-`web/` 是基于 Kiranism Next.js Dashboard Starter 的前端控制台，提供总览、预约任务、账号与授权、运行记录、通知中心和管理员工作台。生产构建通过同域 `/api/v1` 调用平台 API；只有显式设置 `NEXT_PUBLIC_DEMO_MODE=true` 时才使用 mock 数据。
+`web/` 是基于 Kiranism Next.js Dashboard Starter 的席定前端控制台，提供总览、预约任务、座位图、我的预约、账号与授权、运行记录、通知中心和管理员工作台。生产构建通过同域 `/api/v1` 调用平台 API；只有显式设置 `NEXT_PUBLIC_DEMO_MODE=true` 时才使用 mock 数据。
 
 本地启动：
 
@@ -30,7 +30,7 @@ bun run dev
 
 ## 平台后端
 
-`api/` 是基于 [brocoders/nestjs-boilerplate](https://github.com/brocoders/nestjs-boilerplate) 的 NestJS 平台后端，负责用户认证、邀请码、学校账号加密、预约任务、Redis/BullMQ 调度和运行记录。它与 `web/` 放在同一个仓库中，真实座位请求只在 API 的队列执行器中发出。
+`api/` 是基于 [brocoders/nestjs-boilerplate](https://github.com/brocoders/nestjs-boilerplate) 的 NestJS 平台后端，负责用户认证、邀请码、学校账号加密、预约任务、座位图、预约记录、Redis/BullMQ 调度和运行记录。它与 `web/` 放在同一个仓库中，真实座位请求只在 API 的队列执行器中发出。
 
 后端使用 NestJS、TypeORM、PostgreSQL、JWT/HttpOnly Cookie、角色权限、Swagger、Redis/BullMQ、Nest Schedule 和 Docker。API 容器内包含 scheduler 与 queue worker，当前规模不需要单独拆进程。
 

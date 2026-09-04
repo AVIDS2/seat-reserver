@@ -64,6 +64,9 @@ export function UserNav() {
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
+          <DropdownMenuItem onClick={() => router.push('/dashboard/profile')}>
+            个人设置
+          </DropdownMenuItem>
           <DropdownMenuItem onClick={() => router.push('/dashboard/accounts')}>
             账号与授权
           </DropdownMenuItem>

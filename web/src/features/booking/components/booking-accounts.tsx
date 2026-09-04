@@ -33,6 +33,7 @@ import { cn } from '@/lib/utils';
 
 import {
   createSchoolAccount,
+  connectSchoolService,
   deleteSchoolAccount,
   refreshSchoolAccount,
   updateSchoolAccount,
@@ -164,6 +165,7 @@ export default function BookingAccountsPage({
 }) {
   const [accounts, setAccounts] = useState(initialAccounts);
   const [refreshingId, setRefreshingId] = useState<string | null>(null);
+  const [connectingService, setConnectingService] = useState<string | null>(null);
   const [editorAccount, setEditorAccount] = useState<BookingAccount | undefined>();
   const [editorOpen, setEditorOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<BookingAccount | null>(null);
@@ -190,6 +192,20 @@ export default function BookingAccountsPage({
       toast.error(error instanceof Error ? error.message : '刷新连接失败');
     } finally {
       setRefreshingId(null);
+    }
+  };
+
+  const connectService = async (account: BookingAccount, serviceType: 'study_room' | 'library') => {
+    const key = `${account.id}:${serviceType}`;
+    setConnectingService(key);
+    try {
+      const updated = await connectSchoolService(account.id, serviceType);
+      setAccounts((current) => current.map((item) => (item.id === account.id ? updated : item)));
+      toast.success(`${serviceType === 'library' ? '图书馆' : '自习室'}已连接`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : '连接预约系统失败');
+    } finally {
+      setConnectingService(null);
     }
   };
 
@@ -233,7 +249,7 @@ export default function BookingAccountsPage({
           <Icons.shield />
           <AlertTitle>自动续期已开启</AlertTitle>
           <AlertDescription>
-            系统会在预约前检查连接并在需要时自动重新登录。页面和运行记录不会显示密码或授权凭证。
+            系统会在预约前检查连接并在需要时自动重新登录。图书馆是独立服务，点击账号卡片中的“连接图书馆”即可启用。页面和运行记录不会显示密码或授权凭证。
           </AlertDescription>
         </Alert>
         {accounts.length === 0 ? (
@@ -278,20 +294,45 @@ export default function BookingAccountsPage({
                     </Badge>
                   </CardHeader>
                   <CardContent className='flex flex-col gap-5 pt-5'>
-                    <div className='flex flex-wrap gap-2'>
-                      {account.services.map((service) => (
-                        <Badge
-                          key={service.type}
-                          variant='outline'
-                          className={cn(
-                            service.status === 'connected'
-                              ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
-                              : 'text-muted-foreground'
-                          )}
-                        >
-                          {service.label} · {service.status === 'connected' ? '已连接' : '按需连接'}
-                        </Badge>
-                      ))}
+                    <div className='flex flex-wrap items-center gap-2'>
+                      {account.services.map((service) => {
+                        const serviceKey = `${account.id}:${service.type}`;
+                        const serviceConnected = service.status === 'connected';
+                        return (
+                          <div key={service.type} className='flex items-center gap-1.5'>
+                            <Badge
+                              variant='outline'
+                              className={cn(
+                                serviceConnected
+                                  ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
+                                  : service.status === 'attention'
+                                    ? 'border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-400'
+                                    : 'text-muted-foreground'
+                              )}
+                            >
+                              {service.label} ·{' '}
+                              {serviceConnected
+                                ? '已连接'
+                                : service.status === 'attention'
+                                  ? '需要重连'
+                                  : '未连接'}
+                            </Badge>
+                            {!serviceConnected && (
+                              <Button
+                                type='button'
+                                variant='outline'
+                                size='xs'
+                                onClick={() => void connectService(account, service.type)}
+                                disabled={connectingService === serviceKey}
+                              >
+                                {connectingService === serviceKey
+                                  ? '连接中'
+                                  : `连接${service.label}`}
+                              </Button>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                     <div className='grid grid-cols-2 gap-4'>
                       <Info label='授权状态' value={account.tokenLabel} />

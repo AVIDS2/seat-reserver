@@ -36,6 +36,8 @@ import {
 import { PlatformRedisService } from './platform-redis.service';
 import { PlatformRunsController } from './platform-runs.controller';
 import { PlatformRunsService } from './platform-runs.service';
+import { PlatformReservationsController } from './platform-reservations.controller';
+import { PlatformReservationsService } from './platform-reservations.service';
 import { PlatformScheduler } from './platform-scheduler';
 import { PlatformTasksController } from './platform-tasks.controller';
 import { PlatformTasksService } from './platform-tasks.service';
@@ -74,6 +76,7 @@ import { WebVpnSeatClientService } from './webvpn-seat-client.service';
     PlatformInvitationsController,
     PlatformNotificationsController,
     PlatformRunsController,
+    PlatformReservationsController,
     PlatformTasksController,
     PlatformSeatCatalogController,
   ],
@@ -90,6 +93,7 @@ import { WebVpnSeatClientService } from './webvpn-seat-client.service';
     PlatformQueueService,
     PlatformRedisService,
     PlatformRunsService,
+    PlatformReservationsService,
     PlatformScheduler,
     PlatformTasksService,
     PlatformServiceConnectionsService,

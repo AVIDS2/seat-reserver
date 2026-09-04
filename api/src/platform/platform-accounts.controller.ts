@@ -1,5 +1,6 @@
 import {
   Body,
+  BadRequestException,
   Controller,
   Delete,
   Get,
@@ -22,6 +23,7 @@ import {
 import { PlatformAccountsService } from './platform-accounts.service';
 import { RequestWithUser } from '../utils/types/request-with-user.type';
 import { JwtPayloadType } from '../auth/strategies/types/jwt-payload.type';
+import type { SeatServiceType } from './entities/school-service-connection.entity';
 
 @ApiTags('Platform Accounts')
 @ApiBearerAuth()
@@ -57,6 +59,24 @@ export class PlatformAccountsController {
     };
   }
 
+  @Post(':id/services/:serviceType/connect')
+  async connectService(
+    @Request() request: RequestWithUser<JwtPayloadType>,
+    @Param('id', ParseIntPipe) id: number,
+    @Param('serviceType') serviceType: string,
+  ) {
+    if (!isSeatServiceType(serviceType)) {
+      throw new BadRequestException('不支持的预约系统');
+    }
+    return {
+      account: await this.accounts.connectService(
+        Number(request.user.id),
+        id,
+        serviceType,
+      ),
+    };
+  }
+
   @Patch(':id')
   async update(
     @Request() request: RequestWithUser<JwtPayloadType>,
@@ -76,4 +96,8 @@ export class PlatformAccountsController {
   ) {
     await this.accounts.remove(Number(request.user.id), id);
   }
+}
+
+function isSeatServiceType(value: string): value is SeatServiceType {
+  return value === 'study_room' || value === 'library';
 }

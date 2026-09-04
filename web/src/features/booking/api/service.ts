@@ -1,6 +1,7 @@
 import type {
   BookingAccount,
   BookingRun,
+  BookingReservation,
   BookingSnapshot,
   BookingTask,
   PlatformNotification,
@@ -154,6 +155,14 @@ export type DryRunResult = {
 const apiBase = process.env.NEXT_PUBLIC_API_URL || '/api/v1';
 let refreshPromise: Promise<boolean> | null = null;
 
+type SeatCacheEntry = {
+  value: unknown;
+  expiresAt: number;
+};
+
+const seatCache = new Map<string, SeatCacheEntry>();
+const seatFlights = new Map<string, Promise<unknown>>();
+
 async function refreshSession(): Promise<boolean> {
   if (!refreshPromise) {
     refreshPromise = fetch(`${apiBase}/platform/auth/refresh`, {
@@ -174,14 +183,19 @@ async function platformRequest<T>(
   options: RequestInit = {},
   allowRefresh = true
 ): Promise<T> {
-  const response = await fetch(`${apiBase}${path}`, {
-    credentials: 'include',
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers
-    },
-    ...options
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${apiBase}${path}`, {
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+      },
+      ...options
+    });
+  } catch {
+    throw new Error('平台网络连接失败，请刷新页面后重试');
+  }
 
   if (response.status === 401 && allowRefresh && !path.includes('/auth/')) {
     if (await refreshSession()) return platformRequest<T>(path, options, false);
@@ -208,7 +222,11 @@ export async function getPlatformUser(): Promise<PlatformUser> {
 }
 
 export async function signOutPlatform(): Promise<void> {
-  await platformRequest('/platform/auth/logout', { method: 'POST' }, false);
+  try {
+    await platformRequest('/platform/auth/logout', { method: 'POST' }, false);
+  } finally {
+    clearBookingDataCache();
+  }
 }
 
 export async function updatePlatformProfile(payload: {
@@ -233,6 +251,7 @@ export async function createSchoolAccount(payload: CreateAccountPayload): Promis
     method: 'POST',
     body: JSON.stringify(payload)
   });
+  clearBookingDataCache();
   return response.account;
 }
 
@@ -243,6 +262,7 @@ export async function refreshSchoolAccount(id: string): Promise<BookingAccount> 
       method: 'POST'
     }
   );
+  clearBookingDataCache();
   return response.account;
 }
 
@@ -254,17 +274,22 @@ export async function updateSchoolAccount(
     method: 'PATCH',
     body: JSON.stringify(payload)
   });
+  clearBookingDataCache();
   return response.account;
 }
 
 export async function deleteSchoolAccount(id: string): Promise<void> {
   await platformRequest(`/platform/accounts/${id}`, { method: 'DELETE' });
+  clearBookingDataCache();
 }
 
 export async function createBookingTask(payload: TaskPayload): Promise<BookingTask> {
   const response = await platformRequest<{ task: BookingTask }>('/platform/tasks', {
     method: 'POST',
-    body: JSON.stringify({ ...payload, accountId: Number(payload.accountId) })
+    body: JSON.stringify({
+      ...payload,
+      accountId: Number(payload.accountId)
+    })
   });
   return response.task;
 }
@@ -326,55 +351,142 @@ export async function dryRunBookingTask(id: string): Promise<DryRunResult> {
 
 export async function getSeatCatalog(
   accountId: string,
-  serviceType: VenueType
+  serviceType: VenueType,
+  options: { refresh?: boolean } = {}
 ): Promise<SeatCatalog> {
   const query = new URLSearchParams({ accountId, serviceType });
-  return platformRequest<SeatCatalog>(`/platform/catalog/filters?${query}`);
+  if (options.refresh) query.set('refresh', '1');
+  return cachedSeatRequest(
+    `filters:${accountId}:${serviceType}`,
+    `/platform/catalog/filters?${query}`,
+    5 * 60_000,
+    options.refresh === true
+  );
 }
 
-export async function getSeatLayout(input: {
-  accountId: string;
-  serviceType: VenueType;
-  roomId: string;
-  date: string;
-}): Promise<SeatLayout> {
+export async function connectSchoolService(
+  id: string,
+  serviceType: VenueType
+): Promise<BookingAccount> {
+  const response = await platformRequest<{ account: BookingAccount }>(
+    `/platform/accounts/${id}/services/${serviceType}/connect`,
+    { method: 'POST' }
+  );
+  clearBookingDataCache();
+  return response.account;
+}
+
+export async function getSeatLayout(
+  input: {
+    accountId: string;
+    serviceType: VenueType;
+    roomId: string;
+    date: string;
+  },
+  options: { refresh?: boolean } = {}
+): Promise<SeatLayout> {
   const query = new URLSearchParams(input);
-  return platformRequest<SeatLayout>(`/platform/catalog/layout?${query}`);
+  if (options.refresh) query.set('refresh', '1');
+  return cachedSeatRequest(
+    `layout:${input.accountId}:${input.serviceType}:${input.roomId}:${input.date}`,
+    `/platform/catalog/layout?${query}`,
+    15_000,
+    options.refresh === true
+  );
 }
 
-export async function getSeatTimes(input: {
-  accountId: string;
-  serviceType: VenueType;
-  roomId: string;
-  seatId: string;
-  date: string;
-  startTime?: string;
-}): Promise<SeatTimes> {
+export async function getSeatTimes(
+  input: {
+    accountId: string;
+    serviceType: VenueType;
+    roomId: string;
+    seatId: string;
+    date: string;
+    startTime?: string;
+  },
+  options: { refresh?: boolean } = {}
+): Promise<SeatTimes> {
   const query = new URLSearchParams(
     Object.entries(input).filter((entry): entry is [string, string] => typeof entry[1] === 'string')
   );
-  return platformRequest<SeatTimes>(`/platform/catalog/times?${query}`);
+  if (options.refresh) query.set('refresh', '1');
+  return cachedSeatRequest(
+    `times:${input.accountId}:${input.serviceType}:${input.roomId}:${input.seatId}:${input.date}:${input.startTime || ''}`,
+    `/platform/catalog/times?${query}`,
+    10_000,
+    options.refresh === true
+  );
+}
+
+export async function getBookingReservations(input: {
+  accountId: string;
+  serviceType: VenueType;
+}): Promise<BookingReservation[]> {
+  const query = new URLSearchParams(input);
+  const response = await platformRequest<{
+    reservations: BookingReservation[];
+  }>(`/platform/reservations?${query}`);
+  return response.reservations;
+}
+
+export async function bookBookingReservation(input: {
+  accountId: string;
+  serviceType: VenueType;
+  seatId: string;
+  date: string;
+  startTime: number;
+  endTime: number;
+}): Promise<BookingReservation> {
+  const response = await platformRequest<{ reservation: BookingReservation }>(
+    '/platform/reservations/book',
+    {
+      method: 'POST',
+      body: JSON.stringify({ ...input, accountId: Number(input.accountId) })
+    }
+  );
+  clearBookingDataCache();
+  return response.reservation;
+}
+
+export async function cancelBookingReservation(input: {
+  reservationId: string;
+  accountId: string;
+  serviceType: VenueType;
+}): Promise<BookingReservation> {
+  const response = await platformRequest<{ reservation: BookingReservation }>(
+    `/platform/reservations/${encodeURIComponent(input.reservationId)}/cancel`,
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        accountId: Number(input.accountId),
+        serviceType: input.serviceType
+      })
+    }
+  );
+  clearBookingDataCache();
+  return response.reservation;
 }
 
 export async function getClientNotifications(): Promise<PlatformNotification[]> {
-  const response = await platformRequest<{ notifications: PlatformNotification[] }>(
-    '/platform/notifications'
-  );
+  const response = await platformRequest<{
+    notifications: PlatformNotification[];
+  }>('/platform/notifications');
   return response.notifications;
 }
 
 export async function markNotificationRead(id: string): Promise<PlatformNotification> {
-  const response = await platformRequest<{ notification: PlatformNotification }>(
-    `/platform/notifications/${id}/read`,
-    {
-      method: 'PATCH'
-    }
-  );
+  const response = await platformRequest<{
+    notification: PlatformNotification;
+  }>(`/platform/notifications/${id}/read`, {
+    method: 'PATCH'
+  });
   return response.notification;
 }
 
 export async function markAllNotificationsRead(): Promise<void> {
-  await platformRequest('/platform/notifications/read-all', { method: 'PATCH' });
+  await platformRequest('/platform/notifications/read-all', {
+    method: 'PATCH'
+  });
 }
 
 export async function getAdminOverview(): Promise<AdminOverview> {
@@ -443,6 +555,7 @@ export async function signInPlatform(email: string, password: string): Promise<v
     },
     false
   );
+  clearBookingDataCache();
 }
 
 export async function signUpPlatform(payload: {
@@ -460,6 +573,42 @@ export async function signUpPlatform(payload: {
     },
     false
   );
+  clearBookingDataCache();
+}
+
+export function clearBookingDataCache(): void {
+  seatCache.clear();
+  seatFlights.clear();
+}
+
+async function cachedSeatRequest<T>(
+  key: string,
+  path: string,
+  ttlMs: number,
+  refresh: boolean
+): Promise<T> {
+  if (!refresh) {
+    const cached = seatCache.get(key);
+    if (cached && cached.expiresAt > Date.now()) return cached.value as T;
+    const flight = seatFlights.get(key);
+    if (flight) return flight as Promise<T>;
+  }
+
+  const flight = platformRequest<T>(path)
+    .then((value) => {
+      seatCache.set(key, { value, expiresAt: Date.now() + ttlMs });
+      while (seatCache.size > 256) {
+        const oldest = seatCache.keys().next().value;
+        if (oldest === undefined) break;
+        seatCache.delete(oldest);
+      }
+      return value;
+    })
+    .finally(() => {
+      if (seatFlights.get(key) === flight) seatFlights.delete(key);
+    });
+  seatFlights.set(key, flight);
+  return flight;
 }
 
 function toPlatformUser(value: Record<string, unknown>): PlatformUser {

@@ -78,8 +78,8 @@ export class PlatformDashboardService {
           ? Math.round((successfulRuns.length / completedRuns.length) * 100)
           : null,
         candidateGroups,
-        prewarmTime: '05:59:50',
-        executionTime: '06:00:00',
+        prewarmTime: '开放前',
+        executionTime: '开放后',
         bookingWindowSeconds: tasks
           .filter((task) => task.enabled)
           .reduce((max, task) => Math.max(max, task.bookingWindowSeconds), 0),

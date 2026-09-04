@@ -15,6 +15,7 @@ type Props = {
   selectedIds: string[];
   onSelectedIdsChange: (ids: string[]) => void;
   onRefresh: () => void;
+  selectionLimit?: number;
   className?: string;
 };
 
@@ -33,6 +34,7 @@ export function SeatMapPicker({
   selectedIds,
   onSelectedIdsChange,
   onRefresh,
+  selectionLimit = 8,
   className
 }: Props) {
   const [zoom, setZoom] = useState(30);
@@ -45,11 +47,11 @@ export function SeatMapPicker({
     .filter((seat): seat is SeatNode => Boolean(seat));
 
   const toggleSeat = (seat: SeatNode) => {
-    if (!seat.id || !['available', 'mine'].includes(seat.status)) return;
+    if (!seat.id) return;
     onSelectedIdsChange(
       selectedIds.includes(seat.id)
         ? selectedIds.filter((id) => id !== seat.id)
-        : [...selectedIds, seat.id].slice(0, 8)
+        : [...selectedIds, seat.id].slice(0, selectionLimit)
     );
   };
 
@@ -59,7 +61,7 @@ export function SeatMapPicker({
         <div className='min-w-0'>
           <p className='text-sm font-medium'>{layout?.room.name || '选择房间后加载座位图'}</p>
           <p className='text-muted-foreground mt-1 text-xs'>
-            首个选中座位为主座位，其余按顺序作为备选。
+            点击任意真实座位。首个选中座位为主座位，其余按顺序作为备选；颜色只表示当前状态。
           </p>
         </div>
         <div className='flex items-center gap-1'>
@@ -131,7 +133,7 @@ export function SeatMapPicker({
                     </div>
                   );
                 }
-                const selectable = ['available', 'mine'].includes(node.status);
+                const selectable = Boolean(node.id);
                 return (
                   <button
                     key={node.key}
@@ -180,7 +182,7 @@ export function SeatMapPicker({
       )}
 
       <div className='flex flex-wrap items-center gap-2 border-t p-3'>
-        {(['available', 'reserved', 'away', 'mine'] as const).map((status) => (
+        {(['available', 'reserved', 'away', 'mine', 'unavailable'] as const).map((status) => (
           <span key={status} className='flex items-center gap-1.5 text-xs text-muted-foreground'>
             <span
               className={cn(
@@ -188,7 +190,8 @@ export function SeatMapPicker({
                 status === 'available' && 'bg-emerald-500/60',
                 status === 'reserved' && 'bg-muted-foreground/35',
                 status === 'away' && 'bg-amber-500/60',
-                status === 'mine' && 'bg-sky-500/60'
+                status === 'mine' && 'bg-sky-500/60',
+                status === 'unavailable' && 'bg-muted-foreground/20'
               )}
             />
             {statusLabels[status]}

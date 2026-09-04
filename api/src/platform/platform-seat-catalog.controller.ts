@@ -26,6 +26,7 @@ export class PlatformSeatCatalogController {
       Number(request.user.id),
       query.accountId,
       query.serviceType,
+      query.refresh === true,
     );
   }
 
@@ -40,6 +41,7 @@ export class PlatformSeatCatalogController {
       query.serviceType,
       query.roomId,
       query.date,
+      query.refresh === true,
     );
   }
 
@@ -52,9 +54,11 @@ export class PlatformSeatCatalogController {
       Number(request.user.id),
       query.accountId,
       query.serviceType,
+      query.roomId,
       query.seatId,
       query.date,
       query.startTime,
+      query.refresh === true,
     );
   }
 }

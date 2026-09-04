@@ -8,9 +8,9 @@ import { Orbit } from './Orbit';
 
 export function Hero({ user }: { user: PlatformUser | null }) {
   return (
-    <div className='relative w-full overflow-x-clip pt-12'>
-      <div className='mx-auto flex max-w-7xl flex-col pt-20 lg:flex-row'>
-        <div className='py-24 sm:py-32'>
+    <div className='relative w-full overflow-x-clip pt-0'>
+      <div className='mx-auto flex max-w-7xl flex-col pt-0 lg:flex-row lg:pt-20'>
+        <div className='pt-10 pb-14 sm:pt-14 sm:pb-20 lg:py-32'>
           <div className='max-w-8xl px-6 lg:px-8'>
             <div className='mx-auto max-w-3xl text-center md:text-left'>
               <h1 className='text-foreground text-5xl leading-[1.02] font-extrabold sm:text-6xl'>

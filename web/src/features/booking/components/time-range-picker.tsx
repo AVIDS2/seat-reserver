@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 
 import { Icons } from '@/components/icons';
 import { Button } from '@/components/ui/button';
@@ -23,9 +23,17 @@ import {
 } from '@/components/ui/select';
 import type { TimeCandidate } from '../types';
 
-const TIME_OPTIONS = Array.from({ length: 49 }, (_, index) => index * 30);
+export const BOOKABLE_START_MINUTES = 8 * 60;
+export const BOOKABLE_END_MINUTES = 22 * 60;
+
+const TIME_OPTIONS = Array.from(
+  {
+    length: (BOOKABLE_END_MINUTES - BOOKABLE_START_MINUTES) / 30 + 1
+  },
+  (_, index) => BOOKABLE_START_MINUTES + index * 30
+);
 const QUICK_RANGES: TimeCandidate[] = [
-  { start: 480, end: 840 },
+  { start: 480, end: 720 },
   { start: 540, end: 900 },
   { start: 780, end: 1320 },
   { start: 840, end: 1320 }
@@ -41,12 +49,21 @@ export function TimeRangePicker({
   availableStartTimes?: number[];
 }) {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
+  const liveStartTimes = useMemo(
+    () =>
+      new Set(
+        (availableStartTimes ?? []).filter(
+          (time) => time >= BOOKABLE_START_MINUTES && time <= BOOKABLE_END_MINUTES
+        )
+      ),
+    [availableStartTimes]
+  );
 
   const addRange = () => {
-    const last = value[value.length - 1] ?? QUICK_RANGES[0];
-    const nextStart = Math.min(last.start, 840);
-    const nextEnd = Math.max(last.end, nextStart + 60);
-    onChange([...value, { start: nextStart, end: Math.min(nextEnd, 1440) }]);
+    const existing = new Set(value.map((range) => `${range.start}-${range.end}`));
+    const suggested =
+      QUICK_RANGES.find((range) => !existing.has(`${range.start}-${range.end}`)) ?? QUICK_RANGES[0];
+    onChange([...value, suggested]);
     setOpenIndex(value.length);
   };
 
@@ -66,6 +83,10 @@ export function TimeRangePicker({
         <div>
           <p className='text-sm font-medium'>候选时间段</p>
           <p className='text-muted-foreground mt-1 text-xs'>按座位优先级，再按时间顺序尝试。</p>
+          <p className='text-muted-foreground mt-1 text-xs'>
+            自动任务在开放窗口提交；这里设置的是目标使用时段（08:00–22:00）。
+            {liveStartTimes.size ? '学校当前时段仅作为实时参考。' : ''}
+          </p>
         </div>
         <span className='text-muted-foreground shrink-0 text-xs'>{value.length} 个时段</span>
       </div>
@@ -120,12 +141,12 @@ export function TimeRangePicker({
                 <TimeSelect
                   label='开始'
                   value={range.start}
-                  options={(availableStartTimes?.length
-                    ? availableStartTimes
-                    : TIME_OPTIONS
-                  ).filter((option) => option < range.end)}
+                  options={TIME_OPTIONS.filter((option) => option < range.end)}
                   onChange={(start) =>
-                    updateRange(index, { start, end: Math.max(range.end, start + 30) })
+                    updateRange(index, {
+                      start,
+                      end: Math.max(range.end, start + 30)
+                    })
                   }
                 />
                 <span className='text-muted-foreground pb-2 text-sm'>至</span>
@@ -134,17 +155,17 @@ export function TimeRangePicker({
                   value={range.end}
                   options={TIME_OPTIONS.filter((option) => option > range.start)}
                   onChange={(end) =>
-                    updateRange(index, { start: Math.min(range.start, end - 30), end })
+                    updateRange(index, {
+                      start: Math.min(range.start, end - 30),
+                      end
+                    })
                   }
                 />
               </div>
               <div className='flex flex-col gap-2'>
                 <p className='text-muted-foreground text-xs'>常用时段</p>
                 <div className='grid grid-cols-2 gap-2'>
-                  {(availableStartTimes?.length
-                    ? QUICK_RANGES.filter((range) => availableStartTimes.includes(range.start))
-                    : QUICK_RANGES
-                  ).map((quickRange) => (
+                  {QUICK_RANGES.map((quickRange) => (
                     <Button
                       key={`${quickRange.start}-${quickRange.end}`}
                       type='button'
@@ -186,13 +207,9 @@ function TimeSelect({
   onChange: (value: number) => void;
 }) {
   const safeOptions = useMemo(
-    () => (options.includes(value) ? options : [...options, value].toSorted((a, b) => a - b)),
+    () => Array.from(new Set([...options, value])).toSorted((a, b) => a - b),
     [options, value]
   );
-
-  useEffect(() => {
-    if (!options.includes(value) && options[0] !== undefined) onChange(options[0]);
-  }, [onChange, options, value]);
 
   return (
     <label className='flex min-w-0 flex-col gap-1.5'>

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 import { Icons } from '@/components/icons';
+import { BrandMark } from '@/components/brand-mark';
 import { navGroups } from '@/config/nav-config';
 import { usePlatformSession } from '@/features/auth/platform-session';
 import {
@@ -36,15 +37,13 @@ export default function AppSidebar() {
           <SidebarMenuItem>
             <SidebarMenuButton
               size='lg'
-              tooltip='一考即过'
-              render={<Link href='/dashboard/overview' aria-label='一考即过预约控制台' />}
+              tooltip='席定'
+              render={<Link href='/dashboard/overview' aria-label='席定高校座位预约平台' />}
             >
-              <div className='bg-sidebar-primary text-sidebar-primary-foreground flex size-8 shrink-0 items-center justify-center rounded-lg'>
-                <Icons.bolt className='size-4' />
-              </div>
+              <BrandMark size={34} priority />
               <div className='grid flex-1 text-left text-sm leading-tight'>
-                <span className='truncate font-semibold'>一考即过</span>
-                <span className='text-muted-foreground truncate text-xs'>预约控制台</span>
+                <span className='truncate font-semibold'>席定</span>
+                <span className='text-muted-foreground truncate text-xs'>高校座位预约平台</span>
               </div>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -83,16 +82,16 @@ export default function AppSidebar() {
           <SidebarMenuItem>
             <SidebarMenuButton
               size='lg'
-              tooltip='账号与授权'
-              render={<Link href='/dashboard/accounts' aria-label='账号与授权' />}
+              tooltip='个人设置'
+              render={<Link href='/dashboard/profile' aria-label='个人设置' />}
             >
               <div className='bg-muted flex size-8 shrink-0 items-center justify-center rounded-lg text-xs font-semibold'>
                 你
               </div>
               <div className='grid flex-1 text-left text-sm leading-tight'>
-                <span className='truncate font-medium'>{user?.displayName || '个人工作区'}</span>
+                <span className='truncate font-medium'>{user?.displayName || '个人账户'}</span>
                 <span className='text-muted-foreground truncate text-xs'>
-                  {user?.role === 'admin' ? '管理员工作区' : '个人预约工作区'}
+                  {user?.role === 'admin' ? '管理员 · 个人设置' : '个人设置'}
                 </span>
               </div>
               <Icons.chevronRight className='ml-auto size-4' />

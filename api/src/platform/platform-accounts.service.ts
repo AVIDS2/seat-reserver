@@ -14,6 +14,7 @@ import { SchoolAccountEntity } from './entities/school-account.entity';
 import { BookingTaskEntity } from './entities/booking-task.entity';
 import { PlatformCryptoService } from './platform-crypto.service';
 import { SchoolAuthenticationService } from './school-authentication.service';
+import type { SeatServiceType } from './entities/school-service-connection.entity';
 import { PlatformServiceConnectionsService } from './platform-service-connections.service';
 
 export type SchoolAccountView = {
@@ -129,6 +130,16 @@ export class PlatformAccountsService {
       await this.accounts.save(account);
       throw error;
     }
+  }
+
+  async connectService(
+    userId: number,
+    id: number,
+    serviceType: SeatServiceType,
+  ): Promise<SchoolAccountView> {
+    const account = await this.findOwned(userId, id);
+    await this.serviceConnections.ensureReady(account, serviceType, true);
+    return this.toView(account);
   }
 
   async update(

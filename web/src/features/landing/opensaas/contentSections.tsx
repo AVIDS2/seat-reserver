@@ -167,7 +167,6 @@ export const footerNavigation = {
   ],
   company: [
     { name: '登录', href: '/auth/sign-in' },
-    { name: '开始使用', href: '/auth/sign-up' },
-    { name: '源码', href: 'https://github.com/AVIDS2/seat-reserver' }
+    { name: '开始使用', href: '/auth/sign-up' }
   ]
 };

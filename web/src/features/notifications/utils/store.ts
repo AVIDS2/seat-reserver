@@ -24,7 +24,7 @@ const mockNotifications: Notification[] = [
   {
     id: '1',
     title: '明早预约已排程',
-    body: '2 个任务将在明早 06:00 自动执行，账号会提前完成 Token 预热。',
+    body: '2 个任务将在下一次开放窗口自动执行，账号会提前完成连接检查。',
     status: 'unread',
     createdAt: new Date(Date.now() - 1000 * 60 * 5).toISOString(),
     actions: [

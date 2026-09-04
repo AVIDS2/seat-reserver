@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 
-import { Icons } from '@/components/icons';
+import { BrandMark } from '@/components/brand-mark';
 import { buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -10,7 +10,7 @@ import UserAuthForm from './user-auth-form';
 
 export const metadata: Metadata = {
   title: '注册',
-  description: '创建一考即过预约控制台账号。'
+  description: '创建席定高校座位预约平台账号。'
 };
 
 export default function SignUpViewPage() {
@@ -28,12 +28,10 @@ export default function SignUpViewPage() {
             <Link
               href='/'
               className='flex items-center gap-2 text-sm font-semibold lg:hidden'
-              aria-label='返回一考即过首页'
+              aria-label='返回席定首页'
             >
-              <span className='bg-foreground text-background flex size-8 items-center justify-center rounded-lg'>
-                <Icons.bolt className='size-4' />
-              </span>
-              一考即过
+              <BrandMark size={32} />
+              席定
             </Link>
             <Link
               href='/auth/sign-in'

@@ -2,12 +2,31 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { toast } from 'sonner';
 
 import { Icons } from '@/components/icons';
 import PageContainer from '@/components/layout/page-container';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle
+} from '@/components/ui/alert-dialog';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from '@/components/ui/dialog';
 import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field';
 import {
   Select,
@@ -21,8 +40,13 @@ import {
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { cn } from '@/lib/utils';
 
-import { getSeatCatalog, getSeatLayout } from '../api/service';
-import type { BookingAccount, SeatCatalog, SeatLayout, VenueType } from '../types';
+import {
+  bookBookingReservation,
+  getSeatCatalog,
+  getSeatLayout,
+  getSeatTimes
+} from '../api/service';
+import type { BookingAccount, SeatCatalog, SeatLayout, SeatTimes, VenueType } from '../types';
 import { SeatMapPicker } from './seat-map-picker';
 import { getSchoolAvailabilityNotice } from './school-status';
 
@@ -38,6 +62,18 @@ export default function SeatMapPage({ initialAccounts }: { initialAccounts: Book
   const [catalogLoading, setCatalogLoading] = useState(false);
   const [layoutLoading, setLayoutLoading] = useState(false);
   const [error, setError] = useState('');
+  const [instantOpen, setInstantOpen] = useState(false);
+  const [instantConfirmOpen, setInstantConfirmOpen] = useState(false);
+  const [instantSeatId, setInstantSeatId] = useState('');
+  const [instantTimes, setInstantTimes] = useState<SeatTimes>({
+    startTimes: [],
+    endTimes: []
+  });
+  const [instantStartTime, setInstantStartTime] = useState('');
+  const [instantEndTime, setInstantEndTime] = useState('');
+  const [instantLoading, setInstantLoading] = useState(false);
+  const [instantSubmitting, setInstantSubmitting] = useState(false);
+  const [instantError, setInstantError] = useState('');
 
   useEffect(() => {
     if (!accountId) {
@@ -135,10 +171,126 @@ export default function SeatMapPage({ initialAccounts }: { initialAccounts: Book
     if (!accountId || !roomId || !date) return;
     setLayoutLoading(true);
     setError('');
-    void getSeatLayout({ accountId, serviceType: venueType, roomId, date })
+    void getSeatLayout({ accountId, serviceType: venueType, roomId, date }, { refresh: true })
       .then(setLayout)
       .catch((reason) => setError(reason instanceof Error ? reason.message : '座位图刷新失败'))
       .finally(() => setLayoutLoading(false));
+  };
+
+  const taskHref = useMemo(() => {
+    if (!accountId || !buildingId || !roomId || !selectedIds.length) {
+      return '/dashboard/tasks';
+    }
+    const params = new URLSearchParams({
+      accountId,
+      serviceType: venueType,
+      buildingId,
+      roomId,
+      seatIds: selectedIds.join(',')
+    });
+    return `/dashboard/tasks?${params.toString()}`;
+  }, [accountId, buildingId, roomId, selectedIds, venueType]);
+
+  const loadInstantTimes = async (seatId: string) => {
+    if (!accountId || !date) return;
+    setInstantSeatId(seatId);
+    setInstantTimes({ startTimes: [], endTimes: [] });
+    setInstantStartTime('');
+    setInstantEndTime('');
+    setInstantError('');
+    setInstantLoading(true);
+    try {
+      const times = await getSeatTimes({
+        accountId,
+        serviceType: venueType,
+        roomId,
+        seatId,
+        date
+      });
+      setInstantTimes(times);
+      const firstStart = times.startTimes[0]?.id || '';
+      setInstantStartTime(firstStart);
+      if (firstStart) {
+        const endTimes = await getSeatTimes({
+          accountId,
+          serviceType: venueType,
+          roomId,
+          seatId,
+          date,
+          startTime: firstStart
+        });
+        setInstantTimes((current) => ({
+          ...current,
+          endTimes: endTimes.endTimes
+        }));
+        setInstantEndTime(endTimes.endTimes[0]?.id || '');
+      }
+    } catch (reason) {
+      setInstantError(reason instanceof Error ? reason.message : '可预约时段加载失败');
+    } finally {
+      setInstantLoading(false);
+    }
+  };
+
+  const openInstantBooking = () => {
+    const seatId = selectedIds[0];
+    if (!seatId || selectedIds.length !== 1) {
+      toast.error('直接预约请只选择一个座位');
+      return;
+    }
+    setInstantOpen(true);
+    void loadInstantTimes(seatId);
+  };
+
+  const changeInstantStart = (nextStart: string | null) => {
+    if (!nextStart || !accountId || !date || !instantSeatId) return;
+    setInstantStartTime(nextStart);
+    setInstantEndTime('');
+    setInstantError('');
+    setInstantLoading(true);
+    void getSeatTimes({
+      accountId,
+      serviceType: venueType,
+      roomId,
+      seatId: instantSeatId,
+      date,
+      startTime: nextStart
+    })
+      .then((times) => {
+        setInstantTimes((current) => ({
+          ...current,
+          endTimes: times.endTimes
+        }));
+        setInstantEndTime(times.endTimes[0]?.id || '');
+      })
+      .catch((reason) =>
+        setInstantError(reason instanceof Error ? reason.message : '结束时间加载失败')
+      )
+      .finally(() => setInstantLoading(false));
+  };
+
+  const submitInstantBooking = async () => {
+    if (!instantSeatId || !instantStartTime || !instantEndTime) return;
+    setInstantSubmitting(true);
+    try {
+      const reservation = await bookBookingReservation({
+        accountId,
+        serviceType: venueType,
+        seatId: instantSeatId,
+        date,
+        startTime: Number(instantStartTime),
+        endTime: Number(instantEndTime)
+      });
+      setInstantConfirmOpen(false);
+      setInstantOpen(false);
+      toast.success('预约已提交', {
+        description: `${reservation.location} · ${reservation.startTime}-${reservation.endTime}`
+      });
+    } catch (reason) {
+      toast.error(reason instanceof Error ? reason.message : '预约提交失败');
+    } finally {
+      setInstantSubmitting(false);
+    }
   };
 
   return (
@@ -254,7 +406,10 @@ export default function SeatMapPage({ initialAccounts }: { initialAccounts: Book
                     <FieldLabel htmlFor='seat-map-room'>空间</FieldLabel>
                     <Select
                       value={roomId}
-                      items={rooms.map((room) => ({ value: room.id, label: room.name }))}
+                      items={rooms.map((room) => ({
+                        value: room.id,
+                        label: room.name
+                      }))}
                       onValueChange={changeRoom}
                       disabled={!rooms.length}
                     >
@@ -357,6 +512,36 @@ export default function SeatMapPage({ initialAccounts }: { initialAccounts: Book
                 onRefresh={refreshLayout}
                 className='w-full'
               />
+              <div className='flex flex-col gap-3 rounded-lg border bg-card p-4 sm:flex-row sm:items-center sm:justify-between'>
+                <div className='min-w-0'>
+                  <p className='text-sm font-medium'>已选 {selectedIds.length} 个座位</p>
+                  <p className='text-muted-foreground mt-1 text-xs'>
+                    自动任务可以把任意真实座位加入候选；直接预约会再读取所选日期的可用时段。
+                  </p>
+                </div>
+                <div className='flex flex-wrap gap-2 sm:justify-end'>
+                  <Link
+                    href={taskHref}
+                    className={cn(
+                      buttonVariants({ variant: 'default' }),
+                      selectedIds.length === 0 && 'pointer-events-none opacity-50'
+                    )}
+                    aria-disabled={selectedIds.length === 0}
+                  >
+                    <Icons.target data-icon='inline-start' />
+                    配置自动任务
+                  </Link>
+                  <Button
+                    type='button'
+                    variant='outline'
+                    onClick={openInstantBooking}
+                    disabled={selectedIds.length !== 1 || !date || layoutLoading}
+                  >
+                    <Icons.calendar data-icon='inline-start' />
+                    直接预约
+                  </Button>
+                </div>
+              </div>
               <p className='text-muted-foreground text-xs'>
                 {selectedBuilding?.name || '未选择楼栋'}
                 {selectedRoom ? ` · ${selectedRoom.name}` : ''}
@@ -367,6 +552,131 @@ export default function SeatMapPage({ initialAccounts }: { initialAccounts: Book
           </div>
         )}
       </div>
+
+      <Dialog open={instantOpen} onOpenChange={setInstantOpen}>
+        <DialogContent className='w-[calc(100%-2rem)] max-w-[480px]'>
+          <DialogHeader>
+            <DialogTitle>直接预约</DialogTitle>
+            <DialogDescription>
+              为 {date ? formatDateLabel(date) : '所选日期'} 的座位读取学校实时可用时段。
+            </DialogDescription>
+          </DialogHeader>
+          <div className='flex flex-col gap-4'>
+            <div className='rounded-lg bg-muted/40 px-3 py-2 text-sm'>
+              <span className='text-muted-foreground'>位置：</span>
+              {selectedBuilding?.name || '未选择楼栋'} · {selectedRoom?.name || '未选择空间'} · 座位{' '}
+              {layout?.nodes.find((node) => node.id === instantSeatId)?.label || instantSeatId}
+            </div>
+            {instantError && (
+              <Alert variant='destructive'>
+                <Icons.warning />
+                <AlertTitle>时段读取失败</AlertTitle>
+                <AlertDescription>{instantError}</AlertDescription>
+              </Alert>
+            )}
+            <FieldGroup>
+              <Field>
+                <FieldLabel htmlFor='instant-start-time'>开始时间</FieldLabel>
+                <Select
+                  value={instantStartTime}
+                  items={instantTimes.startTimes.map((item) => ({
+                    value: item.id,
+                    label: item.label
+                  }))}
+                  onValueChange={changeInstantStart}
+                  disabled={instantLoading || !instantTimes.startTimes.length}
+                >
+                  <SelectTrigger id='instant-start-time' className='w-full'>
+                    <SelectValue placeholder={instantLoading ? '读取中…' : '选择开始时间'} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      <SelectLabel>可用开始时间</SelectLabel>
+                      {instantTimes.startTimes.map((item) => (
+                        <SelectItem key={item.id} value={item.id}>
+                          {item.label}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </Field>
+              <Field>
+                <FieldLabel htmlFor='instant-end-time'>结束时间</FieldLabel>
+                <Select
+                  value={instantEndTime}
+                  items={instantTimes.endTimes.map((item) => ({
+                    value: item.id,
+                    label: item.label
+                  }))}
+                  onValueChange={(value) => value && setInstantEndTime(value)}
+                  disabled={instantLoading || !instantTimes.endTimes.length}
+                >
+                  <SelectTrigger id='instant-end-time' className='w-full'>
+                    <SelectValue placeholder={instantLoading ? '读取中…' : '选择结束时间'} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      <SelectLabel>可用结束时间</SelectLabel>
+                      {instantTimes.endTimes.map((item) => (
+                        <SelectItem key={item.id} value={item.id}>
+                          {item.label}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </Field>
+            </FieldGroup>
+            {!instantLoading && !instantError && !instantTimes.startTimes.length && (
+              <Alert>
+                <Icons.info />
+                <AlertTitle>当前没有可提交的时段</AlertTitle>
+                <AlertDescription>
+                  可以保留这个座位并配置自动任务，系统会在开放窗口再次尝试。
+                </AlertDescription>
+              </Alert>
+            )}
+          </div>
+          <DialogFooter>
+            <Button type='button' variant='outline' onClick={() => setInstantOpen(false)}>
+              取消
+            </Button>
+            <Button
+              type='button'
+              disabled={instantLoading || !instantStartTime || !instantEndTime}
+              onClick={() => setInstantConfirmOpen(true)}
+            >
+              确认时段
+              <Icons.arrowRight data-icon='inline-end' />
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={instantConfirmOpen} onOpenChange={setInstantConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>确认提交这次预约？</AlertDialogTitle>
+            <AlertDialogDescription>
+              {formatDateLabel(date)} · {selectedRoom?.name || '所选空间'} · 座位{' '}
+              {layout?.nodes.find((node) => node.id === instantSeatId)?.label || instantSeatId} ·{' '}
+              {findTimeLabel(instantTimes.startTimes, instantStartTime)} -{' '}
+              {findTimeLabel(instantTimes.endTimes, instantEndTime)}
+              。提交后由学校系统判断最终占用情况。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={instantSubmitting}>返回修改</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={instantSubmitting}
+              onClick={() => void submitInstantBooking()}
+            >
+              {instantSubmitting ? '提交中…' : '确认预约'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </PageContainer>
   );
 }
@@ -396,4 +706,8 @@ function formatDateLabel(value: string): string {
     day: 'numeric',
     weekday: 'short'
   });
+}
+
+function findTimeLabel(items: Array<{ id: string; label: string }>, id: string): string {
+  return items.find((item) => item.id === id)?.label || id;
 }

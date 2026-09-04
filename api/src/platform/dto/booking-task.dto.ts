@@ -17,20 +17,24 @@ import {
   Min,
   ValidateNested,
 } from 'class-validator';
+import {
+  BOOKABLE_END_MINUTES,
+  BOOKABLE_START_MINUTES,
+} from '../booking-time.constants';
 
 export class TimeCandidateDto {
-  @ApiProperty({ example: 840, description: 'Minutes after midnight.' })
+  @ApiProperty({ example: 480, description: 'Minutes after midnight.' })
   @Type(() => Number)
   @IsInt()
-  @Min(0)
-  @Max(1440)
+  @Min(BOOKABLE_START_MINUTES)
+  @Max(BOOKABLE_END_MINUTES)
   start: number;
 
   @ApiProperty({ example: 1320, description: 'Minutes after midnight.' })
   @Type(() => Number)
   @IsInt()
-  @Min(0)
-  @Max(1440)
+  @Min(BOOKABLE_START_MINUTES)
+  @Max(BOOKABLE_END_MINUTES)
   end: number;
 }
 
@@ -133,7 +137,7 @@ export class CreateBookingTaskDto {
 
   @ApiProperty({
     type: () => [TimeCandidateDto],
-    example: [{ start: 840, end: 1320 }],
+    example: [{ start: 480, end: 1320 }],
   })
   @IsArray()
   @ArrayMaxSize(30)

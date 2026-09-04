@@ -101,9 +101,7 @@ export class SeatClientService {
       new URL(`${servicePrefix}${path}`, userUrl.origin),
       { token },
     );
-    return response.httpStatus === 200 && response.payload
-      ? { ...response, success: true, message: '' }
-      : response;
+    return response;
   }
 
   buildCandidates(

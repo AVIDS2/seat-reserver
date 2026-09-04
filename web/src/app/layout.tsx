@@ -18,29 +18,32 @@ const META_THEME_COLORS = {
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'),
   title: {
-    default: '一考即过 · 预约控制台',
-    template: '%s | 一考即过'
+    default: '席定 · 高校座位预约平台',
+    template: '%s | 席定'
   },
   description: '把每一次预约，交给更稳定的自动化。',
+  icons: {
+    icon: '/brand/WUDlogo.svg'
+  },
   openGraph: {
-    title: '一考即过 · 座位预约自动化',
+    title: '席定 · 高校座位预约平台',
     description: '把学校账号、候选策略和每日执行结果放进同一个清晰的工作台。',
-    siteName: '一考即过',
+    siteName: '席定',
     type: 'website',
     images: [
       {
-        url: '/landing/seat-overview.svg',
-        width: 1200,
-        height: 675,
-        alt: '一考即过预约控制台'
+        url: '/brand/WUDlogo.svg',
+        width: 1024,
+        height: 1024,
+        alt: '席定高校座位预约平台'
       }
     ]
   },
   twitter: {
     card: 'summary_large_image',
-    title: '一考即过 · 座位预约自动化',
+    title: '席定 · 高校座位预约平台',
     description: '把学校账号、候选策略和每日执行结果放进同一个清晰的工作台。',
-    images: ['/landing/seat-overview.svg']
+    images: ['/brand/WUDlogo.svg']
   }
 };
 

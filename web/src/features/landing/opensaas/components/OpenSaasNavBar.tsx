@@ -1,6 +1,7 @@
 'use client';
 
 import { Icons } from '@/components/icons';
+import { BrandMark } from '@/components/brand-mark';
 import { ThemeModeToggle } from '@/components/themes/theme-mode-toggle';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
@@ -67,7 +68,7 @@ export function OpenSaasNavBar({ user }: { user: PlatformUser | null }) {
                   isScrolled ? 'ml-2 text-xs' : 'ml-2 text-sm'
                 )}
               >
-                一考即过
+                席定
               </span>
             </Link>
             <ul className='ml-4 hidden items-center gap-6 lg:flex'>
@@ -136,7 +137,7 @@ export function OpenSaasNavBar({ user }: { user: PlatformUser | null }) {
                       onClick={() => setMobileMenuOpen(false)}
                     >
                       <NavLogo isScrolled={false} />
-                      一考即过
+                      席定
                     </Link>
                   </SheetTitle>
                 </SheetHeader>
@@ -208,14 +209,5 @@ export function OpenSaasNavBar({ user }: { user: PlatformUser | null }) {
 }
 
 function NavLogo({ isScrolled }: { isScrolled: boolean }) {
-  return (
-    <span
-      className={cn(
-        'bg-foreground text-background flex items-center justify-center rounded-md transition-all duration-500',
-        isScrolled ? 'size-7' : 'size-8'
-      )}
-    >
-      <Icons.bolt className={cn(isScrolled ? 'size-3.5' : 'size-4')} />
-    </span>
-  );
+  return <BrandMark size={isScrolled ? 32 : 38} priority={!isScrolled} />;
 }

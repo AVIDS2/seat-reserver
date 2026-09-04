@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { toast } from 'sonner';
 
 import { Icons } from '@/components/icons';
@@ -65,6 +66,7 @@ import {
 } from '../api/service';
 import type {
   BookingAccount,
+  BookingTaskDraft,
   BookingTask,
   SeatCatalog,
   SeatLayout,
@@ -89,7 +91,7 @@ const WEEKDAYS = [
   { value: '0', label: '周日' }
 ];
 
-const DEFAULT_TIME_CANDIDATES: TimeCandidate[] = [{ start: 840, end: 1320 }];
+const DEFAULT_TIME_CANDIDATES: TimeCandidate[] = [{ start: 480, end: 1320 }];
 
 async function runTask(task: BookingTask) {
   try {
@@ -116,12 +118,14 @@ function TaskEditorDialog({
   onOpenChange,
   accounts,
   task,
+  draft,
   onSave
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   accounts: BookingAccount[];
   task?: BookingTask;
+  draft?: BookingTaskDraft;
   onSave: (payload: EditorPayload, taskId?: string) => Promise<void>;
 }) {
   const [name, setName] = useState('');
@@ -153,14 +157,14 @@ function TaskEditorDialog({
   useEffect(() => {
     if (!open) return;
     setName(task?.name || '');
-    setAccountId(task?.accountId || accounts[0]?.id || '');
-    setVenueType(task?.venueType || 'study_room');
-    setBuildingId(task?.buildingId || '');
-    setRoomId(task?.roomId || '');
+    setAccountId(task?.accountId || draft?.accountId || accounts[0]?.id || '');
+    setVenueType(task?.venueType || draft?.venueType || 'study_room');
+    setBuildingId(task?.buildingId || draft?.buildingId || '');
+    setRoomId(task?.roomId || draft?.roomId || '');
     setPreviewDate('');
     setScheduleMode(task?.scheduleMode === 'once' ? 'daily' : task?.scheduleMode || 'daily');
     setScheduleWeekdays(task?.scheduleWeekdays?.length ? task.scheduleWeekdays : [1, 2, 3, 4, 5]);
-    setSelectedSeatIds(task ? [task.seatId, ...task.backupSeatIds] : []);
+    setSelectedSeatIds(task ? [task.seatId, ...task.backupSeatIds] : draft?.seatIds || []);
     setCatalog(null);
     setLayout(null);
     setAvailableStartTimes([]);
@@ -173,7 +177,7 @@ function TaskEditorDialog({
     setRunOffset(String(task?.runOffsetSeconds ?? 1));
     setStep(1);
     setAdvancedOpen(false);
-  }, [accounts, open, task]);
+  }, [accounts, draft, open, task]);
 
   useEffect(() => {
     if (!open || !accountId) return;
@@ -184,20 +188,24 @@ function TaskEditorDialog({
       .then((nextCatalog) => {
         if (cancelled) return;
         setCatalog(nextCatalog);
-        const matchedBuilding =
+        const preferredBuildingId =
           task?.venueType === venueType
-            ? nextCatalog.buildings.find(
-                (item) => item.id === task.buildingId || item.name === task.building
-              )
-            : undefined;
+            ? task.buildingId
+            : draft?.venueType === venueType
+              ? draft.buildingId
+              : undefined;
+        const matchedBuilding = nextCatalog.buildings.find(
+          (item) => item.id === preferredBuildingId
+        );
         const nextBuildingId = matchedBuilding?.id || nextCatalog.buildings[0]?.id || '';
         setBuildingId(nextBuildingId);
-        const matchedRoom =
+        const preferredRoomId =
           task?.venueType === venueType
-            ? nextCatalog.rooms.find(
-                (item) => item.id === task.roomId || item.name === task.roomName
-              )
-            : undefined;
+            ? task.roomId
+            : draft?.venueType === venueType
+              ? draft.roomId
+              : undefined;
+        const matchedRoom = nextCatalog.rooms.find((item) => item.id === preferredRoomId);
         const nextRoom =
           matchedRoom || nextCatalog.rooms.find((item) => item.buildingId === nextBuildingId);
         setRoomId(nextRoom?.id || '');
@@ -211,7 +219,7 @@ function TaskEditorDialog({
     return () => {
       cancelled = true;
     };
-  }, [accountId, open, task, venueType]);
+  }, [accountId, draft, open, task, venueType]);
 
   const loadLayout = async () => {
     if (!accountId || !roomId || !previewDate) return;
@@ -465,6 +473,18 @@ function TaskEditorDialog({
                         图书馆
                       </ToggleGroupItem>
                     </ToggleGroup>
+                    {venueType === 'library' && (
+                      <FieldDescription>
+                        首次加载图书馆时会建立独立连接，也可以先到
+                        <Link
+                          href='/dashboard/accounts'
+                          className='text-primary underline underline-offset-4'
+                        >
+                          账号与授权
+                        </Link>{' '}
+                        手动连接。
+                      </FieldDescription>
+                    )}
                   </Field>
                   <Field>
                     <FieldLabel htmlFor='task-building'>
@@ -509,7 +529,10 @@ function TaskEditorDialog({
                     <FieldLabel htmlFor='task-room'>空间</FieldLabel>
                     <Select
                       value={roomId}
-                      items={rooms.map((room) => ({ value: room.id, label: room.name }))}
+                      items={rooms.map((room) => ({
+                        value: room.id,
+                        label: room.name
+                      }))}
                       onValueChange={(value) => {
                         if (value) {
                           setRoomId(value);
@@ -604,7 +627,7 @@ function TaskEditorDialog({
                         {timesLoading
                           ? '正在读取该座位的可用时段…'
                           : availableStartTimes.length
-                            ? '已按学校返回的可用起始时段更新菜单。'
+                            ? '已读取学校实时起始时段；自动任务仍按你设置的时段执行。'
                             : '暂未取得该座位的实时起始时段，仍可使用常规半小时刻度。'}
                       </p>
                     )}
@@ -810,18 +833,28 @@ function NumberField({
 
 export default function BookingTasksPage({
   initialTasks,
-  initialAccounts
+  initialAccounts,
+  initialTaskDraft
 }: {
   initialTasks: BookingTask[];
   initialAccounts: BookingAccount[];
+  initialTaskDraft?: BookingTaskDraft;
 }) {
   const [tasks, setTasks] = useState(initialTasks);
   const [accounts] = useState(initialAccounts);
   const [search, setSearch] = useState('');
   const [editorTask, setEditorTask] = useState<BookingTask | undefined>();
+  const [editorDraft, setEditorDraft] = useState<BookingTaskDraft | undefined>(initialTaskDraft);
   const [editorOpen, setEditorOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<BookingTask | null>(null);
   const [dryRun, setDryRun] = useState<DryRunResult | null>(null);
+
+  useEffect(() => {
+    if (!initialTaskDraft) return;
+    setEditorTask(undefined);
+    setEditorDraft(initialTaskDraft);
+    setEditorOpen(true);
+  }, [initialTaskDraft]);
 
   const filteredTasks = useMemo(() => {
     const value = search.trim().toLowerCase();
@@ -850,7 +883,7 @@ export default function BookingTasksPage({
               ...task,
               enabled,
               status: enabled ? 'enabled' : 'paused',
-              nextRun: enabled ? '等待明早 06:00' : '已暂停'
+              nextRun: enabled ? '等待下一次开放窗口' : '已暂停'
             }
           : task
       )
@@ -901,6 +934,7 @@ export default function BookingTasksPage({
             className='w-full sm:w-auto'
             onClick={() => {
               setEditorTask(undefined);
+              setEditorDraft(undefined);
               setEditorOpen(true);
             }}
             disabled={accounts.length === 0}
@@ -1050,6 +1084,7 @@ export default function BookingTasksPage({
         onOpenChange={setEditorOpen}
         accounts={accounts}
         task={editorTask}
+        draft={editorDraft}
         onSave={saveTask}
       />
 

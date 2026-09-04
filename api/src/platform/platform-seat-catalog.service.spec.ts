@@ -96,4 +96,40 @@ describe('PlatformSeatCatalogService', () => {
       }),
     );
   });
+
+  it('should reuse a short-lived catalog cache and bypass it on refresh', async () => {
+    const get = jest.fn((...args: unknown[]) => {
+      const path = String(args[2]);
+      return Promise.resolve({
+        success: true,
+        payload: path.endsWith('/settings')
+          ? { data: { isCaptchaOpen: false } }
+          : { data: { buildings: [], rooms: [], dates: [], hours: 8 } },
+      });
+    });
+    const service = new PlatformSeatCatalogService(
+      {
+        findOwned: jest.fn(() => Promise.resolve({ id: 4, userId: 7 })),
+      } as never,
+      {
+        ensureReady: jest.fn(() =>
+          Promise.resolve({
+            token: 'hidden',
+            mode: 'direct',
+            serviceType: 'study_room',
+          }),
+        ),
+      } as never,
+      { get } as never,
+    );
+
+    await Promise.all([
+      service.filters(7, 4, 'study_room'),
+      service.filters(7, 4, 'study_room'),
+    ]);
+    expect(get).toHaveBeenCalledTimes(2);
+
+    await service.filters(7, 4, 'study_room', true);
+    expect(get).toHaveBeenCalledTimes(4);
+  });
 });

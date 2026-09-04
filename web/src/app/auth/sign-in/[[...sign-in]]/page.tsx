@@ -5,7 +5,7 @@ import { getPlatformUserServer } from '@/features/booking/api/server-service';
 
 export const metadata: Metadata = {
   title: '登录',
-  description: '登录一考即过预约控制台。'
+  description: '登录席定高校座位预约平台。'
 };
 
 export default async function Page() {

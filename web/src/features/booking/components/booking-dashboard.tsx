@@ -100,7 +100,9 @@ export default function BookingDashboard({ initialData }: { initialData: Booking
     void getClientSnapshot()
       .then((nextSnapshot) => {
         setSnapshot(nextSnapshot);
-        toast.success('状态已刷新', { description: '所有账号和任务都已完成检查。' });
+        toast.success('状态已刷新', {
+          description: '所有账号和任务都已完成检查。'
+        });
       })
       .catch((error) => toast.error(error instanceof Error ? error.message : '刷新状态失败'))
       .finally(() => setIsRefreshing(false));
@@ -125,7 +127,7 @@ export default function BookingDashboard({ initialData }: { initialData: Booking
             <p className='text-muted-foreground mt-2 max-w-2xl text-sm leading-6'>
               {summary.enabledTasks > 0
                 ? `你的 ${summary.enabledTasks} 个启用任务已排程。系统会在开放时间自动预热账号，并按候选策略完成预约。`
-                : '还没有启用任务，先去配置一个明早的预约策略。'}
+                : '还没有启用任务，先去配置一条自动预约策略。'}
             </p>
           </div>
           <div className='grid grid-cols-2 gap-2 sm:flex'>
@@ -153,14 +155,14 @@ export default function BookingDashboard({ initialData }: { initialData: Booking
           <MetricCard
             label='已启用任务'
             value={String(summary.enabledTasks)}
-            detail={summary.enabledTasks ? '全部将在明早自动执行' : '暂无启用任务'}
+            detail={summary.enabledTasks ? '将在下一次开放窗口自动执行' : '暂无启用任务'}
             icon={Icons.target}
             accent='success'
           />
           <MetricCard
             label='下次执行'
             value={summary.executionTime}
-            detail='北京时间 · 每日开放'
+            detail='学校开放后自动提交'
             icon={Icons.clock}
           />
           <MetricCard
@@ -183,7 +185,7 @@ export default function BookingDashboard({ initialData }: { initialData: Booking
           <Card className='shadow-none'>
             <CardHeader className='border-b'>
               <CardDescription>下一次执行</CardDescription>
-              <CardTitle className='text-xl'>明早的预约窗口</CardTitle>
+              <CardTitle className='text-xl'>下一次预约窗口</CardTitle>
               <CardAction>
                 <Badge
                   variant='outline'
@@ -197,15 +199,15 @@ export default function BookingDashboard({ initialData }: { initialData: Booking
             <CardContent className='pt-5'>
               <div className='flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between'>
                 <div>
-                  <div className='text-5xl font-semibold tracking-[-0.06em] tabular-nums'>
+                  <div className='text-4xl font-semibold tracking-[-0.06em] tabular-nums sm:text-5xl'>
                     {summary.executionTime}
                   </div>
-                  <p className='text-muted-foreground mt-2 text-sm'>北京时间 · 自动执行</p>
+                  <p className='text-muted-foreground mt-2 text-sm'>学校开放后 · 自动提交</p>
                 </div>
                 <div className='grid grid-cols-2 gap-x-8 gap-y-3 text-sm'>
                   <div>
-                    <p className='text-muted-foreground text-xs'>预热时间</p>
-                    <p className='mt-1 font-medium tabular-nums'>{summary.prewarmTime}</p>
+                    <p className='text-muted-foreground text-xs'>准备阶段</p>
+                    <p className='mt-1 font-medium'>{summary.prewarmTime}</p>
                   </div>
                   <div>
                     <p className='text-muted-foreground text-xs'>执行窗口</p>
@@ -245,7 +247,10 @@ export default function BookingDashboard({ initialData }: { initialData: Booking
               <CardAction>
                 <Link
                   href='/dashboard/runs'
-                  className={buttonVariants({ variant: 'ghost', size: 'icon-sm' })}
+                  className={buttonVariants({
+                    variant: 'ghost',
+                    size: 'icon-sm'
+                  })}
                   aria-label='查看全部运行记录'
                 >
                   <Icons.arrowRight />

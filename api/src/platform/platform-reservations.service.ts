@@ -1,0 +1,296 @@
+import {
+  Injectable,
+  NotFoundException,
+  UnprocessableEntityException,
+} from '@nestjs/common';
+import { PlatformAccountsService } from './platform-accounts.service';
+import { PlatformServiceConnectionsService } from './platform-service-connections.service';
+import { SchoolAuthenticationService } from './school-authentication.service';
+import { PlatformSeatCatalogService } from './platform-seat-catalog.service';
+import type { ImmediateReservationDto } from './dto/reservation.dto';
+import type { SeatServiceType } from './entities/school-service-connection.entity';
+import {
+  BOOKABLE_END_MINUTES,
+  BOOKABLE_START_MINUTES,
+} from './booking-time.constants';
+
+type JsonRecord = Record<string, unknown>;
+
+export type ReservationStatus =
+  | 'upcoming'
+  | 'active'
+  | 'completed'
+  | 'cancelled'
+  | 'unknown';
+
+export type ReservationView = {
+  id: string;
+  receipt: string | null;
+  accountId: string;
+  account: string;
+  venueType: SeatServiceType;
+  venueLabel: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  location: string;
+  status: ReservationStatus;
+  statusLabel: string;
+  checkedIn: boolean;
+  canCancel: boolean;
+};
+
+@Injectable()
+export class PlatformReservationsService {
+  constructor(
+    private readonly accounts: PlatformAccountsService,
+    private readonly connections: PlatformServiceConnectionsService,
+    private readonly schoolAuth: SchoolAuthenticationService,
+    private readonly catalog: PlatformSeatCatalogService,
+  ) {}
+
+  async list(
+    userId: number,
+    accountId: number,
+    serviceType: SeatServiceType,
+  ): Promise<ReservationView[]> {
+    const context = await this.context(userId, accountId, serviceType);
+    const response = await this.request(
+      context,
+      '/rest/v2/history/1/50?page=1&pageSize=50',
+    );
+    const data = record(response.payload?.data);
+    const reservations = Array.isArray(data.reservations)
+      ? data.reservations
+      : [];
+    return reservations
+      .map((item) =>
+        this.normalize(item, context.account.label, accountId, serviceType),
+      )
+      .filter((item): item is ReservationView => item !== null);
+  }
+
+  async cancel(
+    userId: number,
+    accountId: number,
+    serviceType: SeatServiceType,
+    reservationId: string,
+  ): Promise<ReservationView> {
+    const context = await this.context(userId, accountId, serviceType);
+    const current = await this.list(userId, accountId, serviceType);
+    const target = current.find((item) => item.id === reservationId);
+    if (!target) throw new NotFoundException('预约记录不存在');
+    if (!target.canCancel) {
+      throw new UnprocessableEntityException('这条预约当前不可取消');
+    }
+
+    await this.request(context, `/rest/v2/cancel/${segment(reservationId)}`);
+    this.catalog.invalidateAccount(userId, accountId, serviceType);
+    let cancelled: ReservationView | undefined;
+    try {
+      const refreshed = await this.list(userId, accountId, serviceType);
+      cancelled = refreshed.find((item) => item.id === reservationId);
+    } catch {
+      // The school may apply the cancellation before its history endpoint catches up.
+    }
+    return (
+      cancelled ?? {
+        ...target,
+        status: 'cancelled',
+        statusLabel: '已取消',
+        canCancel: false,
+      }
+    );
+  }
+
+  async book(
+    userId: number,
+    dto: ImmediateReservationDto,
+  ): Promise<ReservationView> {
+    if (
+      dto.startTime < BOOKABLE_START_MINUTES ||
+      dto.endTime > BOOKABLE_END_MINUTES ||
+      dto.endTime <= dto.startTime
+    ) {
+      throw new UnprocessableEntityException(
+        '可预约时间为 08:00–22:00，且结束时间必须晚于开始时间',
+      );
+    }
+    const context = await this.context(userId, dto.accountId, dto.serviceType);
+    const response = await this.schoolAuth.book(
+      context.token,
+      context.mode,
+      dto.date,
+      {
+        seatId: dto.seatId.trim(),
+        startTime: dto.startTime,
+        endTime: dto.endTime,
+      },
+      10_000,
+      dto.serviceType,
+    );
+    assertSuccess(response);
+    this.catalog.invalidateAccount(userId, dto.accountId, dto.serviceType);
+    const data = record(response.payload?.data);
+    const reservation = this.normalize(
+      data,
+      context.account.label,
+      dto.accountId,
+      dto.serviceType,
+    );
+    return reservation
+      ? {
+          ...reservation,
+          status:
+            reservation.status === 'unknown' ? 'upcoming' : reservation.status,
+          statusLabel:
+            reservation.status === 'unknown'
+              ? '已预约'
+              : reservation.statusLabel,
+          canCancel: true,
+        }
+      : {
+          id: stringValue(data.id) || 'pending',
+          receipt: stringValue(data.receipt),
+          accountId: String(dto.accountId),
+          account: context.account.label,
+          venueType: dto.serviceType,
+          venueLabel: dto.serviceType === 'library' ? '图书馆' : '自习室',
+          date: normalizeDate(stringValue(data.onDate) || dto.date),
+          startTime: stringValue(data.begin) || formatTime(dto.startTime),
+          endTime: stringValue(data.end) || formatTime(dto.endTime),
+          location: stringValue(data.location) || `座位 ${dto.seatId}`,
+          status: 'upcoming',
+          statusLabel: '已预约',
+          checkedIn: data.checkedIn === true,
+          canCancel: true,
+        };
+  }
+
+  private async context(
+    userId: number,
+    accountId: number,
+    serviceType: SeatServiceType,
+  ) {
+    const account = await this.accounts.findOwned(userId, accountId);
+    const connection = await this.connections.ensureReady(account, serviceType);
+    return { ...connection, account };
+  }
+
+  private async request(
+    context: Awaited<ReturnType<PlatformReservationsService['context']>>,
+    path: string,
+  ) {
+    const response = await this.schoolAuth.get(
+      context.token,
+      context.mode,
+      path,
+      context.serviceType,
+    );
+    assertSuccess(response);
+    return response;
+  }
+
+  private normalize(
+    value: unknown,
+    account: string,
+    accountId: number,
+    serviceType: SeatServiceType,
+  ): ReservationView | null {
+    const item = record(value);
+    const id = item.id;
+    if (id === undefined || id === null || String(id).trim() === '')
+      return null;
+    const status = normalizeStatus(item.stat);
+    return {
+      id: String(id),
+      receipt: stringValue(item.receipt),
+      accountId: String(accountId),
+      account,
+      venueType: serviceType,
+      venueLabel: serviceType === 'library' ? '图书馆' : '自习室',
+      date: normalizeDate(stringValue(item.date) || stringValue(item.onDate)),
+      startTime: stringValue(item.begin) || '',
+      endTime: stringValue(item.end) || '',
+      location:
+        stringValue(item.loc) || stringValue(item.location) || '学校座位',
+      status,
+      statusLabel: statusLabel(status),
+      checkedIn: item.checkedIn === true,
+      canCancel: status === 'upcoming' || status === 'active',
+    };
+  }
+}
+
+function assertSuccess(response: {
+  httpStatus: number;
+  payload: JsonRecord | null;
+  message: string;
+}): void {
+  if (
+    response.httpStatus !== 200 ||
+    response.payload?.status !== 'success' ||
+    String(response.payload?.code ?? '') !== '0'
+  ) {
+    throw new UnprocessableEntityException(
+      response.message || '学校预约服务暂时不可用',
+    );
+  }
+}
+
+function record(value: unknown): JsonRecord {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? (value as JsonRecord)
+    : {};
+}
+
+function stringValue(value: unknown): string | null {
+  return typeof value === 'string' && value ? value : null;
+}
+
+function segment(value: string): string {
+  return encodeURIComponent(value.trim());
+}
+
+function normalizeDate(value: string | null): string {
+  if (!value) return '';
+  const match = value.match(/^(\d{4})[-年](\d{1,2})[-月](\d{1,2})/);
+  if (!match) return value;
+  return `${match[1]}-${match[2].padStart(2, '0')}-${match[3].padStart(2, '0')}`;
+}
+
+function normalizeStatus(value: unknown): ReservationStatus {
+  switch (String(value ?? '').toUpperCase()) {
+    case 'RESERVE':
+    case 'RESERVED':
+      return 'upcoming';
+    case 'USING':
+    case 'CHECKIN':
+    case 'IN_USE':
+      return 'active';
+    case 'COMPLETE':
+    case 'COMPLETED':
+      return 'completed';
+    case 'CANCEL':
+    case 'CANCELLED':
+      return 'cancelled';
+    default:
+      return 'unknown';
+  }
+}
+
+function statusLabel(status: ReservationStatus): string {
+  return {
+    upcoming: '待使用',
+    active: '使用中',
+    completed: '已完成',
+    cancelled: '已取消',
+    unknown: '状态未知',
+  }[status];
+}
+
+function formatTime(minutes: number): string {
+  return `${Math.floor(minutes / 60)
+    .toString()
+    .padStart(2, '0')}:${(minutes % 60).toString().padStart(2, '0')}`;
+}

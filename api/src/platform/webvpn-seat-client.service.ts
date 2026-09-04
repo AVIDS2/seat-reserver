@@ -211,9 +211,7 @@ export class WebVpnSeatClientService {
 
   async get(token: string, path: string): Promise<SeatResponse> {
     const response = await this.signedSeatRequest(token, 'GET', path);
-    return response.httpStatus === 200 && response.payload
-      ? { ...response, success: true, message: '' }
-      : response;
+    return response;
   }
 
   private async loginToGateway(
@@ -690,7 +688,8 @@ function proxyUrl(proxyBase: string, path: string): URL {
 
 function proxyApiUrl(proxyBase: string, path: string, token: string): URL {
   const url = proxyUrl(proxyBase, path);
-  url.search = `?token=${encodeURIComponent(token)}&enlink-vpn`;
+  url.searchParams.set('token', token);
+  url.searchParams.set('enlink-vpn', '');
   return url;
 }
 

@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 
-import { Icons } from '@/components/icons';
+import { BrandMark } from '@/components/brand-mark';
 import { buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -10,7 +10,7 @@ import UserAuthForm from './user-auth-form';
 
 export const metadata: Metadata = {
   title: '登录',
-  description: '登录一考即过预约控制台。'
+  description: '登录席定高校座位预约平台。'
 };
 
 export default function SignInViewPage() {
@@ -19,7 +19,7 @@ export default function SignInViewPage() {
       <AuthBrandPanel
         eyebrow='AUTOMATION FOR DAILY SEATS'
         title='把每一次预约，交给更稳定的自动化。'
-        description='统一管理学校账号、候选策略和每日运行结果，让明早的预约清晰可控。'
+        description='统一管理学校账号、候选策略和每次运行结果，让每一次预约清晰可控。'
       />
 
       <section className='flex items-center justify-center px-6 py-12'>
@@ -28,12 +28,10 @@ export default function SignInViewPage() {
             <Link
               href='/'
               className='flex items-center gap-2 text-sm font-semibold lg:hidden'
-              aria-label='返回一考即过首页'
+              aria-label='返回席定首页'
             >
-              <span className='bg-foreground text-background flex size-8 items-center justify-center rounded-lg'>
-                <Icons.bolt className='size-4' />
-              </span>
-              一考即过
+              <BrandMark size={32} />
+              席定
             </Link>
             <Link
               href='/auth/sign-up'

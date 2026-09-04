@@ -16,7 +16,7 @@ import {
 
 // Default/fallback data when no content is set
 const defaultData = {
-  title: '预约控制台',
+  title: '席定工作台',
   sections: [
     {
       title: '状态说明',
