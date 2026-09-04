@@ -139,10 +139,11 @@ export class PlatformServiceConnectionsService {
 
     try {
       const password = this.crypto.decrypt(account.encryptedSchoolPassword);
+      const preferredMode = connection?.authMode;
       const authenticated = await this.schoolAuth.authenticate(
         account.schoolUsername,
         password,
-        undefined,
+        preferredMode,
         serviceType,
       );
       const verified = await this.schoolAuth.verifyToken(

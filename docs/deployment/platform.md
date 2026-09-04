@@ -42,6 +42,8 @@
 
 WebVPN 网关登录会先读取当前登录页下发的会话密钥，再按网关页面的 AES 参数提交账号密码；登录后的 `clientInfo` Cookie 按 `/enlink/` 路径读取，以兼容网关更新后的 Cookie 作用域。
 
+已有学校账号恢复连接时沿用数据库中的认证模式：`direct` 只刷新直连 Token，`webvpn` 直接重建 WebVPN 会话；只有首次添加账号才执行直连优先的自动探测。
+
 2026-09-04 的故障排查确认：API 重启会清空 WebVPN 的进程内 Cookie 会话，持久化的 WebVPN 业务 Token 不能脱离原代理会话直接复用；重启后必须重新登录。VPS 可以访问 `zmvpn.cczu.edu.cn`，但到 `sso.cczu.edu.cn` 的公网连接当前超时，因此图书馆和处于 WebVPN 模式的账号需要学校统一认证链路可达且凭据有效；自习室的 `direct` 账号不依赖该 SSO 回退。平台现在会保留学校明确返回的账号密码错误，不再继续尝试 WebVPN，以免消耗学校登录次数。
 
 自习室成功链路的 `/rest/v2/settings` 返回 `isCaptchaOpen=false`，不需要预约图形验证码。此前“验证码错误”来自平台错误使用 `zuowei.cczu.edu.cn` 图书馆代理入口并发送不完整请求体，不代表账号未绑定。正确的自习室预约体是七字段 `multipart/form-data`：`startTime`、`endTime`、`seat`、`date`、`userId`、`username` 和空 `authid`。

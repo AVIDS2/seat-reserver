@@ -76,7 +76,6 @@ export class SchoolAuthenticationService {
       return { token: result.token, mode: 'direct' };
     } catch (error: unknown) {
       if (!(error instanceof UnprocessableEntityException)) throw error;
-      if (isCredentialError(error)) throw error;
       const result = await this.webVpnSeatClient.authenticate(
         username,
         password,
@@ -119,18 +118,4 @@ export class SchoolAuthenticationService {
       ? this.webVpnSeatClient.get(token, path)
       : this.seatClient.get(token, path);
   }
-}
-
-function isCredentialError(error: UnprocessableEntityException): boolean {
-  const response = error.getResponse();
-  const message =
-    typeof response === 'string'
-      ? response
-      : response && typeof response === 'object' && 'message' in response
-        ? String(response.message)
-        : error.message;
-
-  return /(用户名|账号).*(密码|不正确|错误)|(密码|凭据).*(不正确|错误)/i.test(
-    message,
-  );
 }
