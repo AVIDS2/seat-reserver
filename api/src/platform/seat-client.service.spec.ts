@@ -6,7 +6,10 @@ import {
   it,
   jest,
 } from '@jest/globals';
-import { SeatClientService } from './seat-client.service';
+import {
+  isSuccessfulSeatPayload,
+  SeatClientService,
+} from './seat-client.service';
 
 describe('SeatClientService', () => {
   const previousApiUrl = process.env.SEAT_API_URL;
@@ -125,5 +128,32 @@ describe('SeatClientService', () => {
     expect(String(fetchMock.mock.calls[0]?.[0])).toBe(
       'https://leosys.cn/cczukaoyan/rest/v2/free/filters',
     );
+  });
+
+  it('should accept each successful school response envelope', () => {
+    expect(
+      isSuccessfulSeatPayload(200, {
+        status: 'success',
+        code: '0',
+        data: {},
+      }),
+    ).toBe(true);
+    expect(
+      isSuccessfulSeatPayload(200, { status: true, data: { hours: 8 } }),
+    ).toBe(true);
+    expect(
+      isSuccessfulSeatPayload(200, { status: 'OK', token: 'challenge' }),
+    ).toBe(true);
+  });
+
+  it('should reject successful-looking envelopes with a business error code', () => {
+    expect(
+      isSuccessfulSeatPayload(200, {
+        status: 'success',
+        code: '1',
+        message: '验证码错误',
+      }),
+    ).toBe(false);
+    expect(isSuccessfulSeatPayload(503, { status: true })).toBe(false);
   });
 });

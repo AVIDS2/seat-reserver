@@ -12,7 +12,11 @@ import {
   randomUUID,
 } from 'node:crypto';
 import { CookieJar, type SerializedCookieJar } from 'tough-cookie';
-import type { SeatCandidate, SeatResponse } from './seat-client.service';
+import {
+  isSuccessfulSeatPayload,
+  type SeatCandidate,
+  type SeatResponse,
+} from './seat-client.service';
 import type { SeatServiceType } from './entities/school-service-connection.entity';
 
 type CookieFetch = FetchCookieImpl<RequestInfo | URL, RequestInit, Response>;
@@ -637,10 +641,7 @@ export class WebVpnSeatClientService {
           ? payload.message
           : raw.slice(0, 240);
       const code = payload?.code === undefined ? '' : String(payload.code);
-      const success =
-        result.response.status === 200 &&
-        payload?.status === 'success' &&
-        code === '0';
+      const success = isSuccessfulSeatPayload(result.response.status, payload);
       if (code === '12') this.sessions.delete(token);
       return {
         httpStatus: result.response.status,

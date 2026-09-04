@@ -24,6 +24,20 @@ export type SeatCandidate = {
 
 export type SeatServiceType = 'study_room' | 'library';
 
+export function isSuccessfulSeatPayload(
+  httpStatus: number,
+  payload: SeatPayload | null,
+): boolean {
+  if (httpStatus !== 200 || !payload) return false;
+  const code = payload.code === undefined ? null : String(payload.code);
+  if (code !== null && code !== '0') return false;
+  return (
+    payload.status === 'success' ||
+    payload.status === true ||
+    payload.status === 'OK'
+  );
+}
+
 @Injectable()
 export class SeatClientService {
   private readonly apiUrl =
@@ -180,10 +194,7 @@ export class SeatClientService {
           ? payload.message
           : raw.slice(0, 240);
       const code = payload?.code === undefined ? '' : String(payload.code);
-      const success =
-        response.status === 200 &&
-        payload?.status === 'success' &&
-        code === '0';
+      const success = isSuccessfulSeatPayload(response.status, payload);
       return { httpStatus: response.status, payload, message, code, success };
     } catch (error: unknown) {
       const message =
