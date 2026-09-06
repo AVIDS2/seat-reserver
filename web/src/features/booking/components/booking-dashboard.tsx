@@ -17,6 +17,7 @@ import {
   CardHeader,
   CardTitle
 } from '@/components/ui/card';
+import { Switch } from '@/components/ui/switch';
 import PageContainer from '@/components/layout/page-container';
 import {
   Item,
@@ -30,23 +31,20 @@ import {
 import { cn } from '@/lib/utils';
 
 import type { BookingSnapshot, BookingTask } from '../types';
-import { getClientSnapshot, runBookingTask } from '../api/service';
+import { getClientSnapshot, setBookingTaskEnabled } from '../api/service';
 import { MetricCard } from './metric-card';
 import { BookingOpenCountdown } from './booking-open-countdown';
 import { RunStatusBadge, TaskStatusBadge } from './status-badge';
 
-async function runTask(task: BookingTask) {
-  try {
-    await runBookingTask(task.id);
-    toast.success(`${task.name} 已开始执行`, {
-      description: '系统正在按你设置的座位和时间尝试预约，结果会显示在运行记录中。'
-    });
-  } catch (error) {
-    toast.error(error instanceof Error ? error.message : '运行任务失败');
-  }
-}
-
-function TaskRow({ task }: { task: BookingTask }) {
+function TaskRow({
+  task,
+  onToggle,
+  isToggling
+}: {
+  task: BookingTask;
+  onToggle: (task: BookingTask, enabled: boolean) => void;
+  isToggling: boolean;
+}) {
   return (
     <motion.div layout initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}>
       <Item variant='outline' className='items-start sm:items-center'>
@@ -54,10 +52,12 @@ function TaskRow({ task }: { task: BookingTask }) {
           <Icons.target className='size-4' />
         </ItemMedia>
         <ItemContent className='min-w-0'>
-          <ItemTitle className='max-w-full'>
-            <span className='truncate'>{task.name}</span>
+          <div className='flex min-w-0 flex-wrap items-center gap-2'>
+            <ItemTitle className='min-w-0 flex-1'>
+              <span className='truncate'>{task.name}</span>
+            </ItemTitle>
             <TaskStatusBadge status={task.status} />
-          </ItemTitle>
+          </div>
           <ItemDescription>
             {task.account} · {task.seat} · {task.time}
           </ItemDescription>
@@ -65,21 +65,26 @@ function TaskRow({ task }: { task: BookingTask }) {
             {formatLocation(task.building, task.venueType, task.roomName)}
           </ItemDescription>
         </ItemContent>
-        <ItemActions className='ml-auto min-w-0 items-center'>
-          <div className='min-w-0 text-right'>
-            <p className='text-xs font-medium'>{task.nextRun}</p>
+        <ItemActions className='ml-12 w-[calc(100%-3rem)] justify-between border-t pt-3 sm:ml-auto sm:w-auto sm:justify-end sm:border-t-0 sm:pt-0'>
+          <div className='min-w-0 text-left sm:text-right'>
+            <p className='truncate text-xs font-medium'>{task.nextRun}</p>
             <p className='text-muted-foreground mt-1 line-clamp-1 text-[11px]'>
               {task.lastMessage}
             </p>
           </div>
-          <Button
-            variant='outline'
-            size='icon-sm'
-            aria-label={`立即运行${task.name}`}
-            onClick={() => runTask(task)}
-          >
-            <Icons.play />
-          </Button>
+          <Switch
+            checked={task.enabled}
+            onCheckedChange={(enabled) => onToggle(task, enabled)}
+            disabled={task.venueType === 'library' || isToggling}
+            aria-label={`${task.name}${task.enabled ? '暂停' : '继续'}自动预约`}
+            title={
+              task.venueType === 'library'
+                ? '图书馆需要预约前人工验证'
+                : task.enabled
+                  ? '暂停自动预约'
+                  : '继续自动预约'
+            }
+          />
         </ItemActions>
       </Item>
     </motion.div>
@@ -89,6 +94,7 @@ function TaskRow({ task }: { task: BookingTask }) {
 export default function BookingDashboard({ initialData }: { initialData: BookingSnapshot }) {
   const [snapshot, setSnapshot] = useState(initialData);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [togglingTaskId, setTogglingTaskId] = useState<string | null>(null);
   const summary = snapshot.summary;
 
   useEffect(() => {
@@ -118,6 +124,46 @@ export default function BookingDashboard({ initialData }: { initialData: Booking
       })
       .catch((error) => toast.error(error instanceof Error ? error.message : '刷新状态失败'))
       .finally(() => setIsRefreshing(false));
+  };
+
+  const toggleTask = async (task: BookingTask, enabled: boolean) => {
+    if (togglingTaskId) return;
+    setTogglingTaskId(task.id);
+    const previousSnapshot = snapshot;
+    setSnapshot((current) => ({
+      ...current,
+      summary: {
+        ...current.summary,
+        enabledTasks: Math.max(0, current.summary.enabledTasks + (enabled ? 1 : -1))
+      },
+      tasks: current.tasks.map((item) =>
+        item.id === task.id
+          ? {
+              ...item,
+              enabled,
+              status: enabled ? 'enabled' : 'paused',
+              nextRun: enabled ? '等待下一次开放窗口' : '已暂停'
+            }
+          : item
+      )
+    }));
+    try {
+      const updated = await setBookingTaskEnabled(task.id, enabled);
+      setSnapshot((current) => ({
+        ...current,
+        tasks: current.tasks.map((item) => (item.id === updated.id ? updated : item))
+      }));
+      toast.success(enabled ? '任务已继续' : '任务已暂停', {
+        description: enabled
+          ? '系统会在下一次开放窗口按你的设置自动预约。'
+          : '暂停后不会再自动预约，已经成功的预约不会被取消。'
+      });
+    } catch (error) {
+      setSnapshot(previousSnapshot);
+      toast.error(error instanceof Error ? error.message : '更新任务状态失败');
+    } finally {
+      setTogglingTaskId(null);
+    }
   };
 
   return (
@@ -302,7 +348,12 @@ export default function BookingDashboard({ initialData }: { initialData: Booking
           <CardContent>
             <ItemGroup className='gap-2'>
               {snapshot.tasks.map((task) => (
-                <TaskRow key={task.id} task={task} />
+                <TaskRow
+                  key={task.id}
+                  task={task}
+                  onToggle={toggleTask}
+                  isToggling={togglingTaskId === task.id}
+                />
               ))}
             </ItemGroup>
           </CardContent>

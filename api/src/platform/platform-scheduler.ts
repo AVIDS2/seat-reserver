@@ -6,6 +6,7 @@ import { BookingTaskEntity } from './entities/booking-task.entity';
 import { PlatformQueueService } from './platform-queue.service';
 import { PlatformRedisService } from './platform-redis.service';
 import { StatusEnum } from '../statuses/statuses.enum';
+import { PlatformServiceConnectionsService } from './platform-service-connections.service';
 
 @Injectable()
 export class PlatformScheduler {
@@ -16,7 +17,13 @@ export class PlatformScheduler {
     private readonly tasks: Repository<BookingTaskEntity>,
     private readonly queue: PlatformQueueService,
     private readonly redis: PlatformRedisService,
+    private readonly connections: PlatformServiceConnectionsService,
   ) {}
+
+  @Cron('0 */5 * * * *', { timeZone: 'Asia/Shanghai' })
+  async recoverConnections(): Promise<void> {
+    await this.connections.recoverDueConnections();
+  }
 
   @Cron('50 59 5 * * *', { timeZone: 'Asia/Shanghai' })
   async schedulePrewarm(): Promise<void> {

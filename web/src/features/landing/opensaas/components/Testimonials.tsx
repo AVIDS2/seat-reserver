@@ -18,10 +18,10 @@ export function Testimonials({ testimonials }: { testimonials: Testimonial[] }) 
         description='从一次配置到每天执行，所有状态都保持可见。'
       />
 
-      <div className='relative z-10 w-full columns-1 gap-2 px-4 md:columns-2 md:gap-6 md:px-0 lg:columns-3'>
+      <div className='relative z-10 grid w-full grid-cols-1 gap-4 px-4 sm:grid-cols-2 md:gap-6 md:px-0 lg:grid-cols-3'>
         {testimonials.map((testimonial, idx) => (
-          <div key={idx} className='mb-6 break-inside-avoid'>
-            <Card className='flex flex-col justify-between'>
+          <div key={idx} className='min-w-0'>
+            <Card className='flex h-full flex-col justify-between'>
               <CardContent className='p-6'>
                 <blockquote className='mb-4 leading-6'>
                   <p className='text-sm italic'>{testimonial.quote}</p>

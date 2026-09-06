@@ -51,6 +51,15 @@ export class SchoolServiceConnectionEntity extends EntityRelationalHelper {
   @Column({ type: 'timestamp', nullable: true })
   webVpnSessionUpdatedAt: Date | null;
 
+  @Column({ type: 'timestamp', nullable: true })
+  lastAttemptAt: Date | null;
+
+  @Column({ type: 'timestamp', nullable: true })
+  nextRetryAt: Date | null;
+
+  @Column({ type: 'integer', default: 0 })
+  retryCount: number;
+
   @ManyToOne(() => SchoolAccountEntity, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'schoolAccountId' })
   schoolAccount: SchoolAccountEntity;

@@ -24,7 +24,7 @@ export type SchoolAccountView = {
   id: string;
   label: string;
   username: string;
-  status: 'connected' | 'attention';
+  status: 'connected' | 'recovering' | 'attention';
   statusLabel: string;
   tokenLabel: string;
   refreshedAt: string;
@@ -32,7 +32,7 @@ export type SchoolAccountView = {
   tasks: number;
   services: Array<{
     type: 'study_room' | 'library';
-    status: 'connected' | 'attention' | 'not_connected';
+    status: 'connected' | 'recovering' | 'attention' | 'not_connected';
     label: string;
   }>;
 };
@@ -247,15 +247,25 @@ export class PlatformAccountsService {
       username.length > 5
         ? `${username.slice(0, 3)}******${username.slice(-2)}`
         : '******';
-    const connected = account.status === 'active' && !!account.encryptedToken;
     const connections = await this.serviceConnections.listForAccount(
       account.id,
     );
+    const connected = account.status === 'active' && !!account.encryptedToken;
+    const recovering = connections.some(
+      (connection) => connection.status === 'recovering',
+    );
+    const viewStatus = connected
+      ? ('connected' as const)
+      : recovering
+        ? ('recovering' as const)
+        : ('attention' as const);
     const serviceStatus = (type: 'study_room' | 'library') => {
       const connection = connections.find((item) => item.serviceType === type);
       if (!connection) return 'not_connected' as const;
-      return connection.status === 'active' && connection.encryptedToken
-        ? ('connected' as const)
+      if (connection.status === 'active' && connection.encryptedToken)
+        return 'connected' as const;
+      return connection.status === 'recovering'
+        ? ('recovering' as const)
         : ('attention' as const);
     };
 
@@ -263,9 +273,19 @@ export class PlatformAccountsService {
       id: String(account.id),
       label: account.label,
       username: masked,
-      status: connected ? 'connected' : 'attention',
-      statusLabel: connected ? '连接正常' : '需要关注',
-      tokenLabel: connected ? '连接可用' : '需要重新连接',
+      status: viewStatus,
+      statusLabel:
+        viewStatus === 'connected'
+          ? '连接正常'
+          : viewStatus === 'recovering'
+            ? '系统自动恢复中'
+            : '需要处理',
+      tokenLabel:
+        viewStatus === 'connected'
+          ? '连接可用'
+          : viewStatus === 'recovering'
+            ? '正在自动检查连接'
+            : '请检查学校账号信息',
       refreshedAt: formatDate(account.tokenRefreshedAt),
       lastVerifiedAt: formatDate(account.lastVerifiedAt),
       tasks,

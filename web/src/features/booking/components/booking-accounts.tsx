@@ -35,6 +35,7 @@ import {
   createSchoolAccount,
   connectSchoolService,
   deleteSchoolAccount,
+  getClientSnapshot,
   refreshSchoolAccount,
   updateSchoolAccount,
   type CreateAccountPayload,
@@ -170,6 +171,22 @@ export default function BookingAccountsPage({
   const [editorOpen, setEditorOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<BookingAccount | null>(null);
 
+  useEffect(() => {
+    let active = true;
+    const poll = () => {
+      void getClientSnapshot()
+        .then((snapshot) => {
+          if (active) setAccounts(snapshot.accounts);
+        })
+        .catch(() => undefined);
+    };
+    const interval = window.setInterval(poll, 30_000);
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+    };
+  }, []);
+
   const saveAccount = async (payload: CreateAccountPayload | UpdateAccountPayload, id?: string) => {
     if (id) {
       const updated = await updateSchoolAccount(id, payload as UpdateAccountPayload);
@@ -267,6 +284,7 @@ export default function BookingAccountsPage({
             {accounts.map((account) => {
               const isRefreshing = refreshingId === account.id;
               const connected = account.status === 'connected';
+              const recovering = account.status === 'recovering';
               return (
                 <Card key={account.id} className='min-w-0 shadow-none'>
                   <CardHeader className='border-b'>
@@ -286,10 +304,12 @@ export default function BookingAccountsPage({
                       className={cn(
                         connected
                           ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
-                          : 'border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-400'
+                          : recovering
+                            ? 'border-blue-500/20 bg-blue-500/10 text-blue-700 dark:text-blue-400'
+                            : 'border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-400'
                       )}
                     >
-                      <Icons.circleCheck />
+                      {connected ? <Icons.circleCheck /> : <Icons.refresh />}
                       {account.statusLabel}
                     </Badge>
                   </CardHeader>
@@ -298,6 +318,8 @@ export default function BookingAccountsPage({
                       {account.services.map((service) => {
                         const serviceKey = `${account.id}:${service.type}`;
                         const serviceConnected = service.status === 'connected';
+                        const serviceRecovering = service.status === 'recovering';
+                        const serviceAttention = service.status === 'attention';
                         return (
                           <div key={service.type} className='flex items-center gap-1.5'>
                             <Badge
@@ -305,17 +327,21 @@ export default function BookingAccountsPage({
                               className={cn(
                                 serviceConnected
                                   ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
-                                  : service.status === 'attention'
-                                    ? 'border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-400'
-                                    : 'text-muted-foreground'
+                                  : serviceRecovering
+                                    ? 'border-blue-500/20 bg-blue-500/10 text-blue-700 dark:text-blue-400'
+                                    : serviceAttention
+                                      ? 'border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-400'
+                                      : 'text-muted-foreground'
                               )}
                             >
                               {service.label} ·{' '}
                               {serviceConnected
                                 ? '已连接'
-                                : service.status === 'attention'
-                                  ? '需要重连'
-                                  : '未连接'}
+                                : serviceRecovering
+                                  ? '系统自动恢复中'
+                                  : serviceAttention
+                                    ? '需要检查账号'
+                                    : '未连接'}
                             </Badge>
                             {!serviceConnected && (
                               <Button
@@ -327,7 +353,11 @@ export default function BookingAccountsPage({
                               >
                                 {connectingService === serviceKey
                                   ? '连接中'
-                                  : `连接${service.label}`}
+                                  : serviceRecovering
+                                    ? '立即重试'
+                                    : serviceAttention
+                                      ? '检查连接'
+                                      : `连接${service.label}`}
                               </Button>
                             )}
                           </div>

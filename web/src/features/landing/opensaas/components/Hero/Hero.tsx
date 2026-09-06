@@ -2,12 +2,25 @@ import { buttonVariants } from '@/components/ui/button';
 import type { PlatformUser } from '@/features/booking/api/service';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
+import { preload } from 'react-dom';
 
 import { Icons } from '@/components/icons';
 
 export function Hero({ user }: { user: PlatformUser | null }) {
+  preload('/landing/campus-library-hero-960.avif', {
+    as: 'image',
+    type: 'image/avif',
+    imageSrcSet:
+      '/landing/campus-library-hero-960.avif 960w, /landing/campus-library-hero-1600.avif 1600w, /landing/campus-library-hero-2400.avif 2400w, /landing/campus-library-hero-3200.avif 3200w',
+    imageSizes: '100vw',
+    fetchPriority: 'high'
+  });
+
   return (
-    <section className='relative flex min-h-[76svh] w-full items-end overflow-hidden bg-black'>
+    <section
+      className='bg-muted relative isolate flex min-h-[76svh] w-full items-end overflow-hidden bg-cover bg-center'
+      style={{ backgroundImage: "url('/landing/campus-library-hero-placeholder.jpg')" }}
+    >
       <picture className='absolute inset-0'>
         <source
           type='image/avif'
@@ -25,6 +38,7 @@ export function Hero({ user }: { user: PlatformUser | null }) {
           width='2400'
           height='1350'
           fetchPriority='high'
+          loading='eager'
           decoding='async'
           className='size-full object-cover object-center'
         />

@@ -54,20 +54,6 @@ export const features: GridFeature[] = [
     size: 'medium'
   },
   {
-    name: '状态清晰',
-    description: '无需翻找记录，关键状态与下一步处理直接呈现在界面中。',
-    icon: <Icons.info className='size-7' />,
-    href: '#runs-feature',
-    size: 'small'
-  },
-  {
-    name: '安心检查',
-    description: '正式执行前检查账号与预约偏好，提前发现需要处理的问题。',
-    icon: <Icons.refresh className='size-7' />,
-    href: '#account-feature',
-    size: 'small'
-  },
-  {
     name: '统一工作台',
     description: '从账号连接到预约回执，所有重要信息都集中在同一处。',
     icon: <Icons.dashboard className='size-7' />,

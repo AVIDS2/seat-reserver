@@ -1,4 +1,8 @@
-import { Injectable, UnprocessableEntityException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  UnprocessableEntityException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { UserEntity } from '../users/infrastructure/persistence/relational/entities/user.entity';
@@ -20,6 +24,7 @@ export type ReadySeatConnection = {
 
 @Injectable()
 export class PlatformServiceConnectionsService {
+  private readonly logger = new Logger(PlatformServiceConnectionsService.name);
   private readonly readyFlights = new Map<
     string,
     Promise<ReadySeatConnection>
@@ -62,6 +67,9 @@ export class PlatformServiceConnectionsService {
     connection.webVpnSessionUpdatedAt = webVpnSession ? new Date() : null;
     connection.authMode = mode;
     connection.status = 'active';
+    connection.lastAttemptAt = new Date();
+    connection.nextRetryAt = null;
+    connection.retryCount = 0;
     connection.tokenRefreshedAt = new Date();
     connection.lastVerifiedAt = new Date();
     return this.connections.save(connection);
@@ -88,6 +96,41 @@ export class PlatformServiceConnectionsService {
     });
     this.readyFlights.set(key, flight);
     return flight;
+  }
+
+  async recoverDueConnections(): Promise<number> {
+    const connections = await this.connections.find({
+      where: [{ status: 'recovering' }, { status: 'attention' }],
+      relations: ['schoolAccount', 'user'],
+      order: { nextRetryAt: 'ASC' },
+      take: 100,
+    });
+    const now = Date.now();
+    const due = connections.filter(
+      (connection) =>
+        Number(connection.userId) ===
+          Number(connection.schoolAccount?.userId) &&
+        (connection.status === 'recovering' ||
+          (connection.status === 'attention' &&
+            (connection.retryCount ?? 0) < 5)) &&
+        (!connection.nextRetryAt || connection.nextRetryAt.getTime() <= now),
+    );
+    let recovered = 0;
+    for (const connection of due) {
+      try {
+        await this.ensureReady(
+          connection.schoolAccount,
+          connection.serviceType,
+        );
+        recovered += 1;
+      } catch {
+        // The failure is persisted by ensureReadyOnce; the next scheduled pass retries it.
+      }
+    }
+    if (due.length > 0) {
+      this.logger.log(`自动检查 ${due.length} 个连接，恢复 ${recovered} 个`);
+    }
+    return recovered;
   }
 
   private async ensureReadyOnce(
@@ -135,6 +178,9 @@ export class PlatformServiceConnectionsService {
           Date.now() - connection.lastVerifiedAt.getTime() < 60_000;
         if (recentlyVerified) {
           connection.status = 'active';
+          connection.retryCount = 0;
+          connection.nextRetryAt = null;
+          await this.connections.save(connection);
           return {
             token,
             mode: connection.authMode,
@@ -148,6 +194,8 @@ export class PlatformServiceConnectionsService {
           serviceType,
         );
         if (verified.success) {
+          connection.retryCount = 0;
+          connection.nextRetryAt = null;
           connection.lastVerifiedAt = new Date();
           connection.status = 'active';
           this.captureWebVpnSession(connection, token, connection.authMode);
@@ -202,10 +250,30 @@ export class PlatformServiceConnectionsService {
         connection,
       };
     } catch (error: unknown) {
-      if (connection) {
-        connection.status = 'attention';
-        await this.connections.save(connection);
-      }
+      connection ??= this.connections.create({
+        serviceType,
+        identifier: serviceType === 'library' ? 'cczu' : 'cczukaoyan',
+        encryptedToken: null,
+        encryptedWebVpnSession: null,
+        authMode: preferredMode ?? 'webvpn',
+        status: 'recovering',
+        tokenRefreshedAt: null,
+        lastVerifiedAt: null,
+        lastAttemptAt: null,
+        nextRetryAt: null,
+        retryCount: 0,
+        webVpnSessionUpdatedAt: null,
+        schoolAccount: account,
+        user: { id: ownerId } as UserEntity,
+      });
+      connection.retryCount = Math.min((connection.retryCount ?? 0) + 1, 10);
+      connection.status =
+        connection.retryCount >= 5 ? 'attention' : 'recovering';
+      connection.lastAttemptAt = new Date();
+      connection.nextRetryAt = new Date(
+        Date.now() + retryDelayMs(connection.retryCount),
+      );
+      await this.connections.save(connection);
       throw error;
     }
   }
@@ -235,4 +303,8 @@ export class PlatformServiceConnectionsService {
       order: { serviceType: 'ASC' },
     });
   }
+}
+
+function retryDelayMs(retryCount: number): number {
+  return Math.min(30 * 60 * 1000, 30 * 1000 * 2 ** Math.max(0, retryCount - 1));
 }

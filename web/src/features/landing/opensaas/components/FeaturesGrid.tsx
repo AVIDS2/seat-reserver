@@ -30,7 +30,7 @@ export function FeaturesGrid({ features, className = '' }: FeaturesGridProps) {
       />
       <div
         className={cn(
-          'mx-4 grid auto-rows-[minmax(140px,auto)] grid-cols-2 gap-4 md:mx-6 md:grid-cols-4 lg:mx-8 lg:grid-cols-6',
+          'mx-4 grid auto-rows-[minmax(160px,auto)] grid-cols-1 gap-4 sm:grid-cols-2 md:mx-6 lg:mx-8 lg:grid-cols-4',
           className
         )}
       >
@@ -56,8 +56,8 @@ function FeaturesGridItem({
 }: GridFeature) {
   const gridFeatureSizeToClasses: Record<GridFeature['size'], string> = {
     small: 'col-span-1',
-    medium: 'col-span-2 md:col-span-2 lg:col-span-2',
-    large: 'col-span-2 md:col-span-2 lg:col-span-2 row-span-2'
+    medium: 'col-span-1',
+    large: 'col-span-1 sm:col-span-2 lg:col-span-2 row-span-2'
   };
 
   const directionToClass: Record<NonNullable<GridFeature['direction']>, string> = {

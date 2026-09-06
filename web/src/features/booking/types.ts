@@ -1,6 +1,6 @@
 export type TaskStatus = 'enabled' | 'paused' | 'attention';
 export type RunStatus = 'success' | 'failed' | 'prewarming' | 'running' | 'pending' | 'skipped';
-export type AccountStatus = 'connected' | 'attention';
+export type AccountStatus = 'connected' | 'recovering' | 'attention';
 export type VenueType = 'library' | 'study_room';
 
 export type TimeCandidate = { start: number; end: number };
@@ -69,7 +69,7 @@ export type BookingAccount = {
   tasks: number;
   services: Array<{
     type: VenueType;
-    status: 'connected' | 'attention' | 'not_connected';
+    status: 'connected' | 'recovering' | 'attention' | 'not_connected';
     label: string;
   }>;
 };

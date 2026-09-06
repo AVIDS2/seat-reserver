@@ -54,7 +54,7 @@ export default function KBar({ children }: { children: React.ReactNode }) {
   }, [router, filteredGroups]);
 
   return (
-    <KBarProvider actions={actions}>
+    <KBarProvider actions={actions} options={{ disableScrollbarManagement: true }}>
       <KBarComponent>{children}</KBarComponent>
     </KBarProvider>
   );
