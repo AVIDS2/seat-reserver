@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { toast } from 'sonner';
 
 import { Icons } from '@/components/icons';
@@ -19,6 +20,7 @@ import {
 } from '@/components/ui/dialog';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
+import { buttonVariants } from '@/components/ui/button';
 import {
   redeemInviteCode,
   requestPro as requestProActivation,
@@ -81,7 +83,16 @@ export default function MembershipViewPage({ initialData }: { initialData: Rewar
   const isAdmin = membership.plan === 'admin';
 
   return (
-    <PageContainer pageTitle='会员与邀请' pageDescription='管理 Pro 权益、邀请名额和活跃积分。'>
+    <PageContainer
+      pageTitle='会员与邀请'
+      pageDescription='管理你的 Pro 权益、活跃积分和好友邀请。'
+      pageHeaderAction={
+        <Link href='/dashboard/store' className={buttonVariants()}>
+          <Icons.product data-icon='inline-start' />
+          打开席定商店
+        </Link>
+      }
+    >
       <div className='mx-auto flex w-full max-w-[1120px] flex-col gap-4 sm:gap-5'>
         <Alert>
           <Icons.shield />
@@ -92,7 +103,7 @@ export default function MembershipViewPage({ initialData }: { initialData: Rewar
         </Alert>
 
         <div className='grid gap-4 lg:grid-cols-[1.15fr_0.85fr]'>
-          <Card className='shadow-none'>
+          <Card id='invite' className='scroll-mt-24 shadow-none'>
             <CardHeader className='border-b'>
               <div className='flex items-start justify-between gap-3'>
                 <div>

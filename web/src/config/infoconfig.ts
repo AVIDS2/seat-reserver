@@ -34,16 +34,17 @@ export const teamInfoContent: InfobarContent = {
 };
 
 export const billingInfoContent: InfobarContent = {
-  title: '平台设置',
+  title: '席定商店',
   sections: [
     {
-      title: '邀请制',
-      description: '当前版本是邀请制工具，不接入订阅、支付或第三方计费服务。',
+      title: '权益开通',
+      description:
+        'Pro 为 ¥20 一次开通、永久有效。当前通过开通申请由管理员确认，不伪造在线支付结果。',
       links: []
     },
     {
-      title: '账号安全',
-      description: '平台密码使用 bcrypt 保存；学校密码和缓存 Token 使用 AES-256-GCM 加密保存。',
+      title: '邀请奖励',
+      description: '邀请码不直接售卖，只能由管理员发放或使用活跃积分兑换；邀请码只显示一次。',
       links: []
     }
   ]

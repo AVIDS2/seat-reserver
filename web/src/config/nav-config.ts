@@ -40,6 +40,13 @@ export const navGroups: NavGroup[] = [
         items: []
       },
       {
+        title: '席定商店',
+        url: '/dashboard/store',
+        icon: 'product',
+        shortcut: ['p', 's'],
+        items: []
+      },
+      {
         title: '会员与邀请',
         url: '/dashboard/membership',
         icon: 'pro',
