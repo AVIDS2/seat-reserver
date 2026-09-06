@@ -112,7 +112,8 @@ export class PlatformServiceConnectionsService {
           Number(connection.schoolAccount?.userId) &&
         (connection.status === 'recovering' ||
           (connection.status === 'attention' &&
-            (connection.retryCount ?? 0) < 5)) &&
+            ((connection.retryCount ?? 0) < 5 ||
+              connection.nextRetryAt !== null))) &&
         (!connection.nextRetryAt || connection.nextRetryAt.getTime() <= now),
     );
     let recovered = 0;
@@ -266,14 +267,21 @@ export class PlatformServiceConnectionsService {
         schoolAccount: account,
         user: { id: ownerId } as UserEntity,
       });
-      connection.retryCount = Math.min((connection.retryCount ?? 0) + 1, 10);
-      connection.status =
-        connection.retryCount >= 5 ? 'attention' : 'recovering';
+      const retryable = isRetryableConnectionError(error);
+      connection.retryCount = retryable
+        ? Math.min((connection.retryCount ?? 0) + 1, 10)
+        : 0;
+      connection.status = retryable ? 'recovering' : 'attention';
       connection.lastAttemptAt = new Date();
-      connection.nextRetryAt = new Date(
-        Date.now() + retryDelayMs(connection.retryCount),
-      );
+      connection.nextRetryAt = retryable
+        ? new Date(Date.now() + retryDelayMs(connection.retryCount))
+        : null;
       await this.connections.save(connection);
+      this.logger.warn(
+        `连接失败 account=${account.id} service=${serviceType} ` +
+          `mode=${connection.authMode} retryable=${retryable} ` +
+          `reason=${safeConnectionError(error)}`,
+      );
       throw error;
     }
   }
@@ -307,4 +315,24 @@ export class PlatformServiceConnectionsService {
 
 function retryDelayMs(retryCount: number): number {
   return Math.min(30 * 60 * 1000, 30 * 1000 * 2 ** Math.max(0, retryCount - 1));
+}
+
+export function isRetryableConnectionError(error: unknown): boolean {
+  const message = safeConnectionError(error);
+  if (
+    /账号或密码错误|用户名或密码错误|统一认证账号或密码错误|密码错误/.test(
+      message,
+    )
+  ) {
+    return false;
+  }
+  return /Mysql|超时|暂时不可用|页面不可用|连接异常|请求失败|网络异常|上游服务/i.test(
+    message,
+  );
+}
+
+function safeConnectionError(error: unknown): string {
+  return error instanceof Error && error.message
+    ? error.message.replace(/[\r\n]+/g, ' ').slice(0, 180)
+    : '连接失败';
 }
