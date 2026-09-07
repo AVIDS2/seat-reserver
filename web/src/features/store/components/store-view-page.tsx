@@ -238,7 +238,7 @@ export default function StoreViewPage({
                 </Badge>
               </div>
             </div>
-            <div className='rounded-lg border border-background/15 bg-background/10 p-4'>
+            <div className='store-balance-panel relative overflow-hidden rounded-lg border border-background/15 bg-background/10 p-4'>
               <div className='flex items-center justify-between gap-3'>
                 <div>
                   <p className='text-xs text-background/55'>下一件可兑换商品</p>
@@ -383,15 +383,11 @@ export default function StoreViewPage({
 }
 
 function ProductCard({ product, data, busy, onAction }: { product: ShopProduct; data: RewardsSnapshot; busy: 'pro' | 'invite' | null; onAction: () => void }) {
-  const Icon = Icons[product.icon];
   const owned = product.kind === 'pro' && data.membership.isPro;
   const affordable = product.kind !== 'invite' || data.pointsBalance >= data.invitePointsCost;
   return (
     <Card className='group flex h-full flex-col overflow-hidden shadow-none transition-transform hover:-translate-y-0.5'>
-      <div className={cn('flex h-28 items-end justify-between p-4 text-white', product.accent)}>
-        <Icon className='size-10 opacity-90' />
-        <Badge variant='secondary'>{product.badge}</Badge>
-      </div>
+      <ProductArt product={product} />
       <CardHeader className='gap-1'>
         <CardDescription>{product.subtitle}</CardDescription>
         <CardTitle className='text-lg'>{product.title}</CardTitle>
@@ -408,6 +404,30 @@ function ProductCard({ product, data, busy, onAction }: { product: ShopProduct; 
         </Button>
       </CardFooter>
     </Card>
+  );
+}
+
+function ProductArt({ product }: { product: ShopProduct }) {
+  const Icon = Icons[product.icon];
+  return (
+    <div
+      className={cn('store-product-art relative flex h-32 items-end justify-between overflow-hidden p-4 text-white', product.accent)}
+      data-product-kind={product.kind}
+      data-product-id={product.id}
+    >
+      <div className='store-art-visual' aria-hidden='true'>
+        <span className='store-art-card store-art-card-back' />
+        <span className='store-art-card store-art-card-front'>
+          <span className='store-art-chip' />
+          <span className='store-art-bar store-art-bar-wide' />
+          <span className='store-art-bar store-art-bar-short' />
+        </span>
+      </div>
+      <span className='store-art-icon relative z-10 flex size-11 items-center justify-center rounded-lg border border-white/20 bg-black/10 backdrop-blur-sm'>
+        <Icon className='size-6 opacity-95' aria-hidden='true' />
+      </span>
+      <Badge className='relative z-10 border-white/20 bg-white/90 text-slate-900'>{product.badge}</Badge>
+    </div>
   );
 }
 
