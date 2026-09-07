@@ -113,7 +113,7 @@ export class PlatformBookingExecutor {
     }
     if (task.venueType === 'library') {
       throw new UnprocessableEntityException(
-        '图书馆当前要求预约前完成验证码验证，请在控制台手动确认后提交',
+        '图书馆自动抢座暂未开放；请前往座位图完成单次验证码预约',
       );
     }
     const service = await this.serviceConnections.ensureReady(

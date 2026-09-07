@@ -237,7 +237,7 @@ export class PlatformTasksService {
     const task = await this.findOwned(userId, id);
     if (enabled && task.venueType === 'library') {
       throw new UnprocessableEntityException(
-        '图书馆自动执行将在验证码确认流程接入后开放',
+        '图书馆自动抢座暂未开放；当前仅支持座位图单次验证码预约',
       );
     }
     if (enabled) {
@@ -310,7 +310,7 @@ export class PlatformTasksService {
     }
     if (runType === 'booking' && task.venueType === 'library') {
       throw new UnprocessableEntityException(
-        '图书馆预约需要先在控制台完成验证码验证',
+        '图书馆自动抢座暂未开放；请前往座位图完成单次验证码预约',
       );
     }
     return this.queue.enqueue(
@@ -378,7 +378,7 @@ export class PlatformTasksService {
       nextRun: task.enabled
         ? `${scheduleLabel(task)} · 下次开放窗口`
         : requiresLibraryVerification
-          ? '完成验证后可预约'
+          ? '仅支持座位图单次预约'
           : '已暂停',
       status:
         hasIssue || lastRun?.status === 'failed'
@@ -401,7 +401,7 @@ export class PlatformTasksService {
         (hasIssue
           ? '账号授权需要检查'
           : requiresLibraryVerification
-            ? '图书馆当前需要预约前验证码确认'
+            ? '图书馆自动抢座暂未开放，座位图支持单次验证码预约'
             : '等待下一次自动执行'),
     };
   }

@@ -14,6 +14,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
+import { ShineBorder } from '@/components/ui/shine-border';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   createProCheckout,
@@ -239,6 +240,11 @@ export default function StoreViewPage({
               </div>
             </div>
             <div className='store-balance-panel relative overflow-hidden rounded-lg border border-background/15 bg-background/10 p-4'>
+              <ShineBorder
+                duration={18}
+                shineColor={['#4ade80', '#38bdf8', '#fbbf24']}
+                className='opacity-60'
+              />
               <div className='flex items-center justify-between gap-3'>
                 <div>
                   <p className='text-xs text-background/55'>下一件可兑换商品</p>
@@ -415,6 +421,11 @@ function ProductArt({ product }: { product: ShopProduct }) {
       data-product-kind={product.kind}
       data-product-id={product.id}
     >
+      <ShineBorder
+        duration={16}
+        shineColor={shineColors(product)}
+        className='opacity-90'
+      />
       <div className='store-art-visual' aria-hidden='true'>
         <span className='store-art-card store-art-card-back' />
         <span className='store-art-card store-art-card-front'>
@@ -429,6 +440,13 @@ function ProductArt({ product }: { product: ShopProduct }) {
       <Badge className='relative z-10 border-white/20 bg-white/90 text-slate-900'>{product.badge}</Badge>
     </div>
   );
+}
+
+function shineColors(product: ShopProduct): string[] {
+  if (product.kind === 'pro') return ['#fef3c7', '#fb923c', '#fda4af'];
+  if (product.kind === 'invite') return ['#a7f3d0', '#67e8f9', '#fef08a'];
+  if (product.id === 'campus-expansion') return ['#bae6fd', '#c4b5fd', '#f0abfc'];
+  return ['#cbd5e1', '#e2e8f0', '#fef3c7'];
 }
 
 function ShelfRow({ icon, title, meta, status }: { icon: React.ReactNode; title: string; meta: string; status: string }) {

@@ -74,7 +74,7 @@ WebVPN 代理 API 必须保留裸查询标志 `enlink-vpn`；平台在追加业�
 
 落地页图片使用预生成的 AVIF 响应式档位（移动端 640/960px、桌面端 1200/1600/2400/3200px）和 WebP 回退；首屏图使用高优先级加载，其余叙事图延迟加载。原始 4K PNG 不进入生产静态资源，避免移动端误下载大文件。模板字体改为主题定义的离线系统字体回退，生产构建不依赖 Google Fonts 网络可用性。
 
-2026-09-04 的生产实测确认：图书馆登录、`/rest/v2/user`、实时目录和验证码挑战均可从 VPS 经 WebVPN 正常访问；`/rest/v2/settings` 返回 `isCaptchaOpen=true`，`POST /cap/captcha/<业务Token>` 返回挑战底图、文字提示图、点击数量和 32 字符挑战 Token。使用空 `authid` 发起真实 `freeBook` 时，学校返回 HTTP 200、业务码 `1`、“验证码错误”，没有创建预约，因此也没有可取消记录。平台现已实现官方同等人工点选流程：`POST /api/v1/platform/reservations/captcha` 创建与当前用户、账号和预约参数绑定的三分钟挑战；`POST /api/v1/platform/reservations/captcha/<id>/verify` 接收原图坐标，通过学校 `/cap/checkCaptcha` 后把内部挑战 Token 作为 `authid` 自动提交预约。挑战 Token 不返回浏览器且一次使用后立即删除。任务页的图书馆任务卡片提供“验证并预约”入口，会带入原任务座位和合法时段跳转到座位图。该流程需要公网人工验收一次真实成功预约；周期图书馆任务在此之前继续保持暂停。
+2026-09-04 的生产实测确认：图书馆登录、`/rest/v2/user`、实时目录和验证码挑战均可从 VPS 经 WebVPN 正常访问；`/rest/v2/settings` 返回 `isCaptchaOpen=true`，`POST /cap/captcha/<业务Token>` 返回挑战底图、文字提示图、点击数量和 32 字符挑战 Token。使用空 `authid` 发起真实 `freeBook` 时，学校返回 HTTP 200、业务码 `1`、“验证码错误”，没有创建预约，因此也没有可取消记录。平台现已实现官方同等人工点选流程：`POST /api/v1/platform/reservations/captcha` 创建与当前用户、账号和预约参数绑定的三分钟挑战；`POST /api/v1/platform/reservations/captcha/<id>/verify` 接收原图坐标，通过学校 `/cap/checkCaptcha` 后把挑战 Token 作为 `authid` 自动提交当前这一次预约。挑战 Token 不返回浏览器且一次使用后立即删除。该入口属于座位图的“单次预约”，不是自动抢座任务；图书馆自动任务保持关闭，直到确认挑战凭证可跨日期复用或接入无需逐次验证的合法业务链路。若要支持明日半自动抢座，下一步应在开放前创建短时挑战，由用户完成一次点选，再由 worker 在开放窗口按候选策略提交。
 
 校园账号在平台内没有“脚本账号”和“通用账号”之分；每个账号都可分别建立自习室与图书馆连接。2026-09-04 对张涛账号的单次图书馆连接诊断由学校 WebVPN 明确返回用户名或密码错误并提示剩余 2 次，因此立即停止重试；该账号现有自习室 direct Token 仍正常。此状态说明已保存密码不被 WebVPN/统一认证接受，需要用户在账号编辑中重新填写当前学校统一认证密码，不能通过自习室业务 Token 恢复或反推出密码。
 

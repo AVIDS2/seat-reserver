@@ -496,21 +496,32 @@ function TaskEditorDialog({
                       <ToggleGroupItem value='study_room' className='w-full'>
                         自习室
                       </ToggleGroupItem>
-                      <ToggleGroupItem value='library' className='w-full'>
-                        图书馆
+                      <ToggleGroupItem
+                        value='library'
+                        className='w-full'
+                        disabled={!task || task.venueType !== 'library'}
+                        title={!task || task.venueType !== 'library' ? '图书馆自动抢座暂未开放' : undefined}
+                      >
+                        图书馆（单次）
                       </ToggleGroupItem>
                     </ToggleGroup>
                     {venueType === 'library' && (
-                      <FieldDescription>
-                        首次加载图书馆时会建立独立连接，也可以先到
-                        <Link
-                          href='/dashboard/accounts'
-                          className='text-primary underline underline-offset-4'
-                        >
-                          账号与授权
-                        </Link>{' '}
-                        手动连接。
-                      </FieldDescription>
+                      <div className='flex flex-col gap-3'>
+                        <FieldDescription>
+                          图书馆当前仅支持座位图里的单次预约。学校要求每次提交前完成点选验证，不能在开放窗口无人值守自动抢座。
+                        </FieldDescription>
+                        <Alert>
+                          <Icons.info />
+                          <AlertTitle>自动抢座暂未开放</AlertTitle>
+                          <AlertDescription>
+                            可以继续读取馆区、空间和座位，但不要把这条配置理解为每日自动预约。需要连接图书馆时，前往
+                            <Link href='/dashboard/accounts' className='text-primary underline underline-offset-4'>
+                              账号与授权
+                            </Link>{' '}
+                            完成连接。
+                          </AlertDescription>
+                        </Alert>
+                      </div>
                     )}
                   </Field>
                   <Field>
@@ -629,7 +640,7 @@ function TaskEditorDialog({
                     <Icons.shield />
                     <AlertTitle>预约前需要验证</AlertTitle>
                     <AlertDescription>
-                      图书馆当前开启验证码。座位查询可正常使用，提交预约前需在控制台完成一次验证。
+                      图书馆当前开启验证码。座位查询可正常使用；验证码只确认这一次单次预约，不会授权每日自动抢座。
                     </AlertDescription>
                   </Alert>
                 )}
@@ -836,7 +847,7 @@ function TaskEditorDialog({
                 : task
                   ? '保存修改'
                   : venueType === 'library'
-                    ? '保存图书馆任务'
+                    ? '保存单次预约草稿'
                     : '创建任务'}
             </Button>
           )}
@@ -1108,10 +1119,10 @@ export default function BookingTasksPage({
                     {task.venueType === 'library' ? (
                       <Link
                         href={taskBookingHref(task)}
-                        className={buttonVariants({ variant: 'default', size: 'sm' })}
+                        className={buttonVariants({ variant: 'outline', size: 'sm' })}
                       >
-                        <Icons.shield data-icon='inline-start' />
-                        验证并预约
+                        <Icons.mapPin data-icon='inline-start' />
+                        去座位图单次预约
                       </Link>
                     ) : (
                       <Button variant='ghost' size='sm' onClick={() => void runTask(task)}>

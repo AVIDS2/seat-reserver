@@ -306,7 +306,7 @@ export default function SeatMapPage({
   const openInstantBooking = () => {
     const seatId = selectedIds[0];
     if (!seatId || selectedIds.length !== 1) {
-      toast.error('直接预约请只选择一个座位');
+      toast.error('单次预约请只选择一个座位');
       return;
     }
     setInstantOpen(true);
@@ -612,10 +612,12 @@ export default function SeatMapPage({
                       ? catalogNotice.maintenance
                         ? '学校系统维护中'
                         : '实时数据未加载'
-                      : '预约前需要验证'}
+                      : '图书馆单次预约需要验证'}
                   </AlertTitle>
                   <AlertDescription>
-                    {error ? catalogNotice.message : '该系统当前开启预约验证，座位状态仍可查看。'}
+                    {error
+                      ? catalogNotice.message
+                      : '座位状态仍可查看；点选验证码只确认当前这一次预约，不会变成每日自动抢座授权。'}
                   </AlertDescription>
                 </Alert>
               )}
@@ -637,7 +639,7 @@ export default function SeatMapPage({
                 <div className='min-w-0'>
                   <p className='text-sm font-medium'>已选 {selectedIds.length} 个座位</p>
                   <p className='text-muted-foreground mt-1 text-xs'>
-                    自动任务可以把任意真实座位加入候选；直接预约会再读取所选日期的可用时段。
+                    自动任务可以把任意真实座位加入候选；单次预约会再读取所选日期的可用时段。
                   </p>
                 </div>
                 <div className='flex flex-wrap gap-2 sm:justify-end'>
@@ -659,7 +661,7 @@ export default function SeatMapPage({
                     disabled={selectedIds.length !== 1 || !date || layoutLoading}
                   >
                     <Icons.calendar data-icon='inline-start' />
-                    直接预约
+                    单次预约
                   </Button>
                 </div>
               </div>
@@ -677,10 +679,10 @@ export default function SeatMapPage({
       <Dialog open={instantOpen} onOpenChange={setInstantOpen}>
         <DialogContent className='w-[calc(100%-2rem)] max-w-[480px]'>
           <DialogHeader>
-            <DialogTitle>直接预约</DialogTitle>
+            <DialogTitle>单次预约</DialogTitle>
             <DialogDescription>
               为 {date ? formatDateLabel(date) : '所选日期'} 的座位读取学校实时可用时段。
-              {catalog?.hours ? `单次最长 ${catalog.hours} 小时。` : ''}
+              {catalog?.hours ? `单次最长 ${catalog.hours} 小时。` : ''} 这是一次即时预约，不会创建自动抢座任务。
             </DialogDescription>
           </DialogHeader>
           <div className='flex flex-col gap-4'>
