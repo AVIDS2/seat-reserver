@@ -329,7 +329,7 @@ export class PlatformReservationsService {
         stringValue(item.loc) || stringValue(item.location) || '学校座位',
       status,
       statusLabel: statusLabel(status),
-      checkedIn: item.checkedIn === true,
+      checkedIn: item.checkedIn === true || status === 'active',
       canCancel: status === 'upcoming' || status === 'active',
     };
   }

@@ -54,6 +54,7 @@ export type PlatformUser = {
   firstName: string;
   lastName: string;
   displayName: string;
+  avatarUrl: string | null;
   role: 'admin' | 'user';
   status: 'active' | 'disabled';
 };
@@ -117,6 +118,13 @@ export type RewardsSnapshot = {
   };
   invitations: CommunityInvitation[];
   ledger: PointsLedgerEntry[];
+};
+
+export type AttendanceSettings = {
+  autoCancelNoShow: boolean;
+  checkInAheadMinutes: number;
+  lateAllowedMinutes: number;
+  cancelLeadMinutes: number;
 };
 
 export type AdminOverview = {
@@ -303,12 +311,36 @@ export async function updatePlatformProfile(payload: {
   lastName?: string;
   password?: string;
   oldPassword?: string;
+  photo?: { id: string } | null;
 }): Promise<PlatformUser> {
   const response = await platformRequest<{ user: Record<string, unknown> }>('/platform/auth/me', {
     method: 'PATCH',
     body: JSON.stringify(payload)
   });
   return toPlatformUser(response.user);
+}
+
+export async function uploadPlatformAvatar(file: File): Promise<PlatformUser> {
+  const formData = new FormData();
+  formData.append('file', file);
+  const response = await fetch(`${apiBase}/files/upload`, {
+    method: 'POST',
+    credentials: 'include',
+    body: formData
+  });
+  if (!response.ok) {
+    const body = (await response.json().catch(() => null)) as {
+      message?: string | string[];
+      errors?: Record<string, string>;
+    } | null;
+    const message = Array.isArray(body?.message)
+      ? body.message.join('；')
+      : body?.message || Object.values(body?.errors || {})[0] || `头像上传失败（${response.status}）`;
+    throw new Error(message);
+  }
+  const uploaded = (await response.json()) as { file?: { id?: string } };
+  if (!uploaded.file?.id) throw new Error('头像上传结果无效');
+  return updatePlatformProfile({ photo: { id: uploaded.file.id } });
 }
 
 export async function getClientSnapshot(): Promise<BookingSnapshot> {
@@ -495,7 +527,7 @@ export async function getBookingReservations(input: {
   const response = await platformRequest<{
     reservations: BookingReservation[];
   }>(`/platform/reservations?${query}`);
-  return response.reservations;
+  return response.reservations ?? [];
 }
 
 export async function bookBookingReservation(input: {
@@ -566,6 +598,26 @@ export async function cancelBookingReservation(input: {
   );
   clearBookingDataCache();
   return response.reservation;
+}
+
+export async function getAttendanceSettings(): Promise<AttendanceSettings> {
+  const response = await platformRequest<{ settings: AttendanceSettings }>(
+    '/platform/attendance/settings'
+  );
+  return response.settings;
+}
+
+export async function updateAttendanceSettings(
+  autoCancelNoShow: boolean
+): Promise<AttendanceSettings> {
+  const response = await platformRequest<{ settings: AttendanceSettings }>(
+    '/platform/attendance/settings',
+    {
+      method: 'PATCH',
+      body: JSON.stringify({ autoCancelNoShow })
+    }
+  );
+  return response.settings;
 }
 
 export async function getClientNotifications(): Promise<PlatformNotification[]> {
@@ -783,12 +835,14 @@ function toPlatformUser(value: Record<string, unknown>): PlatformUser {
   const status = value.status as { id?: number } | null | undefined;
   const firstName = typeof value.firstName === 'string' ? value.firstName : '';
   const lastName = typeof value.lastName === 'string' ? value.lastName : '';
+  const photo = value.photo as { path?: string } | null | undefined;
   return {
     id: String(value.id),
     email: typeof value.email === 'string' ? value.email : '',
     firstName,
     lastName,
     displayName: [firstName, lastName].filter(Boolean).join(' ') || '平台用户',
+    avatarUrl: typeof photo?.path === 'string' ? photo.path : null,
     role: Number(role?.id) === 1 ? 'admin' : 'user',
     status: Number(status?.id) === 1 ? 'active' : 'disabled'
   };

@@ -287,6 +287,11 @@ function ReservationCard({
             <Badge variant={reservationStatusVariant(reservation.status)}>
               {reservation.statusLabel}
             </Badge>
+            {reservation.checkedIn && (
+              <Badge variant='default'>
+                <Icons.check data-icon='inline-start' /> 已签到
+              </Badge>
+            )}
           </div>
           <p className='mt-3 truncate text-sm font-medium'>{reservation.location}</p>
           <p className='text-muted-foreground mt-1 text-xs'>账号：{reservation.account}</p>

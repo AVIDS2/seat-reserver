@@ -1,4 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
+import { FileDto } from '../../files/dto/file.dto';
 import {
   IsNotEmpty,
   IsOptional,
@@ -8,6 +9,10 @@ import {
 } from 'class-validator';
 
 export class PlatformProfileDto {
+  @ApiPropertyOptional({ type: () => FileDto, nullable: true })
+  @IsOptional()
+  photo?: FileDto | null;
+
   @ApiPropertyOptional({ example: '张' })
   @IsOptional()
   @IsString()

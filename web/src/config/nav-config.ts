@@ -33,6 +33,13 @@ export const navGroups: NavGroup[] = [
         items: []
       },
       {
+        title: '签到保护',
+        url: '/dashboard/attendance',
+        icon: 'shield',
+        shortcut: ['c', 'a'],
+        items: []
+      },
+      {
         title: '账号与授权',
         url: '/dashboard/accounts',
         icon: 'shield',

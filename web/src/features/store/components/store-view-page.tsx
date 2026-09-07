@@ -1,53 +1,90 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 import { Icons } from '@/components/icons';
 import PageContainer from '@/components/layout/page-container';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger
-} from '@/components/ui/accordion';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle
-} from '@/components/ui/card';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle
-} from '@/components/ui/dialog';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow
-} from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   createProCheckout,
   getRewardsSnapshot,
+  redeemInviteCode,
   requestPro,
   type RewardsSnapshot
 } from '@/features/booking/api/service';
 import { cn } from '@/lib/utils';
+
+type ShopCategory = '全部' | '权益' | '邀请' | '即将上架';
+type ProductKind = 'pro' | 'invite' | 'coming';
+
+type ShopProduct = {
+  id: string;
+  category: Exclude<ShopCategory, '全部'>;
+  kind: ProductKind;
+  title: string;
+  subtitle: string;
+  description: string;
+  badge: string;
+  icon: keyof typeof Icons;
+  accent: string;
+};
+
+const products: ShopProduct[] = [
+  {
+    id: 'pro-permanent',
+    category: '权益',
+    kind: 'pro',
+    title: 'Pro 永久通行证',
+    subtitle: '给多账号用户的长期权益',
+    description: '把 1 个校园账号扩展到 3 个，适合同时管理自习室、图书馆和家人的预约策略。',
+    badge: '热销',
+    icon: 'pro',
+    accent: 'bg-primary'
+  },
+  {
+    id: 'friend-invite',
+    category: '邀请',
+    kind: 'invite',
+    title: '好友邀请码',
+    subtitle: '一次性 · 可转赠 · 30 天有效',
+    description: '给认识的同学一个席定入口。邀请码只展示一次，生成后可以复制并转交。',
+    badge: '600 席定币',
+    icon: 'gift',
+    accent: 'bg-emerald-600'
+  },
+  {
+    id: 'campus-expansion',
+    category: '即将上架',
+    kind: 'coming',
+    title: '高校扩展位',
+    subtitle: '更多学校、更多校区',
+    description: '江苏海洋大学和更多高校空间正在接入，新的服务会先在这里出现。',
+    badge: '筹备中',
+    icon: 'building',
+    accent: 'bg-sky-700'
+  },
+  {
+    id: 'quiet-hours',
+    category: '即将上架',
+    kind: 'coming',
+    title: '专注时段包',
+    subtitle: '让学习计划更有秩序',
+    description: '围绕固定时段、连续学习和个人偏好设计的后续权益，目前不开放兑换。',
+    badge: '即将上架',
+    icon: 'clock',
+    accent: 'bg-slate-700'
+  }
+];
 
 export default function StoreViewPage({
   initialData,
@@ -57,11 +94,21 @@ export default function StoreViewPage({
   checkoutResult: 'success' | 'cancelled' | null;
 }) {
   const [data, setData] = useState(initialData);
-  const [checkoutOpen, setCheckoutOpen] = useState(false);
-  const [busy, setBusy] = useState(false);
+  const [category, setCategory] = useState<ShopCategory>('全部');
+  const [selectedProduct, setSelectedProduct] = useState<ShopProduct | null>(null);
+  const [busy, setBusy] = useState<'pro' | 'invite' | null>(null);
+  const [generatedCode, setGeneratedCode] = useState<string | null>(null);
   const membership = data.membership;
-  const isAdmin = membership.plan === 'admin';
-  const canRequest = !membership.isPro && !data.proRequest;
+  const canRequest = !data.proRequest;
+  const inviteCost = data.invitePointsCost;
+  const progress = Math.min(100, Math.round((data.pointsBalance / inviteCost) * 100));
+  const pointsMissing = Math.max(0, inviteCost - data.pointsBalance);
+  const activeDaysNeeded = Math.ceil(pointsMissing / Math.max(1, data.dailyActivityPoints));
+
+  const visibleProducts = useMemo(
+    () => (category === '全部' ? products : products.filter((product) => product.category === category)),
+    [category]
+  );
 
   useEffect(() => {
     if (checkoutResult !== 'success') return;
@@ -81,8 +128,39 @@ export default function StoreViewPage({
     };
   }, [checkoutResult]);
 
-  const submitProRequest = async () => {
-    setBusy(true);
+  const handleProductAction = async (product: ShopProduct) => {
+    if (product.kind === 'coming') {
+      setSelectedProduct(product);
+      return;
+    }
+    if (product.kind === 'pro') {
+      if (membership.isPro) return;
+      setSelectedProduct(product);
+      return;
+    }
+    if (data.pointsBalance < inviteCost) {
+      setSelectedProduct(product);
+      return;
+    }
+    setBusy('invite');
+    try {
+      const result = await redeemInviteCode();
+      setData((current) => ({
+        ...current,
+        pointsBalance: result.pointsBalance,
+        invitations: [result.invitation, ...current.invitations]
+      }));
+      setGeneratedCode(result.code);
+      toast.success('好友邀请码已兑换');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : '兑换失败');
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const openProCheckout = async () => {
+    setBusy('pro');
     try {
       if (membership.paymentAvailable) {
         const checkout = await createProCheckout();
@@ -95,21 +173,27 @@ export default function StoreViewPage({
         membership: result.membership,
         proRequest: result.request
       }));
-      setCheckoutOpen(false);
+      setSelectedProduct(null);
       toast.success(result.message);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : '提交开通申请失败');
+      toast.error(error instanceof Error ? error.message : '开通失败');
     } finally {
-      setBusy(false);
+      setBusy(null);
     }
   };
 
   return (
     <PageContainer
-      pageTitle='席定商店'
-      pageDescription='把校园座位预约能力，变成一套长期可用的个人工具。'
+      pageTitle='席定杂货铺'
+      pageDescription='用活跃换权益，把校园预约能力一件件收入自己的货架。'
+      pageHeaderAction={
+        <Link href='/dashboard/store/recharge' className={buttonVariants({ variant: 'outline' })}>
+          <Icons.creditCard data-icon='inline-start' />
+          充值席定币
+        </Link>
+      }
     >
-      <div className='mx-auto flex w-full max-w-[1180px] flex-col gap-6 pb-8'>
+      <div className='mx-auto flex w-full max-w-[1180px] flex-col gap-5 pb-8 sm:gap-6'>
         {checkoutResult === 'success' && (
           <Alert>
             <Icons.clock />
@@ -117,7 +201,7 @@ export default function StoreViewPage({
             <AlertDescription>
               {membership.isPro
                 ? '支付已确认，永久 Pro 权益已经生效。'
-                : '支付平台已返回成功页面，权益正在等待回调确认。页面会自动刷新，稍后即可看到最新状态。'}
+                : '支付平台已返回成功页面，权益正在等待回调确认。页面会自动刷新。'}
             </AlertDescription>
           </Alert>
         )}
@@ -128,327 +212,169 @@ export default function StoreViewPage({
             <AlertDescription>没有产生扣款，当前方案没有变化。</AlertDescription>
           </Alert>
         )}
-        <section className='overflow-hidden rounded-xl border bg-primary text-primary-foreground'>
-          <div className='grid gap-8 px-6 py-8 sm:px-8 sm:py-10 lg:grid-cols-[1.2fr_0.8fr] lg:items-end'>
-            <div className='max-w-2xl'>
-              <Badge variant='secondary' className='mb-4'>
-                席定权益中心
-              </Badge>
-              <h1 className='max-w-xl text-3xl font-semibold tracking-tight sm:text-4xl'>
-                让每一次预约，都有一套稳定的执行策略。
+
+        <section className='overflow-hidden rounded-xl border bg-foreground text-background'>
+          <div className='grid gap-6 px-5 py-6 sm:px-8 sm:py-8 lg:grid-cols-[1.25fr_0.75fr] lg:items-end'>
+            <div>
+              <div className='flex flex-wrap items-center gap-2 text-xs font-medium uppercase tracking-[0.18em] text-background/60'>
+                <span className='bg-primary size-2 rounded-full' aria-hidden='true' />
+                SEAT DEPOT
+                <span className='text-background/30'>/</span>
+                DAILY REWARDS
+              </div>
+              <h1 className='mt-4 max-w-2xl text-3xl font-semibold tracking-tight sm:text-5xl'>
+                席定杂货铺
               </h1>
-              <p className='mt-4 max-w-xl text-sm leading-6 text-primary-foreground/75 sm:text-base'>
-                从校园账号、实时座位图到每日自动执行，席定把重复操作交给系统，把选择权留给你。
+              <p className='mt-3 max-w-xl text-sm leading-6 text-background/65 sm:text-base'>
+                不卖噱头，只把真实可用的预约权益放到货架上。今天的活跃，换成之后的选择权。
               </p>
-              <div className='mt-6 flex flex-wrap gap-3'>
-                <Button
-                  variant='secondary'
-                  onClick={() => setCheckoutOpen(true)}
-                  disabled={!canRequest}
-                >
-                  <Icons.pro data-icon='inline-start' />
-                  {isAdmin
-                    ? '管理员方案'
-                    : membership.isPro
-                      ? 'Pro 已生效'
-                      : data.proRequest
-                        ? '申请审核中'
-                        : membership.paymentAvailable
-                          ? '在线开通 Pro'
-                          : '申请开通'}
-                </Button>
-                <Link
-                  href='/dashboard/membership#invite'
-                  className={cn(
-                    buttonVariants({ variant: 'ghost' }),
-                    'text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground'
-                  )}
-                >
-                  <Icons.gift data-icon='inline-start' />
-                  查看邀请奖励
-                </Link>
+              <div className='mt-5 flex flex-wrap gap-2'>
+                <Badge variant='secondary'>{membership.planLabel}</Badge>
+                <Badge className='border-background/20 bg-background/10 text-background'>
+                  {data.pointsBalance} 席定币
+                </Badge>
+                <Badge className='border-background/20 bg-background/10 text-background'>
+                  {data.invitations.filter((item) => item.status === 'active').length} 件待赠出
+                </Badge>
               </div>
             </div>
-            <div className='grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-2'>
-              <StoreMetric label='当前方案' value={membership.planLabel} />
-              <StoreMetric
-                label='校园账号'
-                value={isAdmin ? '不限' : `${membership.accountCount}/${membership.accountLimit}`}
-              />
-              <StoreMetric
-                label='邀请积分'
-                value={`${data.pointsBalance} 分`}
-                className='col-span-2 sm:col-span-1 lg:col-span-2'
-              />
+            <div className='rounded-lg border border-background/15 bg-background/10 p-4'>
+              <div className='flex items-center justify-between gap-3'>
+                <div>
+                  <p className='text-xs text-background/55'>下一件可兑换商品</p>
+                  <p className='mt-1 font-semibold'>好友邀请码</p>
+                </div>
+                <Icons.gift className='text-primary' />
+              </div>
+              <div className='mt-4 flex items-end justify-between gap-3'>
+                <p className='font-mono text-3xl font-semibold tabular-nums'>{data.pointsBalance}<span className='text-base text-background/45'> / {inviteCost}</span></p>
+                <p className='text-right text-xs text-background/55'>{pointsMissing ? `还差 ${pointsMissing} 席定币` : '现在可以兑换'}</p>
+              </div>
+              <Progress value={progress} aria-label='兑换进度' className='mt-3 [&_[data-slot=progress-track]]:bg-background/15 [&_[data-slot=progress-indicator]]:bg-primary' />
+              <p className='mt-2 text-xs text-background/50'>按每日 +{data.dailyActivityPoints} 席定币计算，约需 {activeDaysNeeded} 天活跃</p>
             </div>
           </div>
         </section>
 
-        <Tabs defaultValue='plans' className='flex flex-col gap-5'>
-          <TabsList className='w-full sm:w-fit'>
-            <TabsTrigger value='plans'>权益方案</TabsTrigger>
-            <TabsTrigger value='community'>邀请奖励</TabsTrigger>
-          </TabsList>
+        <Tabs value={category} onValueChange={(value) => setCategory(value as ShopCategory)} className='flex flex-col gap-4'>
+          <div className='flex flex-col justify-between gap-3 sm:flex-row sm:items-center'>
+            <TabsList className='w-full overflow-x-auto sm:w-fit'>
+              <TabsTrigger value='全部'>全部商品</TabsTrigger>
+              <TabsTrigger value='权益'>平台权益</TabsTrigger>
+              <TabsTrigger value='邀请'>邀请礼物</TabsTrigger>
+              <TabsTrigger value='即将上架'>即将上架</TabsTrigger>
+            </TabsList>
+            <Link href='/dashboard/membership#invite' className={cn(buttonVariants({ variant: 'outline', size: 'sm' }))}>
+              <Icons.history data-icon='inline-start' />
+              兑换记录
+            </Link>
+          </div>
 
-          <TabsContent value='plans' className='flex flex-col gap-6'>
-            <div className='grid gap-4 lg:grid-cols-2'>
-              <PlanCard
-                title='基础版'
-                description='先用起来，再按你的预约规模升级。'
-                price='¥0'
-                priceNote='永久免费'
-                features={['绑定 1 个校园账号', '创建自动预约任务', '实时座位图与预约记录']}
-                action={
-                  <Button variant='outline' className='w-full' disabled>
-                    当前方案
-                  </Button>
-                }
-              />
-              <PlanCard
-                featured
-                title='Pro 会员'
-                description='给需要多账号、多场景管理的用户。'
-                price='¥20'
-                priceNote='一次开通，永久有效'
-                features={[
-                  '绑定最多 3 个校园账号',
-                  '自习室与图书馆服务独立管理',
-                  '优先使用后续平台能力',
-                  '永久权益，不按月续费'
-                ]}
-                action={
-                  <Button
-                    className='w-full'
-                    onClick={() => setCheckoutOpen(true)}
-                    disabled={!canRequest}
-                  >
-                    <Icons.pro data-icon='inline-start' />
-                    {isAdmin
-                      ? '管理员方案'
-                      : membership.isPro
-                        ? '已拥有 Pro'
-                        : data.proRequest
-                          ? '申请审核中'
-                          : membership.paymentAvailable
-                            ? '在线开通 Pro'
-                            : '申请开通'}
-                  </Button>
-                }
-              />
+          <TabsContent value={category} className='mt-0'>
+            <div className='grid gap-4 sm:grid-cols-2 xl:grid-cols-4'>
+              {visibleProducts.map((product) => (
+                <ProductCard
+                  key={product.id}
+                  product={product}
+                  data={data}
+                  busy={busy}
+                  onAction={() => void handleProductAction(product)}
+                />
+              ))}
             </div>
-
-            <Card className='shadow-none'>
-              <CardHeader>
-                <CardTitle>权益对比</CardTitle>
-                <CardDescription>先看清楚，再决定是否升级，不隐藏关键限制。</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>能力</TableHead>
-                      <TableHead>基础版</TableHead>
-                      <TableHead>Pro 会员</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    <CompareRow label='校园账号数量' free='1 个' pro='3 个' />
-                    <CompareRow label='自动预约任务' free='支持' pro='支持' />
-                    <CompareRow label='实时座位图' free='支持' pro='支持' />
-                    <CompareRow label='有效期' free='永久' pro='永久' />
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-
-            <div className='grid gap-4 md:grid-cols-3'>
-              <ValueBlock
-                icon={<Icons.target />}
-                title='先选座，再定策略'
-                text='从真实座位图开始，把主座位、备选座位和时间段组合起来。'
-              />
-              <ValueBlock
-                icon={<Icons.refresh />}
-                title='连接状态可追踪'
-                text='账号、服务连接和执行记录分开显示，异常不会藏在一个绿色状态里。'
-              />
-              <ValueBlock
-                icon={<Icons.sparkles />}
-                title='权益持续生长'
-                text='Pro 是一次开通，后续新增高校和服务能力会继续纳入平台。'
-              />
-            </div>
-          </TabsContent>
-
-          <TabsContent value='community' className='flex flex-col gap-6'>
-            <Card id='invite' className='scroll-mt-24 shadow-none'>
-              <CardHeader>
-                <div className='flex flex-wrap items-start justify-between gap-4'>
-                  <div>
-                    <CardTitle className='flex items-center gap-2'>
-                      <Icons.gift />
-                      邀请奖励计划
-                    </CardTitle>
-                    <CardDescription className='mt-2 max-w-2xl'>
-                      邀请码不在商店直接售卖。通过真实使用、账号验证和好友完成首次验证获得积分，再兑换一次性邀请码。
-                    </CardDescription>
-                  </div>
-                  <Badge variant='outline'>社区成长</Badge>
-                </div>
-              </CardHeader>
-              <CardContent className='grid gap-4 sm:grid-cols-3'>
-                <ValueBlock
-                  icon={<Icons.bolt />}
-                  title={`每日 +${data.dailyActivityPoints} 分`}
-                  text='完成一次有效账号验证即可记录当天活跃。'
-                />
-                <ValueBlock
-                  icon={<Icons.teams />}
-                  title={`好友 +${data.referralRewardPoints} 分`}
-                  text='好友完成首次验证后，邀请关系才会生效。'
-                />
-                <ValueBlock
-                  icon={<Icons.share />}
-                  title={`${data.invitePointsCost} 分兑换`}
-                  text={`生成后有效 ${data.inviteValidDays} 天，只显示一次。`}
-                />
-              </CardContent>
-              <CardFooter>
-                <Link
-                  href='/dashboard/membership#invite'
-                  className={cn(buttonVariants(), 'w-full sm:w-auto')}
-                >
-                  <Icons.gift data-icon='inline-start' />
-                  进入邀请中心
-                </Link>
-              </CardFooter>
-            </Card>
-
-            <Card className='shadow-none'>
-              <CardHeader>
-                <CardTitle>接下来会有什么</CardTitle>
-                <CardDescription>
-                  平台会优先把真实可用的高校服务接进来，再开放对应权益。
-                </CardDescription>
-              </CardHeader>
-              <CardContent className='grid gap-3 sm:grid-cols-3'>
-                <ComingSoon
-                  icon={<Icons.building />}
-                  title='更多高校空间'
-                  text='按高校和校区扩展座位目录。'
-                />
-                <ComingSoon
-                  icon={<Icons.mapPin />}
-                  title='更多预约服务'
-                  text='自习室、图书馆和学习空间统一管理。'
-                />
-                <ComingSoon
-                  icon={<Icons.teams />}
-                  title='团队协作能力'
-                  text='为学习小组提供更清晰的共享策略。'
-                />
-              </CardContent>
-            </Card>
           </TabsContent>
         </Tabs>
 
-        <section className='grid gap-4 lg:grid-cols-[1fr_0.75fr]'>
+        <section className='grid gap-4 lg:grid-cols-[1.15fr_0.85fr]'>
           <Card className='shadow-none'>
             <CardHeader>
-              <CardTitle>常见问题</CardTitle>
-              <CardDescription>关于权益、申请和邀请码的几个关键说明。</CardDescription>
+              <div className='flex items-start justify-between gap-3'>
+                <div>
+                  <CardTitle className='flex items-center gap-2'><Icons.gift />我的货架</CardTitle>
+                  <CardDescription className='mt-1'>已兑换的邀请商品和当前权益。</CardDescription>
+                </div>
+                <Badge variant='outline'>{data.invitations.length + (membership.isPro ? 1 : 0)} 件</Badge>
+              </div>
+            </CardHeader>
+            <CardContent className='flex flex-col gap-2'>
+              {membership.isPro && <ShelfRow icon={<Icons.pro />} title='Pro 永久通行证' meta='已激活 · 3 个校园账号额度' status='已拥有' />}
+              {data.invitations.map((invitation) => (
+                <ShelfRow
+                  key={invitation.id}
+                  icon={<Icons.gift />}
+                  title='好友邀请码'
+                  meta={invitation.expiresAt ? `有效至 ${formatDate(invitation.expiresAt)}` : '长期有效'}
+                  status={invitation.status === 'active' ? '待赠出' : invitation.status === 'exhausted' ? '已使用' : '已失效'}
+                />
+              ))}
+              {!membership.isPro && data.invitations.length === 0 && (
+                <div className='rounded-lg border border-dashed p-5 text-center'>
+                  <Icons.product className='text-muted-foreground mx-auto' />
+                  <p className='mt-2 text-sm font-medium'>货架还是空的</p>
+                  <p className='text-muted-foreground mt-1 text-xs'>从上面的精选商品开始积累。</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className='shadow-none'>
+            <CardHeader>
+              <CardTitle>杂货铺规则</CardTitle>
+              <CardDescription>积分有门槛，权益有记录。</CardDescription>
             </CardHeader>
             <CardContent>
               <Accordion>
-                <AccordionItem value='payment'>
-                  <AccordionTrigger>现在是在线支付还是申请开通？</AccordionTrigger>
-                  <AccordionContent className='text-muted-foreground'>
-                    未配置 Stripe 时，页面走真实的 Pro
-                    开通申请接口，由管理员确认后授予永久权益；配置支付商户和 webhook 后，页面会切换到一次性 Checkout。
-                  </AccordionContent>
+                <AccordionItem value='earn'>
+                  <AccordionTrigger>席定币怎么获得？</AccordionTrigger>
+                  <AccordionContent className='text-muted-foreground'>每日完成一次有效账号验证获得 {data.dailyActivityPoints} 席定币；好友完成首次验证后，邀请人获得 {data.referralRewardPoints} 席定币。</AccordionContent>
                 </AccordionItem>
-                <AccordionItem value='invite'>
-                  <AccordionTrigger>邀请码可以在商店直接买吗？</AccordionTrigger>
-                  <AccordionContent className='text-muted-foreground'>
-                    不直接售卖。邀请码由管理员发放或由用户用活跃积分兑换，生成后只显示一次，适合转赠给认识的同学。
-                  </AccordionContent>
+                <AccordionItem value='redeem'>
+                  <AccordionTrigger>为什么邀请码要 {data.invitePointsCost} 席定币？</AccordionTrigger>
+                  <AccordionContent className='text-muted-foreground'>兑换门槛按约 60 元价值锚定，避免批量滥发。按每日活跃计算，需要约 {Math.ceil(data.invitePointsCost / Math.max(1, data.dailyActivityPoints))} 天。</AccordionContent>
                 </AccordionItem>
-                <AccordionItem value='pro'>
-                  <AccordionTrigger>Pro 为什么是永久权益？</AccordionTrigger>
-                  <AccordionContent className='text-muted-foreground'>
-                    当前定价是一次开通
-                    ¥20，服务端不设置到期时间。后续如果增加新的付费能力，会单独设计产品和规则。
-                  </AccordionContent>
+                <AccordionItem value='source'>
+                  <AccordionTrigger>邀请码可以公开出售吗？</AccordionTrigger>
+                  <AccordionContent className='text-muted-foreground'>平台不提供公开售卖入口。邀请码只建议转赠给真实认识的同学，生成记录和使用状态都由服务端保存。</AccordionContent>
                 </AccordionItem>
               </Accordion>
-            </CardContent>
-          </Card>
-          <Card className='bg-muted/30 shadow-none'>
-            <CardHeader>
-              <CardDescription>你的当前状态</CardDescription>
-              <CardTitle>{membership.planLabel}</CardTitle>
-            </CardHeader>
-            <CardContent className='flex flex-col gap-4 text-sm'>
-              <StatusLine
-                label='账号额度'
-                value={
-                  isAdmin
-                    ? '管理员不限额'
-                    : `${membership.accountCount} / ${membership.accountLimit}`
-                }
-              />
-              <Separator />
-              <StatusLine label='有效期' value={membership.isPermanent ? '永久有效' : '基础方案'} />
-              <Separator />
-              <StatusLine label='活跃积分' value={`${data.pointsBalance} 分`} />
-              <Link
-                href='/dashboard/membership'
-                className={cn(buttonVariants({ variant: 'outline' }), 'mt-2 w-full')}
-              >
-                管理会员与邀请
-                <Icons.arrowRight data-icon='inline-end' />
-              </Link>
             </CardContent>
           </Card>
         </section>
       </div>
 
-      <Dialog open={checkoutOpen} onOpenChange={setCheckoutOpen}>
+      <Dialog open={Boolean(selectedProduct)} onOpenChange={(open) => !open && setSelectedProduct(null)}>
         <DialogContent className='sm:max-w-lg'>
           <DialogHeader>
-            <DialogTitle>
-              {membership.paymentAvailable ? '在线开通席定 Pro' : '申请开通席定 Pro'}
-            </DialogTitle>
-            <DialogDescription>
-              {membership.paymentAvailable
-                ? '¥20，一次支付，永久有效。确认后将跳转到 Stripe Checkout 完成支付。'
-                : '¥20，一次开通，永久有效。提交后由管理员确认，确认完成后权益立即生效。'}
-            </DialogDescription>
+            <DialogTitle>{selectedProduct?.title}</DialogTitle>
+            <DialogDescription>{selectedProduct?.description}</DialogDescription>
           </DialogHeader>
-          <div className='rounded-lg border bg-muted/30 p-4'>
-            <div className='flex items-start justify-between gap-4'>
-              <div>
-                <p className='font-medium'>Pro 会员</p>
-                <p className='text-muted-foreground mt-1 text-sm'>
-                  最多绑定 3 个校园账号，适合多账号和多预约场景。
-                </p>
-              </div>
-              <p className='text-xl font-semibold tabular-nums'>¥20</p>
+          {selectedProduct?.kind === 'invite' && (
+            <div className='rounded-lg border bg-muted/30 p-4 text-sm'>
+              <div className='flex items-center justify-between gap-4'><span>兑换门槛</span><strong>{inviteCost} 席定币</strong></div>
+              <Separator className='my-3' />
+              <div className='flex items-center justify-between gap-4'><span>当前余额</span><strong>{data.pointsBalance} 席定币</strong></div>
+              <p className='text-muted-foreground mt-3 text-xs'>生成后只显示一次，请确认有明确的转赠对象。</p>
             </div>
-          </div>
-          <p className='text-muted-foreground text-sm leading-6'>
-            {membership.paymentAvailable
-              ? '支付成功后，Stripe webhook 会自动为当前平台账号授予 Pro。'
-              : '提交申请不会扣款，也不会立即伪造开通结果。管理员完成确认后，系统会把申请单变为永久 Pro。'}
-          </p>
+          )}
+          {selectedProduct?.kind === 'pro' && (
+            <div className='rounded-lg border bg-muted/30 p-4 text-sm'>¥20，一次支付，永久有效。支付成功后由 webhook 自动授予 Pro。</div>
+          )}
+          {selectedProduct?.kind === 'coming' && <div className='rounded-lg border bg-muted/30 p-4 text-sm'>这个商品正在准备真实的后端能力，当前不会扣除积分，也不会伪造兑换结果。</div>}
           <DialogFooter>
-            <Button variant='outline' onClick={() => setCheckoutOpen(false)}>
-              稍后再说
-            </Button>
-            <Button onClick={() => void submitProRequest()} disabled={busy || !canRequest}>
-              {busy ? '处理中' : membership.paymentAvailable ? '前往支付' : '提交开通申请'}
-              <Icons.arrowRight data-icon='inline-end' />
-            </Button>
+            <Button variant='outline' onClick={() => setSelectedProduct(null)}>返回货架</Button>
+            {selectedProduct?.kind === 'pro' && <Button onClick={() => void openProCheckout()} disabled={busy === 'pro' || !canRequest}>{busy === 'pro' ? '处理中' : membership.paymentAvailable ? '前往支付' : '申请开通'}</Button>}
+            {selectedProduct?.kind === 'invite' && <Button onClick={() => void handleProductAction(selectedProduct)} disabled={busy === 'invite' || data.pointsBalance < inviteCost}>{busy === 'invite' ? '兑换中' : '确认兑换'}</Button>}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={Boolean(generatedCode)} onOpenChange={(open) => !open && setGeneratedCode(null)}>
+        <DialogContent className='sm:max-w-md'>
+          <DialogHeader><DialogTitle>邀请码已生成</DialogTitle><DialogDescription>只显示一次，请复制后转赠给认识的同学。</DialogDescription></DialogHeader>
+          <div className='rounded-lg border bg-muted px-4 py-5 text-center font-mono text-lg tracking-[0.16em]'>{generatedCode}</div>
+          <DialogFooter>
+            <Button variant='outline' onClick={() => setGeneratedCode(null)}>关闭</Button>
+            <Button onClick={() => { if (generatedCode) void navigator.clipboard.writeText(generatedCode).then(() => toast.success('邀请码已复制')); }}><Icons.copy data-icon='inline-start' />复制邀请码</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -456,109 +382,39 @@ export default function StoreViewPage({
   );
 }
 
-function PlanCard({
-  title,
-  description,
-  price,
-  priceNote,
-  features,
-  action,
-  featured = false
-}: {
-  title: string;
-  description: string;
-  price: string;
-  priceNote: string;
-  features: string[];
-  action: React.ReactNode;
-  featured?: boolean;
-}) {
+function ProductCard({ product, data, busy, onAction }: { product: ShopProduct; data: RewardsSnapshot; busy: 'pro' | 'invite' | null; onAction: () => void }) {
+  const Icon = Icons[product.icon];
+  const owned = product.kind === 'pro' && data.membership.isPro;
+  const affordable = product.kind !== 'invite' || data.pointsBalance >= data.invitePointsCost;
   return (
-    <Card
-      className={cn(
-        'relative flex h-full flex-col shadow-none',
-        featured && 'border-primary ring-1 ring-primary/20'
-      )}
-    >
-      {featured && <Badge className='absolute top-4 right-4'>推荐</Badge>}
-      <CardHeader>
-        <CardDescription>{title}</CardDescription>
-        <CardTitle className='mt-1 text-3xl tabular-nums'>{price}</CardTitle>
-        <p className='text-muted-foreground text-sm'>{priceNote}</p>
-        <p className='text-muted-foreground pt-2 text-sm leading-6'>{description}</p>
+    <Card className='group flex h-full flex-col overflow-hidden shadow-none transition-transform hover:-translate-y-0.5'>
+      <div className={cn('flex h-28 items-end justify-between p-4 text-white', product.accent)}>
+        <Icon className='size-10 opacity-90' />
+        <Badge variant='secondary'>{product.badge}</Badge>
+      </div>
+      <CardHeader className='gap-1'>
+        <CardDescription>{product.subtitle}</CardDescription>
+        <CardTitle className='text-lg'>{product.title}</CardTitle>
       </CardHeader>
       <CardContent className='flex flex-1 flex-col gap-3'>
-        {features.map((feature) => (
-          <div key={feature} className='flex items-start gap-2 text-sm'>
-            <Icons.check className='text-primary mt-0.5 shrink-0' />
-            <span>{feature}</span>
-          </div>
-        ))}
+        <p className='text-muted-foreground text-sm leading-6'>{product.description}</p>
+        {product.kind === 'invite' && <p className='font-mono text-sm tabular-nums'>{data.invitePointsCost} 席定币</p>}
+        {product.kind === 'pro' && <p className='text-lg font-semibold tabular-nums'>¥20 <span className='text-muted-foreground text-xs font-normal'>永久</span></p>}
       </CardContent>
-      <CardFooter>{action}</CardFooter>
+      <CardFooter>
+        <Button className='w-full' variant={product.kind === 'coming' ? 'outline' : 'default'} onClick={onAction} disabled={owned || busy !== null}>
+          {owned ? '已拥有' : product.kind === 'coming' ? '查看详情' : product.kind === 'invite' ? affordable ? '兑换商品' : '查看门槛' : '查看商品'}
+          {product.kind !== 'coming' && <Icons.arrowRight data-icon='inline-end' />}
+        </Button>
+      </CardFooter>
     </Card>
   );
 }
 
-function CompareRow({ label, free, pro }: { label: string; free: string; pro: string }) {
-  return (
-    <TableRow>
-      <TableCell className='font-medium'>{label}</TableCell>
-      <TableCell className='text-muted-foreground'>{free}</TableCell>
-      <TableCell>{pro}</TableCell>
-    </TableRow>
-  );
+function ShelfRow({ icon, title, meta, status }: { icon: React.ReactNode; title: string; meta: string; status: string }) {
+  return <div className='flex items-center gap-3 rounded-lg border p-3'><div className='text-primary'>{icon}</div><div className='min-w-0 flex-1'><p className='truncate text-sm font-medium'>{title}</p><p className='text-muted-foreground mt-1 truncate text-xs'>{meta}</p></div><Badge variant='outline'>{status}</Badge></div>;
 }
 
-function StoreMetric({
-  label,
-  value,
-  className
-}: {
-  label: string;
-  value: string;
-  className?: string;
-}) {
-  return (
-    <div
-      className={cn(
-        'rounded-lg border border-primary-foreground/15 bg-primary-foreground/10 p-3',
-        className
-      )}
-    >
-      <p className='text-xs text-primary-foreground/60'>{label}</p>
-      <p className='mt-1 truncate text-base font-semibold'>{value}</p>
-    </div>
-  );
-}
-
-function ValueBlock({ icon, title, text }: { icon: React.ReactNode; title: string; text: string }) {
-  return (
-    <div className='flex flex-col gap-2 rounded-lg border bg-muted/20 p-4'>
-      <div className='text-primary'>{icon}</div>
-      <p className='font-medium'>{title}</p>
-      <p className='text-muted-foreground text-sm leading-6'>{text}</p>
-    </div>
-  );
-}
-
-function ComingSoon({ icon, title, text }: { icon: React.ReactNode; title: string; text: string }) {
-  return (
-    <div className='flex items-start gap-3 rounded-lg border p-4'>
-      <div className='text-muted-foreground mt-0.5'>{icon}</div>
-      <div>
-        <p className='font-medium'>{title}</p>
-        <p className='text-muted-foreground mt-1 text-sm leading-6'>{text}</p>
-      </div>
-    </div>
-  );
-}
-
-function StatusLine({ label, value }: { label: string; value: string }) {
-  return (
-    <div className='flex items-center justify-between gap-4 text-sm'>
-      <span className='text-muted-foreground'>{label}</span>
-      <span className='font-medium'>{value}</span>
-    </div>
-  );
+function formatDate(value: string): string {
+  return new Date(value).toLocaleDateString('zh-CN', { timeZone: 'Asia/Shanghai', month: 'numeric', day: 'numeric' });
 }

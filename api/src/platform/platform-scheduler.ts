@@ -7,6 +7,7 @@ import { PlatformQueueService } from './platform-queue.service';
 import { PlatformRedisService } from './platform-redis.service';
 import { StatusEnum } from '../statuses/statuses.enum';
 import { PlatformServiceConnectionsService } from './platform-service-connections.service';
+import { PlatformAttendanceService } from './platform-attendance.service';
 
 @Injectable()
 export class PlatformScheduler {
@@ -18,11 +19,17 @@ export class PlatformScheduler {
     private readonly queue: PlatformQueueService,
     private readonly redis: PlatformRedisService,
     private readonly connections: PlatformServiceConnectionsService,
+    private readonly attendance: PlatformAttendanceService,
   ) {}
 
   @Cron('0 */5 * * * *', { timeZone: 'Asia/Shanghai' })
   async recoverConnections(): Promise<void> {
     await this.connections.recoverDueConnections();
+  }
+
+  @Cron('0 * * * * *', { timeZone: 'Asia/Shanghai' })
+  async protectAttendance(): Promise<void> {
+    await this.attendance.monitorDueReservations();
   }
 
   @Cron('50 59 5 * * *', { timeZone: 'Asia/Shanghai' })

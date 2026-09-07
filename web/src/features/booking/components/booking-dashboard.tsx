@@ -95,7 +95,9 @@ export default function BookingDashboard({ initialData }: { initialData: Booking
   const [snapshot, setSnapshot] = useState(initialData);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [togglingTaskId, setTogglingTaskId] = useState<string | null>(null);
+  const [tipIndex, setTipIndex] = useState(0);
   const summary = snapshot.summary;
+  const tip = SEAT_TIPS[tipIndex % SEAT_TIPS.length];
 
   useEffect(() => {
     let active = true;
@@ -330,6 +332,38 @@ export default function BookingDashboard({ initialData }: { initialData: Booking
           </Card>
         </div>
 
+        <Card className='overflow-hidden border-primary/20 bg-primary/[0.03] shadow-none'>
+          <CardContent className='flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5'>
+            <div className='flex min-w-0 items-start gap-3'>
+              <div className='bg-primary/10 text-primary flex size-10 shrink-0 items-center justify-center rounded-lg'>
+                <Icons.sparkles className='size-5' aria-hidden='true' />
+              </div>
+              <div className='min-w-0'>
+                <p className='text-muted-foreground text-xs font-medium tracking-wide'>席定小贴士</p>
+                <motion.div
+                  key={tip.title}
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.2 }}
+                  aria-live='polite'
+                >
+                  <p className='mt-1 font-medium'>{tip.title}</p>
+                  <p className='text-muted-foreground mt-1 text-sm leading-5'>{tip.body}</p>
+                </motion.div>
+              </div>
+            </div>
+            <Button
+              variant='ghost'
+              size='sm'
+              className='shrink-0 self-start sm:self-center'
+              onClick={() => setTipIndex((current) => current + 1)}
+            >
+              换一条
+              <Icons.refresh data-icon='inline-end' />
+            </Button>
+          </CardContent>
+        </Card>
+
         <Card className='shadow-none'>
           <CardHeader className='border-b'>
             <CardDescription>自动化任务</CardDescription>
@@ -362,6 +396,25 @@ export default function BookingDashboard({ initialData }: { initialData: Booking
     </PageContainer>
   );
 }
+
+const SEAT_TIPS = [
+  {
+    title: '主座位之外，记得留一两个备选。',
+    body: '开放窗口很短时，备选座位能让任务继续尝试，不必每天重新配置。'
+  },
+  {
+    title: '座位图颜色只代表当前状态。',
+    body: '同一座位在不同日期和时间段可能不同，提交前平台还会读取目标时段的实时可用性。'
+  },
+  {
+    title: '签到保护可以替你守住最后一分钟。',
+    body: '在签到保护页开启后，自习室预约会在允许迟到窗口结束前自动处理未签到记录。'
+  },
+  {
+    title: '图书馆和自习室是两套独立服务。',
+    body: '同一个学校账号可以分别连接，两边的连接状态和预约记录不会混在一起。'
+  }
+];
 
 function formatDateLabel(value: string): string {
   return new Date(`${value}T00:00:00+08:00`).toLocaleDateString('zh-CN', {

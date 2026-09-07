@@ -12,6 +12,7 @@ web/.next/
 web/.playwright-cli/
 web/runtime/
 .playwright-cli/
+.playwright-mcp/
 output/playwright/
 web/output/
 web/public/landing/opensaas-assets/

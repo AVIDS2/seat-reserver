@@ -4,6 +4,7 @@ import { Admin, Auth, Automation, Runs, Strategy } from './components/Examples';
 import { Announcement } from './components/Announcement';
 import { Clients } from './components/Clients';
 import { CampusStories } from './components/CampusStories';
+import { CampusCoverage } from './components/CampusCoverage';
 import { ExamplesCarousel } from './components/ExamplesCarousel';
 import { FAQ } from './components/FAQ';
 import { FeaturesGrid } from './components/FeaturesGrid';
@@ -25,6 +26,7 @@ export function LandingPage({ user }: { user: PlatformUser | null }) {
         <Hero user={user} />
         <Clients />
         <CampusStories />
+        <CampusCoverage />
         <ExamplesCarousel examples={examples} />
         <Automation />
         <Auth />

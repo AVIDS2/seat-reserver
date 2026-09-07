@@ -8,6 +8,8 @@ import { SessionModule } from '../session/session.module';
 import { UserEntity } from '../users/infrastructure/persistence/relational/entities/user.entity';
 import { PlatformAccountsController } from './platform-accounts.controller';
 import { PlatformAccountsService } from './platform-accounts.service';
+import { PlatformAttendanceController } from './platform-attendance.controller';
+import { PlatformAttendanceService } from './platform-attendance.service';
 import { PlatformAdminController } from './platform-admin.controller';
 import { PlatformAdminGuard } from './platform-admin.guard';
 import { PlatformAdminService } from './platform-admin.service';
@@ -29,6 +31,7 @@ import { BookingRunEntity } from './entities/booking-run.entity';
 import { BookingTaskEntity } from './entities/booking-task.entity';
 import { PlatformInvitationEntity } from './entities/platform-invitation.entity';
 import { PlatformInvitationUseEntity } from './entities/platform-invitation-use.entity';
+import { PlatformAttendanceSettingEntity } from './entities/platform-attendance-setting.entity';
 import { PlatformMembershipEntity } from './entities/platform-membership.entity';
 import { PlatformPointsLedgerEntity } from './entities/platform-points-ledger.entity';
 import { PlatformPointsWalletEntity } from './entities/platform-points-wallet.entity';
@@ -71,6 +74,7 @@ import { WebVpnSeatClientService } from './webvpn-seat-client.service';
       BookingTaskEntity,
       PlatformInvitationEntity,
       PlatformInvitationUseEntity,
+      PlatformAttendanceSettingEntity,
       PlatformMembershipEntity,
       PlatformNotificationEntity,
       PlatformPointsLedgerEntity,
@@ -84,6 +88,7 @@ import { WebVpnSeatClientService } from './webvpn-seat-client.service';
   ],
   controllers: [
     PlatformAccountsController,
+    PlatformAttendanceController,
     PlatformAdminController,
     PlatformAuthController,
     PlatformDashboardController,
@@ -99,6 +104,7 @@ import { WebVpnSeatClientService } from './webvpn-seat-client.service';
   ],
   providers: [
     PlatformAccountsService,
+    PlatformAttendanceService,
     PlatformAdminGuard,
     PlatformAdminService,
     PlatformBookingExecutor,

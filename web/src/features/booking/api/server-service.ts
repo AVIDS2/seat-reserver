@@ -95,12 +95,14 @@ function toPlatformUser(value: Record<string, unknown>): PlatformUser {
   const status = value.status as { id?: number } | null | undefined;
   const firstName = typeof value.firstName === 'string' ? value.firstName : '';
   const lastName = typeof value.lastName === 'string' ? value.lastName : '';
+  const photo = value.photo as { path?: string } | null | undefined;
   return {
     id: String(value.id),
     email: typeof value.email === 'string' ? value.email : '',
     firstName,
     lastName,
     displayName: [firstName, lastName].filter(Boolean).join(' ') || '平台用户',
+    avatarUrl: typeof photo?.path === 'string' ? photo.path : null,
     role: Number(role?.id) === 1 ? 'admin' : 'user',
     status: Number(status?.id) === 1 ? 'active' : 'disabled'
   };
