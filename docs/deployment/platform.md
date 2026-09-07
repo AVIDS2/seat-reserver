@@ -96,7 +96,7 @@ API 容器内的 Nest Schedule 使用北京时间：
 
 管理员工作台还提供全局运行记录、任务和学校账号的脱敏查看；不会返回学校密码、缓存 Token 或原始敏感请求。
 
-`/dashboard/store` 是用户可见的权益商店和定价页；`/dashboard/membership` 是邀请与积分中心。Pro 当前标价 `¥20 / 永久`，页面只提交真实开通申请，不伪造在线支付结果。管理员在确认外部收款后，于工作台的“Pro 开通申请”区域执行授予或关闭操作；授予动作写入会员表并将待处理申请标记为已开通，关闭后用户可以重新提交。积分兑换邀请码、邀请关系和积分流水均由服务端事务处理，前端不能直接修改余额或权益。
+`/dashboard/store` 是用户可见的权益商店和定价页；`/dashboard/membership` 是邀请与积分中心。Pro 当前标价 `¥20 / 永久`。支付接入复用了 MIT 许可的 upstream `nextjs/saas-starter` Stripe Checkout/webhook 边界，但适配为席定现有 NestJS/TypeORM 模型和一次性支付。只有同时配置 `PLATFORM_STRIPE_SECRET_KEY`、`PLATFORM_STRIPE_PRICE_ID` 和 `PLATFORM_STRIPE_WEBHOOK_SECRET` 时，商店才启用在线支付；否则回退到真实开通申请，不伪造在线支付结果。支付 webhook 会校验签名、商品 Price ID、CNY ¥20 金额和单件数量，再幂等授予永久 Pro。管理员在确认外部收款后，于工作台的“Pro 开通申请”区域执行授予或关闭操作；授予动作写入会员表并将待处理申请标记为已开通，关闭后用户可以重新提交。积分兑换邀请码、邀请关系和积分流水均由服务端事务处理，前端不能直接修改余额或权益。
 
 连接自动恢复使用 `platform_school_service_connection.lastAttemptAt`、`nextRetryAt` 和 `retryCount` 做服务端持久化退避。API 每 5 分钟扫描处于恢复中的连接，按 30 秒、60 秒、120 秒逐步退避，最大 30 分钟；账号密码错误等连续失败达到阈值后停止后台高频重试并显示“需要处理”。浏览器账号页每 30 秒读取最新连接状态，但不会刷新整页或覆盖用户当前操作。
 

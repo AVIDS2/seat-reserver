@@ -1,11 +1,12 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 import { Icons } from '@/components/icons';
 import PageContainer from '@/components/layout/page-container';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
   Accordion,
   AccordionContent,
@@ -40,10 +41,21 @@ import {
   TableRow
 } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { requestPro, type RewardsSnapshot } from '@/features/booking/api/service';
+import {
+  createProCheckout,
+  getRewardsSnapshot,
+  requestPro,
+  type RewardsSnapshot
+} from '@/features/booking/api/service';
 import { cn } from '@/lib/utils';
 
-export default function StoreViewPage({ initialData }: { initialData: RewardsSnapshot }) {
+export default function StoreViewPage({
+  initialData,
+  checkoutResult
+}: {
+  initialData: RewardsSnapshot;
+  checkoutResult: 'success' | 'cancelled' | null;
+}) {
   const [data, setData] = useState(initialData);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -51,9 +63,32 @@ export default function StoreViewPage({ initialData }: { initialData: RewardsSna
   const isAdmin = membership.plan === 'admin';
   const canRequest = !membership.isPro && !data.proRequest;
 
+  useEffect(() => {
+    if (checkoutResult !== 'success') return;
+    let active = true;
+    const refresh = () => {
+      void getRewardsSnapshot()
+        .then((snapshot) => {
+          if (active) setData(snapshot);
+        })
+        .catch(() => undefined);
+    };
+    refresh();
+    const timer = window.setTimeout(refresh, 1800);
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+    };
+  }, [checkoutResult]);
+
   const submitProRequest = async () => {
     setBusy(true);
     try {
+      if (membership.paymentAvailable) {
+        const checkout = await createProCheckout();
+        window.location.assign(checkout.url);
+        return;
+      }
       const result = await requestPro();
       setData((current) => ({
         ...current,
@@ -75,6 +110,24 @@ export default function StoreViewPage({ initialData }: { initialData: RewardsSna
       pageDescription='把校园座位预约能力，变成一套长期可用的个人工具。'
     >
       <div className='mx-auto flex w-full max-w-[1180px] flex-col gap-6 pb-8'>
+        {checkoutResult === 'success' && (
+          <Alert>
+            <Icons.clock />
+            <AlertTitle>{membership.isPro ? 'Pro 已开通' : '支付已返回，正在确认'}</AlertTitle>
+            <AlertDescription>
+              {membership.isPro
+                ? '支付已确认，永久 Pro 权益已经生效。'
+                : '支付平台已返回成功页面，权益正在等待回调确认。页面会自动刷新，稍后即可看到最新状态。'}
+            </AlertDescription>
+          </Alert>
+        )}
+        {checkoutResult === 'cancelled' && (
+          <Alert>
+            <Icons.info />
+            <AlertTitle>支付未完成</AlertTitle>
+            <AlertDescription>没有产生扣款，当前方案没有变化。</AlertDescription>
+          </Alert>
+        )}
         <section className='overflow-hidden rounded-xl border bg-primary text-primary-foreground'>
           <div className='grid gap-8 px-6 py-8 sm:px-8 sm:py-10 lg:grid-cols-[1.2fr_0.8fr] lg:items-end'>
             <div className='max-w-2xl'>
@@ -100,7 +153,9 @@ export default function StoreViewPage({ initialData }: { initialData: RewardsSna
                       ? 'Pro 已生效'
                       : data.proRequest
                         ? '申请审核中'
-                        : '开通 Pro'}
+                        : membership.paymentAvailable
+                          ? '在线开通 Pro'
+                          : '申请开通'}
                 </Button>
                 <Link
                   href='/dashboard/membership#invite'
@@ -174,7 +229,9 @@ export default function StoreViewPage({ initialData }: { initialData: RewardsSna
                         ? '已拥有 Pro'
                         : data.proRequest
                           ? '申请审核中'
-                          : '开通 Pro'}
+                          : membership.paymentAvailable
+                            ? '在线开通 Pro'
+                            : '申请开通'}
                   </Button>
                 }
               />
@@ -306,8 +363,8 @@ export default function StoreViewPage({ initialData }: { initialData: RewardsSna
                 <AccordionItem value='payment'>
                   <AccordionTrigger>现在是在线支付还是申请开通？</AccordionTrigger>
                   <AccordionContent className='text-muted-foreground'>
-                    当前页面走真实的 Pro
-                    开通申请接口，由管理员确认后授予永久权益，不会伪造支付成功。接入在线支付前，需要配置支付商户、回调签名和退款状态同步。
+                    未配置 Stripe 时，页面走真实的 Pro
+                    开通申请接口，由管理员确认后授予永久权益；配置支付商户和 webhook 后，页面会切换到一次性 Checkout。
                   </AccordionContent>
                 </AccordionItem>
                 <AccordionItem value='invite'>
@@ -359,9 +416,13 @@ export default function StoreViewPage({ initialData }: { initialData: RewardsSna
       <Dialog open={checkoutOpen} onOpenChange={setCheckoutOpen}>
         <DialogContent className='sm:max-w-lg'>
           <DialogHeader>
-            <DialogTitle>开通席定 Pro</DialogTitle>
+            <DialogTitle>
+              {membership.paymentAvailable ? '在线开通席定 Pro' : '申请开通席定 Pro'}
+            </DialogTitle>
             <DialogDescription>
-              ¥20，一次开通，永久有效。提交后由管理员确认，确认完成后权益立即生效。
+              {membership.paymentAvailable
+                ? '¥20，一次支付，永久有效。确认后将跳转到 Stripe Checkout 完成支付。'
+                : '¥20，一次开通，永久有效。提交后由管理员确认，确认完成后权益立即生效。'}
             </DialogDescription>
           </DialogHeader>
           <div className='rounded-lg border bg-muted/30 p-4'>
@@ -376,14 +437,16 @@ export default function StoreViewPage({ initialData }: { initialData: RewardsSna
             </div>
           </div>
           <p className='text-muted-foreground text-sm leading-6'>
-            提交申请不会扣款，也不会立即伪造开通结果。管理员完成确认后，系统会把申请单变为永久 Pro。
+            {membership.paymentAvailable
+              ? '支付成功后，Stripe webhook 会自动为当前平台账号授予 Pro。'
+              : '提交申请不会扣款，也不会立即伪造开通结果。管理员完成确认后，系统会把申请单变为永久 Pro。'}
           </p>
           <DialogFooter>
             <Button variant='outline' onClick={() => setCheckoutOpen(false)}>
               稍后再说
             </Button>
             <Button onClick={() => void submitProRequest()} disabled={busy || !canRequest}>
-              {busy ? '提交中' : '提交开通申请'}
+              {busy ? '处理中' : membership.paymentAvailable ? '前往支付' : '提交开通申请'}
               <Icons.arrowRight data-icon='inline-end' />
             </Button>
           </DialogFooter>

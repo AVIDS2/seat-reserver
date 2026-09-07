@@ -28,6 +28,7 @@ export type MembershipView = {
   accountCount: number;
   priceCents: number;
   priceLabel: string;
+  paymentAvailable: boolean;
 };
 
 export type ProRequestView = {
@@ -201,6 +202,55 @@ export class PlatformMembershipService {
     return this.getEntitlement(userId);
   }
 
+  async grantProFromPayment(
+    userId: number,
+    paymentId: string,
+  ): Promise<MembershipView> {
+    await this.dataSource.transaction(async (manager) => {
+      const users = manager.getRepository(UserEntity);
+      const memberships = manager.getRepository(PlatformMembershipEntity);
+      const requests = manager.getRepository(PlatformProRequestEntity);
+      const user = await users.findOne({ where: { id: userId } });
+      if (!user) throw new NotFoundException('用户不存在');
+
+      let membership = await memberships
+        .createQueryBuilder('membership')
+        .setLock('pessimistic_write')
+        .where('membership.userId = :userId', { userId })
+        .getOne();
+      if (!membership) {
+        membership = memberships.create({
+          plan: 'pro',
+          proActivatedAt: new Date(),
+          proExpiresAt: null,
+          source: 'payment',
+          note: `Stripe payment ${paymentId}`,
+          user: { id: userId } as UserEntity,
+          grantedByUser: null,
+        });
+      } else {
+        membership.plan = 'pro';
+        membership.proActivatedAt = membership.proActivatedAt ?? new Date();
+        membership.proExpiresAt = null;
+        membership.source = 'payment';
+        membership.note = `Stripe payment ${paymentId}`;
+        membership.grantedByUser = null;
+      }
+      await memberships.save(membership);
+
+      const request = await requests.findOne({
+        where: { user: { id: userId }, status: 'pending' },
+      });
+      if (request) {
+        request.status = 'approved';
+        request.handledAt = new Date();
+        request.note = `Stripe payment ${paymentId}`;
+        await requests.save(request);
+      }
+    });
+    return this.getEntitlement(userId);
+  }
+
   async rejectProRequest(
     adminId: number,
     requestId: number,
@@ -259,6 +309,11 @@ export class PlatformMembershipService {
       accountCount,
       priceCents: PRO_PRICE_CENTS,
       priceLabel: '¥20 / 永久',
+      paymentAvailable: Boolean(
+        process.env.PLATFORM_STRIPE_SECRET_KEY &&
+        process.env.PLATFORM_STRIPE_PRICE_ID &&
+        process.env.PLATFORM_STRIPE_WEBHOOK_SECRET,
+      ),
     };
   }
 

@@ -5,7 +5,14 @@ export const metadata = {
   title: '席定商店'
 };
 
-export default async function StorePage() {
+export default async function StorePage({
+  searchParams
+}: {
+  searchParams: Promise<{ checkout?: string }>;
+}) {
   const snapshot = await getRewardsSnapshotServer();
-  return <StoreViewPage initialData={snapshot} />;
+  const params = await searchParams;
+  const checkout =
+    params.checkout === 'success' || params.checkout === 'cancelled' ? params.checkout : null;
+  return <StoreViewPage initialData={snapshot} checkoutResult={checkout} />;
 }

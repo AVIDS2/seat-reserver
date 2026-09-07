@@ -69,6 +69,7 @@ export type Membership = {
   accountCount: number;
   priceCents: number;
   priceLabel: string;
+  paymentAvailable: boolean;
 };
 
 export type ProRequest = {
@@ -671,6 +672,13 @@ export async function requestPro(): Promise<{
   message: string;
 }> {
   return platformRequest('/platform/rewards/pro-request', { method: 'POST' });
+}
+
+export async function createProCheckout(): Promise<{
+  url: string;
+  sessionId: string;
+}> {
+  return platformRequest('/platform/payments/pro/checkout', { method: 'POST' });
 }
 
 export async function getAdminProRequests(): Promise<AdminProRequest[]> {

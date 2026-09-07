@@ -23,6 +23,8 @@ import { PlatformNotificationsService } from './platform-notifications.service';
 import { PlatformRewardsController } from './platform-rewards.controller';
 import { PlatformRewardsService } from './platform-rewards.service';
 import { PlatformMembershipService } from './platform-membership.service';
+import { PlatformPaymentsController } from './platform-payments.controller';
+import { PlatformPaymentsService } from './platform-payments.service';
 import { BookingRunEntity } from './entities/booking-run.entity';
 import { BookingTaskEntity } from './entities/booking-task.entity';
 import { PlatformInvitationEntity } from './entities/platform-invitation.entity';
@@ -88,6 +90,7 @@ import { WebVpnSeatClientService } from './webvpn-seat-client.service';
     PlatformHealthController,
     PlatformInvitationsController,
     PlatformNotificationsController,
+    PlatformPaymentsController,
     PlatformRewardsController,
     PlatformRunsController,
     PlatformReservationsController,
@@ -103,6 +106,7 @@ import { WebVpnSeatClientService } from './webvpn-seat-client.service';
     PlatformDashboardService,
     PlatformInvitationsService,
     PlatformNotificationsService,
+    PlatformPaymentsService,
     PlatformMembershipService,
     PlatformProcessor,
     PlatformQueueService,
