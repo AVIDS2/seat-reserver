@@ -96,7 +96,7 @@ API 容器内的 Nest Schedule 使用北京时间：
 
 “检查 / dry-run”只调用 Token 验证并生成候选列表，不调用 `freeBook`；“立即运行”会进入真实预约队列。
 
-管理员工作台还提供全局运行记录、任务和学校账号的脱敏查看；不会返回学校密码、缓存 Token 或原始敏感请求。
+管理员工作台还提供全局运行记录、任务和学校账号的脱敏查看；不会返回学校密码、缓存 Token 或原始敏感请求。成员管理列表可直接为指定普通用户开通永久 Pro，也可以处理用户提交的 Pro 申请；两条路径都写入管理员授予记录。
 
 `/dashboard/store` 是用户可见的权益商店和定价页；`/dashboard/membership` 是邀请与积分中心。Pro 当前标价 `¥20 / 永久`。支付接入复用了 MIT 许可的 upstream `nextjs/saas-starter` Stripe Checkout/webhook 边界，但适配为席定现有 NestJS/TypeORM 模型和一次性支付。只有同时配置 `PLATFORM_STRIPE_SECRET_KEY`、`PLATFORM_STRIPE_PRICE_ID` 和 `PLATFORM_STRIPE_WEBHOOK_SECRET` 时，商店才启用在线支付；否则回退到真实开通申请，不伪造在线支付结果。支付 webhook 会校验签名、商品 Price ID、CNY ¥20 金额和单件数量，再幂等授予永久 Pro。管理员在确认外部收款后，于工作台的“Pro 开通申请”区域执行授予或关闭操作；授予动作写入会员表并将待处理申请标记为已开通，关闭后用户可以重新提交。积分兑换邀请码、邀请关系和积分流水均由服务端事务处理，前端不能直接修改余额或权益。
 

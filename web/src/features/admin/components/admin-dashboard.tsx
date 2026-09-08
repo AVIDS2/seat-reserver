@@ -5,6 +5,16 @@ import { toast } from 'sonner';
 import { Icons } from '@/components/icons';
 import PageContainer from '@/components/layout/page-container';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle
+} from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -76,6 +86,7 @@ export default function AdminDashboard({ initialData }: { initialData: AdminSnap
   const [saving, setSaving] = useState(false);
   const [busyUserId, setBusyUserId] = useState<string | null>(null);
   const [busyProUserId, setBusyProUserId] = useState<string | null>(null);
+  const [proTarget, setProTarget] = useState<AdminUser | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
   const refreshAdminData = async () => {
@@ -357,20 +368,32 @@ export default function AdminDashboard({ initialData }: { initialData: AdminSnap
                           </Badge>
                         </TableCell>
                         <TableCell className='text-right'>
-                          <Button
-                            variant='ghost'
-                            size='sm'
-                            disabled={isCurrent || isBusy}
-                            onClick={() => void toggleUser(user)}
-                          >
-                            {isBusy ? (
-                              <Icons.spinner className='animate-spin' />
-                            ) : user.status === 'active' ? (
-                              '禁用'
-                            ) : (
-                              '启用'
+                          <div className='flex justify-end gap-1'>
+                            {user.role !== 'admin' && user.plan !== 'pro' && (
+                              <Button
+                                variant='outline'
+                                size='sm'
+                                disabled={isCurrent || busyProUserId === user.id}
+                                onClick={() => setProTarget(user)}
+                              >
+                                {busyProUserId === user.id ? '处理中' : '开通 Pro'}
+                              </Button>
                             )}
-                          </Button>
+                            <Button
+                              variant='ghost'
+                              size='sm'
+                              disabled={isCurrent || isBusy}
+                              onClick={() => void toggleUser(user)}
+                            >
+                              {isBusy ? (
+                                <Icons.spinner className='animate-spin' />
+                              ) : user.status === 'active' ? (
+                                '禁用'
+                              ) : (
+                                '启用'
+                              )}
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     );
@@ -416,21 +439,32 @@ export default function AdminDashboard({ initialData }: { initialData: AdminSnap
                             </span>
                           </div>
                         </div>
-                        <Button
-                          className='shrink-0'
-                          variant='ghost'
-                          size='sm'
-                          disabled={isCurrent || isBusy}
-                          onClick={() => void toggleUser(user)}
-                        >
-                          {isBusy ? (
-                            <Icons.spinner className='animate-spin' />
-                          ) : user.status === 'active' ? (
-                            '禁用'
-                          ) : (
-                            '启用'
+                        <div className='flex shrink-0 flex-col items-end gap-1'>
+                          {user.role !== 'admin' && user.plan !== 'pro' && (
+                            <Button
+                              variant='outline'
+                              size='sm'
+                              disabled={isCurrent || busyProUserId === user.id}
+                              onClick={() => setProTarget(user)}
+                            >
+                              {busyProUserId === user.id ? '处理中' : '开通 Pro'}
+                            </Button>
                           )}
-                        </Button>
+                          <Button
+                            variant='ghost'
+                            size='sm'
+                            disabled={isCurrent || isBusy}
+                            onClick={() => void toggleUser(user)}
+                          >
+                            {isBusy ? (
+                              <Icons.spinner className='animate-spin' />
+                            ) : user.status === 'active' ? (
+                              '禁用'
+                            ) : (
+                              '启用'
+                            )}
+                          </Button>
+                        </div>
                       </div>
                     );
                   })
@@ -1014,6 +1048,33 @@ export default function AdminDashboard({ initialData }: { initialData: AdminSnap
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog
+        open={Boolean(proTarget)}
+        onOpenChange={(open) => !open && setProTarget(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>直接开通永久 Pro？</AlertDialogTitle>
+            <AlertDialogDescription>
+              将为「{proTarget?.displayName}」立即开通永久 Pro，校园账号额度会提升到 3 个。该操作会写入管理员授予记录。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (!proTarget) return;
+                const target = proTarget;
+                setProTarget(null);
+                void grantUserPro(target);
+              }}
+            >
+              确认开通
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </PageContainer>
   );
 }
