@@ -17,7 +17,7 @@ import { usePlatformSession } from '@/features/auth/platform-session';
 
 export const PLATFORM_TOUR_NAME = 'platform-onboarding';
 
-const ONBOARDING_STORAGE_PREFIX = 'seat-platform:onboarding:v1:';
+const ONBOARDING_STORAGE_PREFIX = 'seat-platform:onboarding:v2:';
 
 const onboardingSteps: Tour[] = [
   {
@@ -26,7 +26,8 @@ const onboardingSteps: Tour[] = [
       {
         icon: '01',
         title: '欢迎使用席定',
-        content: '接下来用几步带你走完账号授权、选座、自动预约、签到保护和席定币活动。可以跳过，也可以随时从右上角重新查看。'
+        content: '接下来用几步带你走完账号授权、选座、自动预约、签到保护和席定币活动。可以取消，也可以随时从右上角重新查看。',
+        nextRoute: '/dashboard/accounts'
       },
       {
         icon: '02',
@@ -34,7 +35,7 @@ const onboardingSteps: Tour[] = [
         content: '先完成一次正常验证。自习室和图书馆是独立服务，连接状态会分别维护。',
         selector: '#nextstep-account-connect',
         side: 'bottom',
-        nextRoute: '/dashboard/accounts',
+        nextRoute: '/dashboard/seats',
         prevRoute: '/dashboard/overview',
         pointerPadding: 10,
         pointerRadius: 10,
@@ -47,9 +48,9 @@ const onboardingSteps: Tour[] = [
         icon: '03',
         title: '在座位图里找位置',
         content: '按场馆、楼栋、空间和日期查看实时座位。选中的座位可以直接预约，也可以带入自动任务。',
-        selector: '#nextstep-seat-map',
+        selector: '#nextstep-seat-map-title',
         side: 'top',
-        nextRoute: '/dashboard/seats',
+        nextRoute: '/dashboard/tasks',
         prevRoute: '/dashboard/accounts',
         pointerPadding: 8,
         pointerRadius: 12,
@@ -64,7 +65,7 @@ const onboardingSteps: Tour[] = [
         content: '设置主座位、备选座位、预约时间和执行日期。系统会在开放窗口按顺序尝试。',
         selector: '#nextstep-task-create',
         side: 'bottom',
-        nextRoute: '/dashboard/tasks',
+        nextRoute: '/dashboard/attendance',
         prevRoute: '/dashboard/seats',
         pointerPadding: 10,
         pointerRadius: 10,
@@ -79,7 +80,7 @@ const onboardingSteps: Tour[] = [
         content: '自习室预约可以在允许迟到窗口结束前自动处理未签到记录，减少不必要的违约风险。',
         selector: '#nextstep-attendance-protection',
         side: 'top',
-        nextRoute: '/dashboard/attendance',
+        nextRoute: '/dashboard/membership',
         prevRoute: '/dashboard/tasks',
         pointerPadding: 8,
         pointerRadius: 12,
@@ -94,7 +95,6 @@ const onboardingSteps: Tour[] = [
         content: '每天在活动中心签到领取 30 席定币，完成支线活动还能解锁更多奖励。',
         selector: '#nextstep-rewards',
         side: 'top',
-        nextRoute: '/dashboard/membership',
         prevRoute: '/dashboard/attendance',
         pointerPadding: 8,
         pointerRadius: 12,
@@ -139,7 +139,8 @@ function CustomTourCard({
           </Badge>
         </div>
         <Button variant='ghost' size='sm' className='h-7 shrink-0 px-2 text-xs' onClick={skipTour}>
-          跳过引导
+          <Icons.close data-icon='inline-start' />
+          取消引导
         </Button>
       </div>
 

@@ -423,7 +423,12 @@ export default function SeatMapPage({
         <div className='flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between'>
           <div className='min-w-0'>
             <p className='text-muted-foreground mb-2 text-sm'>实时空间</p>
-            <h1 className='text-2xl font-semibold tracking-tight sm:text-3xl'>座位图</h1>
+            <h1
+              id='nextstep-seat-map-title'
+              className='text-2xl font-semibold tracking-tight sm:text-3xl'
+            >
+              座位图
+            </h1>
             <p className='text-muted-foreground mt-2 max-w-2xl text-sm leading-6'>
               查看学校实时座位状态，按日期、楼栋和空间快速找到合适的位置。
             </p>
