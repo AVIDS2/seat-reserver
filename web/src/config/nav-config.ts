@@ -54,7 +54,7 @@ export const navGroups: NavGroup[] = [
         items: []
       },
       {
-        title: '会员与邀请',
+        title: '席定币与活动',
         url: '/dashboard/membership',
         icon: 'pro',
         shortcut: ['m', 'm'],

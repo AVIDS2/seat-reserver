@@ -29,8 +29,10 @@ import {
   ItemTitle
 } from '@/components/ui/item';
 import { cn } from '@/lib/utils';
+import { RewardsQuickCard } from '@/features/membership/components/rewards-quick-card';
 
 import type { BookingSnapshot, BookingTask } from '../types';
+import type { RewardsSnapshot } from '../api/service';
 import { getClientSnapshot, setBookingTaskEnabled } from '../api/service';
 import { MetricCard } from './metric-card';
 import { BookingOpenCountdown } from './booking-open-countdown';
@@ -91,7 +93,13 @@ function TaskRow({
   );
 }
 
-export default function BookingDashboard({ initialData }: { initialData: BookingSnapshot }) {
+export default function BookingDashboard({
+  initialData,
+  initialRewards
+}: {
+  initialData: BookingSnapshot;
+  initialRewards: RewardsSnapshot;
+}) {
   const [snapshot, setSnapshot] = useState(initialData);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [togglingTaskId, setTogglingTaskId] = useState<string | null>(null);
@@ -240,6 +248,8 @@ export default function BookingDashboard({ initialData }: { initialData: Booking
             accent='success'
           />
         </div>
+
+        <RewardsQuickCard initialData={initialRewards} />
 
         <div className='grid gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]'>
           <Card className='shadow-none'>
