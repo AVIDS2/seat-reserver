@@ -67,7 +67,7 @@ export default function RechargeViewPage({ initialBalance }: { initialBalance: n
             <CardDescription>先用公开、可追踪的方式积累，不需要额外购买。</CardDescription>
           </CardHeader>
           <CardContent className='grid gap-3 sm:grid-cols-2'>
-            <EarnRow icon={<Icons.check />} title='每日有效验证' description='完成一次学校账号验证，获得每日活跃积分。' />
+            <EarnRow icon={<Icons.check />} title='每日签到' description='每天进入活动中心完成一次签到，领取每日席定币。' />
             <EarnRow icon={<Icons.teams />} title='邀请真实同学' description='好友完成首次验证后，邀请双方按规则获得奖励。' />
           </CardContent>
         </Card>

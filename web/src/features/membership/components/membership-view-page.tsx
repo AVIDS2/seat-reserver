@@ -21,9 +21,14 @@ import {
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import { buttonVariants } from '@/components/ui/button';
+import { ShinyText } from '@/components/react-bits/shiny-text';
+import CountUp from '@/components/react-bits/count-up';
 import {
+  claimRewardActivity,
+  checkInForPoints,
   redeemInviteCode,
   requestPro as requestProActivation,
+  type RewardActivity,
   type RewardsSnapshot
 } from '@/features/booking/api/service';
 import { cn } from '@/lib/utils';
@@ -31,6 +36,7 @@ import { cn } from '@/lib/utils';
 export default function MembershipViewPage({ initialData }: { initialData: RewardsSnapshot }) {
   const [data, setData] = useState(initialData);
   const [busy, setBusy] = useState<'pro' | 'invite' | null>(null);
+  const [activityBusy, setActivityBusy] = useState<string | null>(null);
   const [generatedCode, setGeneratedCode] = useState<string | null>(null);
 
   const requestPro = async () => {
@@ -66,6 +72,29 @@ export default function MembershipViewPage({ initialData }: { initialData: Rewar
       toast.error(error instanceof Error ? error.message : '兑换邀请码失败');
     } finally {
       setBusy(null);
+    }
+  };
+
+  const claimActivity = async (activity: RewardActivity) => {
+    if (activity.status !== 'available' || activityBusy) return;
+    setActivityBusy(activity.id);
+    try {
+      const result =
+        activity.id === 'daily_check_in'
+          ? await checkInForPoints()
+          : await claimRewardActivity(activity.id);
+      setData((current) => ({
+        ...current,
+        pointsBalance: result.pointsBalance,
+        activities: current.activities.map((item) =>
+          item.id === result.activity.id ? result.activity : item
+        )
+      }));
+      toast.success(`${activity.title}完成，+${activity.points} 席定币`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : '领取活动奖励失败');
+    } finally {
+      setActivityBusy(null);
     }
   };
 
@@ -161,7 +190,7 @@ export default function MembershipViewPage({ initialData }: { initialData: Rewar
                 <div>
                   <CardDescription>活跃积分</CardDescription>
                   <CardTitle className='mt-1 text-2xl tabular-nums'>
-                    {data.pointsBalance} 分
+                    <CountUp to={data.pointsBalance} duration={0.8} /> 席定币
                   </CardTitle>
                 </div>
                 <div className='bg-muted flex size-9 items-center justify-center rounded-lg'>
@@ -179,8 +208,7 @@ export default function MembershipViewPage({ initialData }: { initialData: Rewar
                 </div>
               </Progress>
               <p className='text-muted-foreground text-sm leading-6'>
-                每日完成一次有效账号验证获得 {data.dailyActivityPoints}{' '}
-                分；好友完成首次验证后，你获得 {data.referralRewardPoints} 分。
+                每日签到获得 {data.dailyActivityPoints} 席定币；支线活动和好友邀请也会留下可追溯流水。
               </p>
               <Button
                 variant='outline'
@@ -196,6 +224,31 @@ export default function MembershipViewPage({ initialData }: { initialData: Rewar
             </CardContent>
           </Card>
         </div>
+
+        <Card className='overflow-hidden border-primary/20 shadow-none'>
+          <CardHeader className='border-b'>
+            <div className='flex items-start justify-between gap-3'>
+              <div>
+                <CardDescription>每日来看看</CardDescription>
+                <CardTitle className='mt-1 flex items-center gap-2 text-xl'>
+                  <Icons.sparkles className='text-primary' />
+                  活动中心
+                </CardTitle>
+              </div>
+              <ShinyText text='BONUS TRACKS' className='text-xs font-semibold tracking-[0.16em]' />
+            </div>
+          </CardHeader>
+          <CardContent className='grid gap-3 pt-5 sm:grid-cols-2'>
+            {data.activities.map((activity) => (
+              <ActivityRow
+                key={activity.id}
+                activity={activity}
+                busy={activityBusy === activity.id}
+                onClaim={() => void claimActivity(activity)}
+              />
+            ))}
+          </CardContent>
+        </Card>
 
         {data.proRequest && (
           <Alert>
@@ -257,7 +310,7 @@ export default function MembershipViewPage({ initialData }: { initialData: Rewar
             </CardHeader>
             <CardContent className='pt-4'>
               {data.ledger.length === 0 ? (
-                <EmptyState text='完成一次账号验证后会显示积分记录' />
+                <EmptyState text='完成签到或支线活动后会显示积分记录' />
               ) : (
                 <div className='flex flex-col gap-3'>
                   {data.ledger.map((entry, index) => (
@@ -323,6 +376,46 @@ function Metric({ label, value }: { label: string; value: string }) {
     <div className='rounded-lg border bg-muted/20 p-3'>
       <p className='text-muted-foreground text-xs'>{label}</p>
       <p className='mt-1 text-lg font-semibold tabular-nums'>{value}</p>
+    </div>
+  );
+}
+
+function ActivityRow({
+  activity,
+  busy,
+  onClaim
+}: {
+  activity: RewardActivity;
+  busy: boolean;
+  onClaim: () => void;
+}) {
+  const claimed = activity.status === 'claimed';
+  const locked = activity.status === 'locked';
+  return (
+    <div className='flex min-w-0 items-center gap-3 rounded-lg border bg-muted/20 p-3'>
+      <div className='bg-primary/10 text-primary flex size-9 shrink-0 items-center justify-center rounded-lg'>
+        <Icons.sparkles className='size-4' aria-hidden='true' />
+      </div>
+      <div className='min-w-0 flex-1'>
+        <div className='flex items-center gap-2'>
+          <p className='truncate text-sm font-medium'>{activity.title}</p>
+          <span className='shrink-0 text-xs font-semibold tabular-nums text-emerald-600'>
+            +{activity.points}
+          </span>
+        </div>
+        <p className='text-muted-foreground mt-1 line-clamp-2 text-xs leading-5'>
+          {locked ? activity.lockedReason : activity.description}
+        </p>
+      </div>
+      <Button
+        variant={claimed ? 'secondary' : 'outline'}
+        size='sm'
+        className='shrink-0'
+        disabled={claimed || locked || busy}
+        onClick={onClaim}
+      >
+        {busy ? '领取中…' : claimed ? '已领取' : locked ? '未完成' : '领取'}
+      </Button>
     </div>
   );
 }

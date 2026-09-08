@@ -332,7 +332,7 @@ export default function StoreViewPage({
               <Accordion>
                 <AccordionItem value='earn'>
                   <AccordionTrigger>席定币怎么获得？</AccordionTrigger>
-                  <AccordionContent className='text-muted-foreground'>每日完成一次有效账号验证获得 {data.dailyActivityPoints} 席定币；好友完成首次验证后，邀请人获得 {data.referralRewardPoints} 席定币。</AccordionContent>
+                  <AccordionContent className='text-muted-foreground'>每日签到获得 {data.dailyActivityPoints} 席定币；好友完成首次验证后，邀请人获得 {data.referralRewardPoints} 席定币。</AccordionContent>
                 </AccordionItem>
                 <AccordionItem value='redeem'>
                   <AccordionTrigger>为什么邀请码要 {data.invitePointsCost} 席定币？</AccordionTrigger>

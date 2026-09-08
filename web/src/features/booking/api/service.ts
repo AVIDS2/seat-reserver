@@ -104,6 +104,15 @@ export type PointsLedgerEntry = {
   createdAt: string;
 };
 
+export type RewardActivity = {
+  id: string;
+  title: string;
+  description: string;
+  points: number;
+  status: 'available' | 'claimed' | 'locked';
+  lockedReason: string | null;
+};
+
 export type RewardsSnapshot = {
   membership: Membership;
   pointsBalance: number;
@@ -119,6 +128,7 @@ export type RewardsSnapshot = {
   };
   invitations: CommunityInvitation[];
   ledger: PointsLedgerEntry[];
+  activities: RewardActivity[];
 };
 
 export type AttendanceSettings = {
@@ -702,6 +712,28 @@ export async function disableInvitation(id: string): Promise<Invitation> {
 
 export async function getRewardsSnapshot(): Promise<RewardsSnapshot> {
   return platformRequest<RewardsSnapshot>('/platform/rewards');
+}
+
+export async function checkInForPoints(): Promise<{
+  activity: RewardActivity;
+  pointsBalance: number;
+}> {
+  const response = await platformRequest<{
+    result: { activity: RewardActivity; pointsBalance: number };
+  }>('/platform/rewards/check-in', { method: 'POST' });
+  return response.result;
+}
+
+export async function claimRewardActivity(activityId: string): Promise<{
+  activity: RewardActivity;
+  pointsBalance: number;
+}> {
+  const response = await platformRequest<{
+    result: { activity: RewardActivity; pointsBalance: number };
+  }>(`/platform/rewards/activities/${encodeURIComponent(activityId)}/claim`, {
+    method: 'POST'
+  });
+  return response.result;
 }
 
 export async function redeemInviteCode(): Promise<{

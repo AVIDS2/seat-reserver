@@ -110,7 +110,6 @@ export class PlatformAccountsService {
       authenticated.mode,
       authenticated.webVpnSession,
     );
-    await this.rewards?.recordVerifiedActivity(userId);
     await this.rewards?.qualifyReferral(userId);
     return this.toView(saved);
   }
@@ -143,7 +142,6 @@ export class PlatformAccountsService {
         authenticated.mode,
         authenticated.webVpnSession,
       );
-      await this.rewards?.recordVerifiedActivity(userId);
       await this.rewards?.qualifyReferral(userId);
       return this.toView(saved);
     } catch (error: unknown) {
@@ -208,7 +206,6 @@ export class PlatformAccountsService {
         authenticated.mode,
         authenticated.webVpnSession,
       );
-      await this.rewards?.recordVerifiedActivity(userId);
       await this.rewards?.qualifyReferral(userId);
     }
     account.label = label;

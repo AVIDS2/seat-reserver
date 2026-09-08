@@ -3,6 +3,7 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Param,
   Post,
   Request,
   UseGuards,
@@ -27,6 +28,28 @@ export class PlatformRewardsController {
   @Get()
   async snapshot(@Request() request: RequestWithUser<JwtPayloadType>) {
     return this.rewards.getSnapshot(Number(request.user.id));
+  }
+
+  @Post('check-in')
+  @HttpCode(HttpStatus.OK)
+  async checkIn(@Request() request: RequestWithUser<JwtPayloadType>) {
+    return {
+      result: await this.rewards.checkIn(Number(request.user.id)),
+    };
+  }
+
+  @Post('activities/:activityId/claim')
+  @HttpCode(HttpStatus.OK)
+  async claimActivity(
+    @Request() request: RequestWithUser<JwtPayloadType>,
+    @Param('activityId') activityId: string,
+  ) {
+    return {
+      result: await this.rewards.claimActivity(
+        Number(request.user.id),
+        activityId,
+      ),
+    };
   }
 
   @Post('invite-codes')

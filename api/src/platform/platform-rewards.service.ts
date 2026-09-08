@@ -8,6 +8,10 @@ import { PlatformInvitationEntity } from './entities/platform-invitation.entity'
 import { PlatformPointsLedgerEntity } from './entities/platform-points-ledger.entity';
 import { PlatformPointsWalletEntity } from './entities/platform-points-wallet.entity';
 import { PlatformReferralEntity } from './entities/platform-referral.entity';
+import { BookingRunEntity } from './entities/booking-run.entity';
+import { BookingTaskEntity } from './entities/booking-task.entity';
+import { PlatformAttendanceSettingEntity } from './entities/platform-attendance-setting.entity';
+import { SchoolServiceConnectionEntity } from './entities/school-service-connection.entity';
 import {
   DEFAULT_DAILY_ACTIVITY_POINTS,
   DEFAULT_INVITE_POINTS_COST,
@@ -53,7 +57,60 @@ export type RewardsSnapshot = {
   };
   invitations: CommunityInvitationView[];
   ledger: PointsLedgerView[];
+  activities: RewardActivityView[];
 };
+
+export type RewardActivityStatus = 'available' | 'claimed' | 'locked';
+
+export type RewardActivityView = {
+  id: string;
+  title: string;
+  description: string;
+  points: number;
+  status: RewardActivityStatus;
+  lockedReason: string | null;
+};
+
+type RewardActivityDefinition = Omit<
+  RewardActivityView,
+  'status' | 'lockedReason'
+> & {
+  daily?: boolean;
+};
+
+const REWARD_ACTIVITIES: RewardActivityDefinition[] = [
+  {
+    id: 'daily_check_in',
+    title: '每日签到',
+    description: '今天来工作台报到，领取每日积分。',
+    points: 30,
+    daily: true,
+  },
+  {
+    id: 'first_task',
+    title: '布置第一条任务',
+    description: '完成一条自动预约策略，把喜欢的位置交给席定记住。',
+    points: 20,
+  },
+  {
+    id: 'library_connection',
+    title: '连接图书馆服务',
+    description: '完成图书馆服务连接，解锁空间目录和单次预约入口。',
+    points: 40,
+  },
+  {
+    id: 'attendance_protection',
+    title: '开启签到保护',
+    description: '开启未签到自动取消，减少一次违约风险。',
+    points: 10,
+  },
+  {
+    id: 'first_success',
+    title: '完成第一次预约',
+    description: '有一条真实预约执行成功后领取奖励。',
+    points: 60,
+  },
+];
 
 @Injectable()
 export class PlatformRewardsService {
@@ -66,6 +123,14 @@ export class PlatformRewardsService {
     private readonly ledger: Repository<PlatformPointsLedgerEntity>,
     @InjectRepository(PlatformReferralEntity)
     private readonly referrals: Repository<PlatformReferralEntity>,
+    @InjectRepository(BookingRunEntity)
+    private readonly runs: Repository<BookingRunEntity>,
+    @InjectRepository(BookingTaskEntity)
+    private readonly tasks: Repository<BookingTaskEntity>,
+    @InjectRepository(PlatformAttendanceSettingEntity)
+    private readonly attendanceSettings: Repository<PlatformAttendanceSettingEntity>,
+    @InjectRepository(SchoolServiceConnectionEntity)
+    private readonly serviceConnections: Repository<SchoolServiceConnectionEntity>,
     private readonly crypto: PlatformCryptoService,
     private readonly membership: PlatformMembershipService,
     private readonly dataSource: DataSource,
@@ -93,6 +158,7 @@ export class PlatformRewardsService {
         }),
         this.membership.getPendingProRequest(userId),
       ]);
+    const activities = await this.getActivities(userId);
 
     return {
       membership,
@@ -114,7 +180,57 @@ export class PlatformRewardsService {
         this.toInvitationView(invitation),
       ),
       ledger: ledger.map((entry) => this.toLedgerView(entry)),
+      activities,
     };
+  }
+
+  async claimActivity(
+    userId: number,
+    activityId: string,
+  ): Promise<{ activity: RewardActivityView; pointsBalance: number }> {
+    const definition = REWARD_ACTIVITIES.find(
+      (activity) => activity.id === activityId,
+    );
+    if (!definition) throw new UnprocessableEntityException('活动不存在');
+
+    const date = getShanghaiDate();
+    const eventKey = definition.daily
+      ? `user:${userId}:activity:${activityId}:${date}`
+      : `user:${userId}:activity:${activityId}`;
+    const existing = await this.ledger.findOne({ where: { eventKey } });
+    if (existing) {
+      const activity = (await this.getActivities(userId)).find(
+        (item) => item.id === activityId,
+      );
+      const wallet = await this.wallets.findOne({
+        where: { user: { id: userId } },
+      });
+      return {
+        activity: activity ?? this.activityView(definition, 'claimed', null),
+        pointsBalance: wallet?.pointsBalance ?? existing.balanceAfter,
+      };
+    }
+
+    await this.assertActivityUnlocked(userId, definition);
+    const entry = await this.dataSource.transaction((manager) =>
+      this.applyPointsWithinTransaction(
+        manager,
+        userId,
+        definition.points,
+        eventKey,
+        definition.daily ? 'daily_check_in' : 'activity_reward',
+        definition.title,
+        { activityId, date },
+      ),
+    );
+    return {
+      activity: this.activityView(definition, 'claimed', null),
+      pointsBalance: entry.balanceAfter,
+    };
+  }
+
+  async checkIn(userId: number) {
+    return this.claimActivity(userId, 'daily_check_in');
   }
 
   async redeemInvitation(userId: number): Promise<{
@@ -158,21 +274,6 @@ export class PlatformRewardsService {
     });
   }
 
-  async recordVerifiedActivity(userId: number): Promise<void> {
-    const date = getShanghaiDate();
-    await this.dataSource.transaction((manager) =>
-      this.applyPointsWithinTransaction(
-        manager,
-        userId,
-        this.dailyActivityPoints(),
-        `user:${userId}:activity:${date}`,
-        'daily_activity',
-        '完成今日账号验证',
-        { date },
-      ).then(() => undefined),
-    );
-  }
-
   async qualifyReferral(referredUserId: number): Promise<void> {
     await this.dataSource.transaction(async (manager) => {
       const referral = await manager
@@ -201,6 +302,102 @@ export class PlatformRewardsService {
     });
   }
 
+  private async getActivities(userId: number): Promise<RewardActivityView[]> {
+    return Promise.all(
+      REWARD_ACTIVITIES.map(async (definition) => {
+        const eventKey = definition.daily
+          ? `user:${userId}:activity:${definition.id}:${getShanghaiDate()}`
+          : `user:${userId}:activity:${definition.id}`;
+        const claimed = await this.ledger.findOne({ where: { eventKey } });
+        if (claimed) return this.activityView(definition, 'claimed', null);
+        const unlocked = await this.isActivityUnlocked(userId, definition.id);
+        return this.activityView(
+          definition,
+          unlocked ? 'available' : 'locked',
+          unlocked ? null : this.activityLockReason(definition.id),
+        );
+      }),
+    );
+  }
+
+  private async assertActivityUnlocked(
+    userId: number,
+    definition: RewardActivityDefinition,
+  ): Promise<void> {
+    if (await this.isActivityUnlocked(userId, definition.id)) return;
+    throw new UnprocessableEntityException(
+      this.activityLockReason(definition.id),
+    );
+  }
+
+  private async isActivityUnlocked(
+    userId: number,
+    activityId: string,
+  ): Promise<boolean> {
+    switch (activityId) {
+      case 'daily_check_in':
+        return true;
+      case 'first_task':
+        return Boolean(
+          await this.tasks.findOne({ where: { user: { id: userId } } }),
+        );
+      case 'library_connection':
+        return Boolean(
+          await this.serviceConnections.findOne({
+            where: {
+              user: { id: userId },
+              serviceType: 'library',
+              status: 'active',
+            },
+          }),
+        );
+      case 'attendance_protection':
+        return Boolean(
+          await this.attendanceSettings.findOne({
+            where: { user: { id: userId }, autoCancelNoShow: true },
+          }),
+        );
+      case 'first_success':
+        return Boolean(
+          await this.runs.findOne({
+            where: {
+              user: { id: userId },
+              runType: 'booking',
+              status: 'success',
+            },
+          }),
+        );
+      default:
+        return false;
+    }
+  }
+
+  private activityLockReason(activityId: string): string {
+    return (
+      {
+        first_task: '创建一条预约任务后可领取',
+        library_connection: '连接图书馆服务后可领取',
+        attendance_protection: '开启签到保护后可领取',
+        first_success: '完成一次真实预约后可领取',
+      }[activityId] ?? '完成活动条件后可领取'
+    );
+  }
+
+  private activityView(
+    definition: RewardActivityDefinition,
+    status: RewardActivityStatus,
+    lockedReason: string | null,
+  ): RewardActivityView {
+    return {
+      id: definition.id,
+      title: definition.title,
+      description: definition.description,
+      points: definition.points,
+      status,
+      lockedReason,
+    };
+  }
+
   private async applyPointsWithinTransaction(
     manager: EntityManager,
     userId: number,
@@ -210,6 +407,9 @@ export class PlatformRewardsService {
     description: string,
     metadata: Record<string, unknown>,
   ): Promise<PlatformPointsLedgerEntity> {
+    await manager.query('SELECT pg_advisory_xact_lock(hashtext($1))', [
+      eventKey,
+    ]);
     await manager.query(
       `INSERT INTO "platform_points_wallet" ("userId", "pointsBalance")
        VALUES ($1, 0)

@@ -261,6 +261,37 @@
   }
 }
 
+/* React Bits ShinyText adaptation, kept as a local copy so the app has no
+   runtime dependency on the component gallery. */
+.react-bits-shiny-text {
+  display: inline-block;
+  color: color-mix(in srgb, currentColor 62%, transparent);
+  background: linear-gradient(
+    120deg,
+    transparent 40%,
+    color-mix(in srgb, currentColor 92%, white) 50%,
+    transparent 60%
+  );
+  background-size: 200% 100%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: react-bits-shine 5s linear infinite;
+}
+
+.react-bits-shiny-text-disabled {
+  animation: none;
+}
+
+@keyframes react-bits-shine {
+  from { background-position: 100%; }
+  to { background-position: -100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .react-bits-shiny-text { animation: none; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .store-art-visual {
     transition: none;
