@@ -65,7 +65,6 @@ export class PlatformInvitationsService {
     const invitation = await repository
       .createQueryBuilder('invitation')
       .setLock('pessimistic_write')
-      .leftJoinAndSelect('invitation.createdByUser', 'creator')
       .where('invitation."codeHash" = :codeHash', {
         codeHash: this.crypto.digest(code.trim()),
       })
