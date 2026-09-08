@@ -11,6 +11,7 @@ import type {
   PlatformUser,
   RewardsSnapshot
 } from './service';
+import { normalizeAvatarUrl } from '@/lib/avatar-url';
 
 const baseUrl = process.env.INTERNAL_API_URL || 'http://api:3001/api/v1';
 
@@ -102,7 +103,7 @@ function toPlatformUser(value: Record<string, unknown>): PlatformUser {
     firstName,
     lastName,
     displayName: [firstName, lastName].filter(Boolean).join(' ') || '平台用户',
-    avatarUrl: typeof photo?.path === 'string' ? photo.path : null,
+    avatarUrl: normalizeAvatarUrl(photo?.path),
     role: Number(role?.id) === 1 ? 'admin' : 'user',
     status: Number(status?.id) === 1 ? 'active' : 'disabled'
   };

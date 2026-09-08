@@ -1,5 +1,4 @@
 import { Avatar, AvatarBadge, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { avatarPresetClass } from './avatar-presets';
 
 interface UserAvatarProfileProps {
   className?: string;
@@ -9,7 +8,6 @@ interface UserAvatarProfileProps {
     fullName?: string | null;
     emailAddresses: Array<{ emailAddress: string }>;
   } | null;
-  avatarPreset?: string;
   showStatus?: boolean;
 }
 
@@ -17,14 +15,13 @@ export function UserAvatarProfile({
   className,
   showInfo = false,
   showStatus = true,
-  user,
-  avatarPreset
+  user
 }: UserAvatarProfileProps) {
   return (
     <div className='flex items-center gap-2'>
       <Avatar className={className}>
         <AvatarImage src={user?.imageUrl || ''} alt={user?.fullName || ''} />
-        <AvatarFallback className={`rounded-lg ${avatarPresetClass(avatarPreset)}`}>
+        <AvatarFallback>
           {user?.fullName?.slice(0, 2)?.toUpperCase() || 'CN'}
         </AvatarFallback>
         {showStatus && <AvatarBadge className='bg-emerald-500' aria-label='在线' />}

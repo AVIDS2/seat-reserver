@@ -10,6 +10,7 @@ import type {
   VenueType
 } from '../types';
 import type { SeatCatalog, SeatLayout, SeatTimes } from '../types';
+import { normalizeAvatarUrl } from '@/lib/avatar-url';
 
 export type CreateAccountPayload = {
   label: string;
@@ -842,7 +843,7 @@ function toPlatformUser(value: Record<string, unknown>): PlatformUser {
     firstName,
     lastName,
     displayName: [firstName, lastName].filter(Boolean).join(' ') || '平台用户',
-    avatarUrl: typeof photo?.path === 'string' ? photo.path : null,
+    avatarUrl: normalizeAvatarUrl(photo?.path),
     role: Number(role?.id) === 1 ? 'admin' : 'user',
     status: Number(status?.id) === 1 ? 'active' : 'disabled'
   };

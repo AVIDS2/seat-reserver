@@ -13,24 +13,13 @@ import { UserAvatarProfile } from '@/components/user-avatar-profile';
 import { usePlatformSession } from '@/features/auth/platform-session';
 import { signOutPlatform } from '@/features/booking/api/service';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
-import { getAvatarPreset, type AvatarPresetId } from '@/components/avatar-presets';
+import { useState } from 'react';
 import { toast } from 'sonner';
 
 export function UserNav() {
   const user = usePlatformSession();
   const router = useRouter();
   const [signingOut, setSigningOut] = useState(false);
-  const [avatarPreset, setAvatarPreset] = useState<AvatarPresetId>('aurora');
-  useEffect(() => {
-    setAvatarPreset(getAvatarPreset());
-    const handleChange = (event: Event) => {
-      const value = (event as CustomEvent<AvatarPresetId>).detail;
-      setAvatarPreset(value || 'aurora');
-    };
-    window.addEventListener('seat-avatar-change', handleChange);
-    return () => window.removeEventListener('seat-avatar-change', handleChange);
-  }, []);
   if (!user) return null;
 
   const displayName = user.displayName || user.email;
@@ -59,7 +48,7 @@ export function UserNav() {
         render={<Button variant='ghost' className='relative h-8 w-8 rounded-full' />}
         aria-label='打开用户菜单'
       >
-        <UserAvatarProfile user={profileUser} avatarPreset={avatarPreset} />
+        <UserAvatarProfile user={profileUser} />
       </DropdownMenuTrigger>
       <DropdownMenuContent className='w-60' align='end' sideOffset={10}>
         <DropdownMenuGroup>

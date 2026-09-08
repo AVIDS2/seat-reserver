@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { Icons } from '@/components/icons';
 import PageContainer from '@/components/layout/page-container';
@@ -15,7 +15,6 @@ import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/h
 import { Badge } from '@/components/ui/badge';
 import { usePlatformSession, useSetPlatformSession } from '@/features/auth/platform-session';
 import { uploadPlatformAvatar, updatePlatformProfile } from '@/features/booking/api/service';
-import { avatarPresetClass, avatarPresets, getAvatarPreset, setAvatarPreset, type AvatarPresetId } from '@/components/avatar-presets';
 
 export default function ProfileViewPage() {
   const user = usePlatformSession();
@@ -26,12 +25,7 @@ export default function ProfileViewPage() {
   const [oldPassword, setOldPassword] = useState('');
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [avatarPreset, setCurrentAvatarPreset] = useState<AvatarPresetId>('aurora');
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    setCurrentAvatarPreset(getAvatarPreset());
-  }, []);
 
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -76,12 +70,6 @@ export default function ProfileViewPage() {
     }
   };
 
-  const choosePreset = (preset: AvatarPresetId) => {
-    setAvatarPreset(preset);
-    setCurrentAvatarPreset(preset);
-    toast.success('头像气泡已更新');
-  };
-
   return (
     <PageContainer pageTitle='个人设置' pageDescription='管理平台账户显示信息与登录密码。'>
       <div className='mx-auto flex w-full max-w-[760px] flex-col gap-4'>
@@ -107,7 +95,7 @@ export default function ProfileViewPage() {
                 >
                   <Avatar size='lg'>
                     <AvatarImage src={user?.avatarUrl || ''} alt={user?.displayName || '头像'} />
-                    <AvatarFallback className={avatarPresetClass(avatarPreset)}>
+                    <AvatarFallback>
                       {user?.displayName?.slice(0, 2)?.toUpperCase() || 'CN'}
                     </AvatarFallback>
                     <AvatarBadge className='bg-emerald-500' aria-label='在线' />
@@ -117,7 +105,7 @@ export default function ProfileViewPage() {
                   <div className='flex items-start gap-3'>
                     <Avatar>
                       <AvatarImage src={user?.avatarUrl || ''} alt='' />
-                      <AvatarFallback className={avatarPresetClass(avatarPreset)}>{user?.displayName?.slice(0, 2)?.toUpperCase() || 'CN'}</AvatarFallback>
+                      <AvatarFallback>{user?.displayName?.slice(0, 2)?.toUpperCase() || 'CN'}</AvatarFallback>
                     </Avatar>
                     <div className='min-w-0'>
                       <p className='truncate font-medium'>{user?.displayName || '平台用户'}</p>
@@ -129,7 +117,7 @@ export default function ProfileViewPage() {
               </HoverCard>
               <div className='min-w-0'>
                 <CardTitle>头像与气泡</CardTitle>
-                <CardDescription className='mt-1'>上传头像，或选择一个只属于你的状态色。</CardDescription>
+                <CardDescription className='mt-1'>使用模板头像组件展示图片和在线状态气泡。</CardDescription>
               </div>
             </div>
           </CardHeader>
@@ -142,27 +130,7 @@ export default function ProfileViewPage() {
               <input ref={fileInputRef} type='file' accept='image/*' aria-label='选择头像图片' className='sr-only' onChange={(event) => void uploadAvatar(event.target.files?.[0])} />
               <span className='text-muted-foreground text-xs'>支持 JPG、PNG，最大 5 MB</span>
             </div>
-            <div>
-              <p className='mb-2 text-sm font-medium'>气泡颜色</p>
-              <div className='flex flex-wrap gap-2'>
-                {avatarPresets.map((preset) => (
-                  <Button
-                    key={preset.id}
-                    type='button'
-                    variant='outline'
-                    size='sm'
-                    className='gap-2'
-                    onClick={() => choosePreset(preset.id)}
-                    aria-pressed={avatarPreset === preset.id}
-                  >
-                    <span className={`size-3 rounded-full ${preset.className}`} aria-hidden='true' />
-                    {preset.label}
-                    {avatarPreset === preset.id && <Icons.check className='size-3.5' />}
-                  </Button>
-                ))}
-              </div>
-              <p className='text-muted-foreground mt-2 text-xs'>气泡风格保存在本设备；上传的头像会保存到平台账号。</p>
-            </div>
+            <p className='text-muted-foreground text-xs'>头像会保存到平台文件存储，并在顶部用户菜单同步显示在线状态。</p>
           </CardContent>
         </Card>
 
