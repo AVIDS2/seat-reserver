@@ -6,6 +6,7 @@ import SearchInput from '../search-input';
 import { ThemeModeToggle } from '../themes/theme-mode-toggle';
 import { NotificationCenter } from '@/features/notifications/components/notification-center';
 import { UserNav } from './user-nav';
+import { OnboardingLauncher } from '@/features/onboarding/components/onboarding-launcher';
 
 export default function Header() {
   return (
@@ -27,6 +28,7 @@ export default function Header() {
           <SearchInput />
         </div>
         <ThemeModeToggle />
+        <OnboardingLauncher />
         <NotificationCenter />
         <UserNav />
       </div>

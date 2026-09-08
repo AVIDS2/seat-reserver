@@ -225,7 +225,10 @@ export default function MembershipViewPage({ initialData }: { initialData: Rewar
           </Card>
         </div>
 
-        <Card className='overflow-hidden border-primary/20 shadow-none'>
+        <Card
+          id='nextstep-rewards'
+          className='overflow-hidden border-primary/20 shadow-none scroll-mt-24'
+        >
           <CardHeader className='border-b'>
             <div className='flex items-start justify-between gap-3'>
               <div>

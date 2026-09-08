@@ -995,6 +995,7 @@ export default function BookingTasksPage({
             </p>
           </div>
           <Button
+            id='nextstep-task-create'
             className='w-full sm:w-auto'
             onClick={() => {
               setEditorTask(undefined);

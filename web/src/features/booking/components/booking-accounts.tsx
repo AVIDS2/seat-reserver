@@ -251,6 +251,7 @@ export default function BookingAccountsPage({
             </p>
           </div>
           <Button
+            id='nextstep-account-connect'
             className='w-full sm:w-auto'
             variant='outline'
             onClick={() => {

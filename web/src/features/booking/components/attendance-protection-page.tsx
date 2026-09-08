@@ -102,7 +102,7 @@ export default function AttendanceProtectionPage({
         </Alert>
 
         <div className='grid gap-4 lg:grid-cols-[1.1fr_0.9fr]'>
-          <Card className='shadow-none'>
+          <Card id='nextstep-attendance-protection' className='shadow-none'>
             <CardHeader className='border-b'>
               <div className='flex items-start justify-between gap-4'>
                 <div>

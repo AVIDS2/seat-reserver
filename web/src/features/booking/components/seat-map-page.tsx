@@ -416,7 +416,10 @@ export default function SeatMapPage({
 
   return (
     <PageContainer>
-      <div className='mx-auto flex w-full max-w-[1440px] flex-col gap-5 sm:gap-6'>
+      <div
+        id='nextstep-seat-map'
+        className='mx-auto flex w-full max-w-[1440px] flex-col gap-5 sm:gap-6'
+      >
         <div className='flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between'>
           <div className='min-w-0'>
             <p className='text-muted-foreground mb-2 text-sm'>实时空间</p>
