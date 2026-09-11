@@ -68,6 +68,15 @@ export class PlatformReservationsController {
     };
   }
 
+  @Post('captcha/auto')
+  @HttpCode(HttpStatus.CREATED)
+  async autoSolveCaptcha(
+    @Request() request: RequestWithUser<JwtPayloadType>,
+    @Body() dto: ImmediateReservationDto,
+  ) {
+    return this.reservations.autoSolveAndBook(Number(request.user.id), dto);
+  }
+
   @Post('captcha/:id/verify')
   async verifyCaptcha(
     @Request() request: RequestWithUser<JwtPayloadType>,

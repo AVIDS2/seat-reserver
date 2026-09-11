@@ -79,7 +79,49 @@ WebVPN 代理 API 必须保留裸查询标志 `enlink-vpn`；平台在追加业�
 
 落地页图片使用预生成的 AVIF 响应式档位（移动端 640/960px、桌面端 1200/1600/2400/3200px）和 WebP 回退；首屏图使用高优先级加载，其余叙事图延迟加载。原始 4K PNG 不进入生产静态资源，避免移动端误下载大文件。模板字体改为主题定义的离线系统字体回退，生产构建不依赖 Google Fonts 网络可用性。
 
-2026-09-04 的生产实测确认：图书馆登录、`/rest/v2/user`、实时目录和验证码挑战均可从 VPS 经 WebVPN 正常访问；`/rest/v2/settings` 返回 `isCaptchaOpen=true`，`POST /cap/captcha/<业务Token>` 返回挑战底图、文字提示图、点击数量和 32 字符挑战 Token。使用空 `authid` 发起真实 `freeBook` 时，学校返回 HTTP 200、业务码 `1`、“验证码错误”，没有创建预约，因此也没有可取消记录。平台现已实现官方同等人工点选流程：`POST /api/v1/platform/reservations/captcha` 创建与当前用户、账号和预约参数绑定的三分钟挑战；`POST /api/v1/platform/reservations/captcha/<id>/verify` 接收原图坐标，通过学校 `/cap/checkCaptcha` 后把挑战 Token 作为 `authid` 自动提交当前这一次预约。挑战 Token 不返回浏览器且一次使用后立即删除。该入口属于座位图的“单次预约”，不是自动抢座任务；图书馆自动任务保持关闭，直到确认挑战凭证可跨日期复用或接入无需逐次验证的合法业务链路。若要支持明日半自动抢座，下一步应在开放前创建短时挑战，由用户完成一次点选，再由 worker 在开放窗口按候选策略提交。
+2026-09-04 的生产实测确认：图书馆登录、`/rest/v2/user`、实时目录和验证码挑战均可从 VPS 经 WebVPN 正常访问；`/rest/v2/settings` 返回 `isCaptchaOpen=true`，`POST /cap/captcha/<业务Token>` 返回挑战底图、文字提示图、点击数量和 32 字符挑战 Token。使用空 `authid` 发起真实 `freeBook` 时，学校返回 HTTP 200、业务码 `1`、“验证码错误”，没有创建预约，因此也没有可取消记录。平台现已实现官方同等人工点选流程：`POST /api/v1/platform/reservations/captcha` 创建与当前用户、账号和预约参数绑定的三分钟挑战；`POST /api/v1/platform/reservations/captcha/<id>/verify` 接收原图坐标，通过学校 `/cap/checkCaptcha` 后把挑战 Token 作为 `authid` 自动提交当前这一次预约。挑战 Token 不返回浏览器且一次使用后立即删除。该入口属于座位图的“单次预约”；图书馆自动任务在服务端具备验证码自动识别能力后启用。目标形态是在开放窗口前由服务端完成挑战识别与校验，worker 在开放窗口内按候选策略直接提交。
+
+## 验证码自动识别
+
+图书馆和需要点选验证的服务依赖服务端识别能力，平台通过 OpenAI 兼容的多模态接口完成：底图与提示图一起提交，模型返回目标字及其坐标，平台侧换算为像素坐标并吸附到最近的候选字，再交给学校校验。识别在服务端完成，验证码图片不进入浏览器。
+
+2026-09-11 已在生产环境完成端到端实测：小米 MiMo（`mimo-v2.5`）识别 → 学校校验通过 → 真实预约创建成功（回执 `0129-263-6`，科教城校区馆二楼北区 011 号，14:00-15:00）。**MiMo 是当前验证过的默认 provider。** 注意 `mimo-v2.5` 是唯一支持图片输入的型号（`mimo-v2.5-pro` 只接受文本），且平台已在 `mimo` 预设中关闭其思考模式以压低延迟。
+
+配置按 provider 组织，可同时配置多个并自动降级。单个 provider 直接用基础变量：
+
+```env
+PLATFORM_VLM_BASE_URL=https://api.xiaomimimo.com/v1
+PLATFORM_VLM_API_KEY=<key>
+PLATFORM_VLM_MODEL=mimo-v2.5
+```
+
+多个 provider 用 `PLATFORM_VLM_PROVIDERS=mimo,qwen` 声明顺序，各自读取 `PLATFORM_VLM_<NAME>_*`；`mimo`、`qwen`、`deepseek`、`glm`、`openai` 有内置 base URL、模型名与坐标模式，其余名称只需显式给出三个必需变量。前一个 provider 识别失败会自动尝试下一个。认证同时支持 `Authorization: Bearer` 与 `api-key` 头。
+
+可选变量：`*_COORD_MODE`（`normalized` 0–1000 / `pixel` / `auto`，默认 `auto` 按数值范围判断）、`*_TIMEOUT_MS`、`*_JSON_MODE=object`、`*_EXTRA_HEADERS`、`*_EXTRA_BODY`、`*_SYSTEM_PROMPT`、`*_USER_PROMPT`。未配置任何 provider 时，图书馆自动任务拒绝启用，座位图回落到人工点选，其余功能不受影响。
+
+`PLATFORM_LIBRARY_AUTO_BOOKING=false` 可全局关闭图书馆自动任务入队。
+
+预解策略：worker 在北京时间 `05:59:50` 的预热阶段为图书馆任务逐个创建挑战并完成识别校验，结果以 15 分钟 TTL 缓存在 Redis；`06:00:00` 开放时优先使用预解结果直接提交，缓存缺失或学校判定失效时在窗口内即时识别。预解数量上限为任务的 `maxAttempts` 与候选数量的较小值，且最多 6 个。
+
+识别采用「直接定位」提问方式：让模型指出目标字的中心坐标，平台再吸附到最近的候选字中心。相比让模型输出边界框数组，这种问法在实测中更稳定，MiMo 单次延迟约 1–3 秒。模型输出偶尔带多余括号，解析器已做容错修补。
+
+### 本地纯 CPU 方案实测结论（2026-09-11）
+
+在 20 组平台真实样本上系统实测了全部本地路线，结论是**不足以支撑无人值守自动抢座**，因此采用云端 API：
+
+| 方案 | 许可 | 实测准确率 |
+|---|---|---|
+| 颜色分割（候选框定位） | — | 100%（可靠，已用于坐标吸附） |
+| 传统 CV 形状匹配（IoU / 倒角 / 骨架 / Hu 矩等十余变体） | — | 20–50% |
+| 灰度 NCC 直接比对 | — | 20% |
+| AntiCAP 孪生网络 ONNX（按官方 105×105 预处理） | MIT | 26% |
+| PaddleOCR PP-OCRv5 + 约束解码 | Apache-2.0 | 信号为噪声级 |
+| ddddocr 候选 OCR | MIT | 60% |
+| **MiMo-V2.5 直接定位** | 云 API | **86%（13/15），实测端到端成功** |
+
+瓶颈在于提示图仅 70×36 像素、笔画 1–2 像素且为淡色细线，任何本地算法读它都在 55% 左右；而候选字（40×40 实心彩色）提取可靠。云端多模态模型靠预训练中文表征直接认字，不受此限。
+
+同类项目 `OLmatter/glm-coding-helper`（687★）的开发复盘给出独立印证：传统 CV 12.5%、手搓排序模型在 hidden 集 45.5%、换 PP-OCRv5 + 提示约束后达 100%。
 
 校园账号在平台内没有“脚本账号”和“通用账号”之分；每个账号都可分别建立自习室与图书馆连接。2026-09-04 对张涛账号的单次图书馆连接诊断由学校 WebVPN 明确返回用户名或密码错误并提示剩余 2 次，因此立即停止重试；该账号现有自习室 direct Token 仍正常。此状态说明已保存密码不被 WebVPN/统一认证接受，需要用户在账号编辑中重新填写当前学校统一认证密码，不能通过自习室业务 Token 恢复或反推出密码。
 

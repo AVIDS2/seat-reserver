@@ -40,6 +40,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { cn } from '@/lib/utils';
+import { useCampusWorkspace } from '@/features/campus/campus-workspace';
 
 import { cancelBookingReservation, getBookingReservations } from '../api/service';
 import type { BookingAccount, BookingReservation, ReservationStatus, VenueType } from '../types';
@@ -53,6 +54,14 @@ export default function BookingReservationsPage({
   initialAccounts: BookingAccount[];
 }) {
   const [reservations, setReservations] = useState<BookingReservation[]>([]);
+  const { activeCampus } = useCampusWorkspace();
+  const scopedAccounts = useMemo(
+    () =>
+      activeCampus === 'all'
+        ? initialAccounts
+        : initialAccounts.filter((account) => (account.schoolCode || 'cczu') === activeCampus),
+    [activeCampus, initialAccounts]
+  );
   const [serviceFilter, setServiceFilter] = useState<ServiceFilter>('all');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('today');
   const [loading, setLoading] = useState(true);
@@ -64,7 +73,7 @@ export default function BookingReservationsPage({
   const loadReservations = async (showRefresh = false) => {
     if (showRefresh) setRefreshing(true);
     else setLoading(true);
-    const requests = initialAccounts.flatMap((account) => {
+    const requests = scopedAccounts.flatMap((account) => {
       const services = account.services
         .filter((service) => service.status === 'connected' || service.status === 'recovering')
         .map((service) => service.type);
@@ -94,7 +103,7 @@ export default function BookingReservationsPage({
     void loadReservations();
     // The account list is a server snapshot for this page.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialAccounts]);
+  }, [scopedAccounts]);
 
   const today = todayDate();
   const todayReservations = useMemo(
@@ -168,7 +177,7 @@ export default function BookingReservationsPage({
           </Button>
         </div>
 
-        {initialAccounts.length === 0 ? (
+        {scopedAccounts.length === 0 ? (
           <Alert>
             <Icons.warning />
             <AlertTitle>还没有接入学校账号</AlertTitle>

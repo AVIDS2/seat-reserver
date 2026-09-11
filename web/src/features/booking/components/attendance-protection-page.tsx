@@ -14,6 +14,7 @@ import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
+import { useCampusWorkspace } from '@/features/campus/campus-workspace';
 
 import {
   getAttendanceSettings,
@@ -28,6 +29,14 @@ export default function AttendanceProtectionPage({
 }: {
   initialAccounts: BookingAccount[];
 }) {
+  const { activeCampus } = useCampusWorkspace();
+  const scopedAccounts = useMemo(
+    () =>
+      activeCampus === 'all'
+        ? initialAccounts
+        : initialAccounts.filter((account) => (account.schoolCode || 'cczu') === activeCampus),
+    [activeCampus, initialAccounts]
+  );
   const [settings, setSettings] = useState<AttendanceSettings | null>(null);
   const [reservations, setReservations] = useState<BookingReservation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -40,7 +49,7 @@ export default function AttendanceProtectionPage({
     try {
       const [nextSettings, ...result] = await Promise.all([
         getAttendanceSettings(),
-        ...initialAccounts.map((account) =>
+        ...scopedAccounts.map((account) =>
           getBookingReservations({ accountId: account.id, serviceType: 'study_room' })
         )
       ]);
@@ -61,7 +70,7 @@ export default function AttendanceProtectionPage({
     return () => window.clearInterval(timer);
     // Account list comes from the authenticated server snapshot for this page.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialAccounts]);
+  }, [scopedAccounts]);
 
   const toggleProtection = async (checked: boolean) => {
     setSaving(true);
@@ -161,7 +170,7 @@ export default function AttendanceProtectionPage({
                 <Skeleton className='h-28 rounded-lg' />
                 <Skeleton className='h-28 rounded-lg' />
               </div>
-            ) : initialAccounts.length === 0 ? (
+            ) : scopedAccounts.length === 0 ? (
               <EmptyState title='还没有学校账号' description='先连接账号，平台才能读取预约和签到状态。' actionHref='/dashboard/accounts' actionLabel='去连接账号' />
             ) : upcoming.length === 0 ? (
               <EmptyState title='当前没有待签到预约' description='新预约会在这里显示，保护状态也会跟着更新。' actionHref='/dashboard/seats' actionLabel='去座位图' />

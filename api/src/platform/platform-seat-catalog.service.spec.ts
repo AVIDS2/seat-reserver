@@ -33,6 +33,7 @@ describe('PlatformSeatCatalogService', () => {
         ),
       } as never,
       { get } as never,
+      { isConfigured: jest.fn(() => false) } as never,
     );
 
     await expect(service.filters(7, 4, 'study_room')).resolves.toEqual({
@@ -41,6 +42,7 @@ describe('PlatformSeatCatalogService', () => {
       rooms: [{ id: '9', name: '安静学习区', buildingId: '2', floor: 3 }],
       dates: ['2026-09-04'],
       captchaRequired: false,
+      autoSolveAvailable: false,
       hours: 8,
       windowStart: 420,
       windowEnd: 1320,
@@ -85,6 +87,7 @@ describe('PlatformSeatCatalogService', () => {
           }),
         ),
       } as never,
+      { isConfigured: jest.fn(() => false) } as never,
     );
 
     const layout = await service.layout(7, 4, 'study_room', '9', '2026-09-04');
@@ -142,6 +145,7 @@ describe('PlatformSeatCatalogService', () => {
           });
         }),
       } as never,
+      { isConfigured: jest.fn(() => false) } as never,
     );
 
     await expect(service.filters(7, 4, 'library')).resolves.toEqual(
@@ -178,6 +182,7 @@ describe('PlatformSeatCatalogService', () => {
         ),
       } as never,
       { get } as never,
+      { isConfigured: jest.fn(() => false) } as never,
     );
 
     await Promise.all([

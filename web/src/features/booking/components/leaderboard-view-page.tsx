@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 import { Icons } from '@/components/icons';
@@ -11,22 +11,47 @@ import { getLeaderboardSnapshot, type LeaderboardPeriod, type LeaderboardSnapsho
 import { LeaderboardPodium } from '@/components/ui/leaderboard-podium';
 import { LeaderboardRankings } from '@/components/ui/leaderboard-rankings';
 import PageContainer from '@/components/layout/page-container';
+import { useCampusWorkspace } from '@/features/campus/campus-workspace';
 
 export default function LeaderboardViewPage({ initialData }: { initialData: LeaderboardSnapshot }) {
   const [data, setData] = useState(initialData);
   const [loading, setLoading] = useState(false);
+  const { activeCampus } = useCampusWorkspace();
 
   const changePeriod = async (value: string) => {
     if (!value || value === data.period) return;
     setLoading(true);
     try {
-      setData(await getLeaderboardSnapshot(value as LeaderboardPeriod));
+      setData(
+        await getLeaderboardSnapshot(
+          value as LeaderboardPeriod,
+          activeCampus === 'all' ? undefined : activeCampus
+        )
+      );
     } catch (error) {
       toast.error(error instanceof Error ? error.message : '排行榜加载失败');
     } finally {
       setLoading(false);
     }
   };
+
+  const campusLabel = activeCampus === 'all' ? '全部高校' : activeCampus === 'jou' ? '江苏海洋大学' : '常州大学';
+
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    void getLeaderboardSnapshot(data.period, activeCampus === 'all' ? undefined : activeCampus)
+      .then((next) => active && setData(next))
+      .catch((error) => {
+        if (active) toast.error(error instanceof Error ? error.message : '排行榜加载失败');
+      })
+      .finally(() => active && setLoading(false));
+    return () => {
+      active = false;
+    };
+    // The active campus is the only external scope that should trigger a reload.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeCampus]);
 
   return (
     <PageContainer
@@ -50,7 +75,7 @@ export default function LeaderboardViewPage({ initialData }: { initialData: Lead
               <div>
                 <p className='font-medium'>预约学习时长榜</p>
                 <p className='text-muted-foreground mt-1 text-sm leading-5'>
-                  {data.fromDate} 至 {data.toDate} · 同校用户匿名展示
+                  {data.fromDate} 至 {data.toDate} · {campusLabel}用户匿名展示
                 </p>
               </div>
             </div>

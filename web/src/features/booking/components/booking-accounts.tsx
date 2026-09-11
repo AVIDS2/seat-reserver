@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 import { Icons } from '@/components/icons';
@@ -30,6 +30,9 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
+import { getCampusDefinition, type CampusCode } from '@/config/campus-config';
+import { useCampusWorkspace } from '@/features/campus/campus-workspace';
+import { CampusLogo, CampusPicker } from '@/features/campus/components/campus-switcher';
 
 import {
   createSchoolAccount,
@@ -55,6 +58,7 @@ function AccountEditorDialog({
   onSave: (payload: CreateAccountPayload | UpdateAccountPayload, id?: string) => Promise<void>;
 }) {
   const [label, setLabel] = useState('');
+  const [schoolCode, setSchoolCode] = useState<CampusCode>('cczu');
   const [schoolUsername, setSchoolUsername] = useState('');
   const [schoolPassword, setSchoolPassword] = useState('');
   const [saving, setSaving] = useState(false);
@@ -62,6 +66,7 @@ function AccountEditorDialog({
   useEffect(() => {
     if (!open) return;
     setLabel(account?.label || '');
+    setSchoolCode(account?.schoolCode || 'cczu');
     setSchoolUsername('');
     setSchoolPassword('');
   }, [account, open]);
@@ -85,7 +90,10 @@ function AccountEditorDialog({
           account.id
         );
       } else {
-        await onSave({ label: label.trim(), schoolUsername: username, schoolPassword }, undefined);
+        await onSave(
+          { schoolCode, label: label.trim(), schoolUsername: username, schoolPassword },
+          undefined
+        );
       }
       setLabel('');
       setSchoolUsername('');
@@ -113,6 +121,19 @@ function AccountEditorDialog({
         </DialogHeader>
         <div className='min-h-0 flex-1 overflow-y-auto overscroll-contain px-0.5'>
           <form id='school-account-editor' onSubmit={submit} className='flex flex-col gap-4 pb-1'>
+            <div className='flex flex-col gap-2'>
+              <Label>绑定高校</Label>
+              <CampusPicker
+                value={schoolCode}
+                onValueChange={setSchoolCode}
+                disabled={Boolean(account)}
+              />
+              {account ? (
+                <p className='text-muted-foreground text-xs'>高校归属固定，避免账号、任务和授权数据串校。</p>
+              ) : (
+                <p className='text-muted-foreground text-xs'>每所高校使用独立的授权链路和场馆目录。</p>
+              )}
+            </div>
             <div className='flex flex-col gap-2'>
               <Label htmlFor='account-label'>账号名称</Label>
               <Input
@@ -165,11 +186,22 @@ export default function BookingAccountsPage({
   initialAccounts: BookingAccount[];
 }) {
   const [accounts, setAccounts] = useState(initialAccounts);
+  const { activeCampus } = useCampusWorkspace();
   const [refreshingId, setRefreshingId] = useState<string | null>(null);
   const [connectingService, setConnectingService] = useState<string | null>(null);
   const [editorAccount, setEditorAccount] = useState<BookingAccount | undefined>();
   const [editorOpen, setEditorOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<BookingAccount | null>(null);
+
+  const visibleAccounts = useMemo(() => {
+    const scoped =
+      activeCampus === 'all'
+        ? accounts
+        : accounts.filter((account) => (account.schoolCode || 'cczu') === activeCampus);
+    return scoped.toSorted((left, right) =>
+      (left.schoolCode || 'cczu').localeCompare(right.schoolCode || 'cczu')
+    );
+  }, [accounts, activeCampus]);
 
   useEffect(() => {
     let active = true;
@@ -258,6 +290,8 @@ export default function BookingAccountsPage({
               setEditorAccount(undefined);
               setEditorOpen(true);
             }}
+            disabled={activeCampus === 'jou'}
+            title={activeCampus === 'jou' ? '江苏海洋大学等待授权链路验证' : undefined}
           >
             <Icons.add data-icon='inline-start' />
             添加账号
@@ -270,140 +304,160 @@ export default function BookingAccountsPage({
             系统会在预约前检查连接并在需要时自动重新登录。图书馆是独立服务，点击账号卡片中的“连接图书馆”即可启用。页面和运行记录不会显示密码或授权凭证。
           </AlertDescription>
         </Alert>
-        {accounts.length === 0 ? (
+        {visibleAccounts.length === 0 ? (
           <Card className='shadow-none'>
             <CardContent className='flex flex-col items-center justify-center gap-2 py-16 text-center'>
-              <Icons.shield className='text-muted-foreground/40 size-10' />
-              <p className='text-sm font-medium'>还没有学校账号</p>
+              <Icons.building className='text-muted-foreground/40 size-10' />
+              <p className='text-sm font-medium'>
+                {activeCampus === 'all'
+                  ? '还没有学校账号'
+                  : `${getCampusDefinition(activeCampus).name}还没有学校账号`}
+              </p>
               <p className='text-muted-foreground text-xs'>
-                添加并验证账号后，才能创建自动预约任务。
+                {activeCampus === 'jou'
+                  ? '该高校正在接入，授权链路验证完成后即可绑定。'
+                  : '添加并验证账号后，才能创建自动预约任务。'}
               </p>
             </CardContent>
           </Card>
         ) : (
           <div className='grid gap-4 lg:grid-cols-2'>
-            {accounts.map((account) => {
+            {visibleAccounts.map((account, index) => {
+              const campus = getCampusDefinition(account.schoolCode);
+              const previousCampus =
+                index > 0 ? getCampusDefinition(visibleAccounts[index - 1]?.schoolCode) : null;
               const isRefreshing = refreshingId === account.id;
               const connected = account.status === 'connected';
               const recovering = account.status === 'recovering';
               return (
-                <Card key={account.id} className='min-w-0 shadow-none'>
-                  <CardHeader className='border-b'>
-                    <div className='flex min-w-0 items-start gap-3'>
-                      <div className='bg-muted flex size-10 shrink-0 items-center justify-center rounded-lg'>
-                        <Icons.user className='size-5' />
-                      </div>
+                <Fragment key={account.id}>
+                  {(!previousCampus || previousCampus.code !== campus.code) && (
+                    <div className='col-span-full flex items-center gap-3 pt-2'>
+                      <CampusLogo campus={campus.code} />
                       <div className='min-w-0'>
-                        <CardTitle className='truncate text-lg'>{account.label}</CardTitle>
-                        <CardDescription className='mt-1 truncate'>
-                          {account.username}
-                        </CardDescription>
+                        <p className='text-sm font-semibold'>{campus.name}</p>
+                        <p className='text-muted-foreground text-xs'>{campus.detail}</p>
                       </div>
                     </div>
-                    <Badge
-                      variant='outline'
-                      className={cn(
-                        connected
-                          ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
-                          : recovering
-                            ? 'border-blue-500/20 bg-blue-500/10 text-blue-700 dark:text-blue-400'
-                            : 'border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-400'
-                      )}
-                    >
-                      {connected ? <Icons.circleCheck /> : <Icons.refresh />}
-                      {account.statusLabel}
-                    </Badge>
-                  </CardHeader>
-                  <CardContent className='flex flex-col gap-5 pt-5'>
-                    <div className='flex flex-wrap items-center gap-2'>
-                      {account.services.map((service) => {
-                        const serviceKey = `${account.id}:${service.type}`;
-                        const serviceConnected = service.status === 'connected';
-                        const serviceRecovering = service.status === 'recovering';
-                        const serviceAttention = service.status === 'attention';
-                        return (
-                          <div key={service.type} className='flex items-center gap-1.5'>
-                            <Badge
-                              variant='outline'
-                              className={cn(
-                                serviceConnected
-                                  ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
-                                  : serviceRecovering
-                                    ? 'border-blue-500/20 bg-blue-500/10 text-blue-700 dark:text-blue-400'
-                                    : serviceAttention
-                                      ? 'border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-400'
-                                      : 'text-muted-foreground'
-                              )}
-                            >
-                              {service.label} ·{' '}
-                              {serviceConnected
-                                ? '已连接'
-                                : serviceRecovering
-                                  ? '系统自动恢复中'
-                                  : serviceAttention
-                                    ? '需要检查账号'
-                                    : '未连接'}
-                            </Badge>
-                            {!serviceConnected && (
-                              <Button
-                                type='button'
-                                variant='outline'
-                                size='xs'
-                                onClick={() => void connectService(account, service.type)}
-                                disabled={connectingService === serviceKey}
-                              >
-                                {connectingService === serviceKey
-                                  ? '连接中'
-                                  : serviceRecovering
-                                    ? '立即重试'
-                                    : serviceAttention
-                                      ? '检查连接'
-                                      : `连接${service.label}`}
-                              </Button>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                    <div className='grid grid-cols-2 gap-4'>
-                      <Info label='授权状态' value={account.tokenLabel} />
-                      <Info label='关联任务' value={`${account.tasks} 个任务`} />
-                      <Info label='最近刷新' value={account.refreshedAt} />
-                      <Info label='最近验证' value={account.lastVerifiedAt} />
-                    </div>
-                    <div className='flex flex-wrap justify-end gap-2 border-t pt-4'>
-                      <Button
-                        variant='ghost'
-                        size='sm'
-                        onClick={() => {
-                          setEditorAccount(account);
-                          setEditorOpen(true);
-                        }}
-                      >
-                        <Icons.edit data-icon='inline-start' />
-                        编辑
-                      </Button>
-                      <Button
-                        variant='ghost'
-                        size='sm'
-                        className='text-destructive'
-                        onClick={() => setDeleteTarget(account)}
-                      >
-                        <Icons.trash data-icon='inline-start' />
-                        移除
-                      </Button>
-                      <Button
+                  )}
+                  <Card className='min-w-0 shadow-none'>
+                    <CardHeader className='border-b'>
+                      <div className='flex min-w-0 items-start gap-3'>
+                        <div className='bg-muted flex size-10 shrink-0 items-center justify-center rounded-lg'>
+                          <Icons.user className='size-5' />
+                        </div>
+                        <div className='min-w-0'>
+                          <CardTitle className='truncate text-lg'>{account.label}</CardTitle>
+                          <CardDescription className='mt-1 truncate'>
+                            {account.username}
+                          </CardDescription>
+                        </div>
+                      </div>
+                      <Badge
                         variant='outline'
-                        size='sm'
-                        onClick={() => void refreshAccount(account)}
-                        disabled={isRefreshing}
+                        className={cn(
+                          connected
+                            ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
+                            : recovering
+                              ? 'border-blue-500/20 bg-blue-500/10 text-blue-700 dark:text-blue-400'
+                              : 'border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-400'
+                        )}
                       >
-                        <Icons.refresh className={cn(isRefreshing && 'animate-spin')} />
-                        {isRefreshing ? '刷新中' : '检查连接'}
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
+                        {connected ? <Icons.circleCheck /> : <Icons.refresh />}
+                        {account.statusLabel}
+                      </Badge>
+                    </CardHeader>
+                    <CardContent className='flex flex-col gap-5 pt-5'>
+                      <div className='flex flex-wrap items-center gap-2'>
+                        {account.services.map((service) => {
+                          const serviceKey = `${account.id}:${service.type}`;
+                          const serviceConnected = service.status === 'connected';
+                          const serviceRecovering = service.status === 'recovering';
+                          const serviceAttention = service.status === 'attention';
+                          return (
+                            <div key={service.type} className='flex items-center gap-1.5'>
+                              <Badge
+                                variant='outline'
+                                className={cn(
+                                  serviceConnected
+                                    ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
+                                    : serviceRecovering
+                                      ? 'border-blue-500/20 bg-blue-500/10 text-blue-700 dark:text-blue-400'
+                                      : serviceAttention
+                                        ? 'border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-400'
+                                        : 'text-muted-foreground'
+                                )}
+                              >
+                                {service.label} ·{' '}
+                                {serviceConnected
+                                  ? '已连接'
+                                  : serviceRecovering
+                                    ? '系统自动恢复中'
+                                    : serviceAttention
+                                      ? '需要检查账号'
+                                      : '未连接'}
+                              </Badge>
+                              {!serviceConnected && (
+                                <Button
+                                  type='button'
+                                  variant='outline'
+                                  size='xs'
+                                  onClick={() => void connectService(account, service.type)}
+                                  disabled={connectingService === serviceKey}
+                                >
+                                  {connectingService === serviceKey
+                                    ? '连接中'
+                                    : serviceRecovering
+                                      ? '立即重试'
+                                      : serviceAttention
+                                        ? '检查连接'
+                                        : `连接${service.label}`}
+                                </Button>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <div className='grid grid-cols-2 gap-4'>
+                        <Info label='授权状态' value={account.tokenLabel} />
+                        <Info label='关联任务' value={`${account.tasks} 个任务`} />
+                        <Info label='最近刷新' value={account.refreshedAt} />
+                        <Info label='最近验证' value={account.lastVerifiedAt} />
+                      </div>
+                      <div className='flex flex-wrap justify-end gap-2 border-t pt-4'>
+                        <Button
+                          variant='ghost'
+                          size='sm'
+                          onClick={() => {
+                            setEditorAccount(account);
+                            setEditorOpen(true);
+                          }}
+                        >
+                          <Icons.edit data-icon='inline-start' />
+                          编辑
+                        </Button>
+                        <Button
+                          variant='ghost'
+                          size='sm'
+                          className='text-destructive'
+                          onClick={() => setDeleteTarget(account)}
+                        >
+                          <Icons.trash data-icon='inline-start' />
+                          移除
+                        </Button>
+                        <Button
+                          variant='outline'
+                          size='sm'
+                          onClick={() => void refreshAccount(account)}
+                          disabled={isRefreshing}
+                        >
+                          <Icons.refresh className={cn(isRefreshing && 'animate-spin')} />
+                          {isRefreshing ? '刷新中' : '检查连接'}
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </Fragment>
               );
             })}
           </div>

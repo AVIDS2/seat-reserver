@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { motion } from 'motion/react';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 import { Icons } from '@/components/icons';
@@ -30,6 +30,7 @@ import {
 } from '@/components/ui/item';
 import { cn } from '@/lib/utils';
 import { RewardsQuickCard } from '@/features/membership/components/rewards-quick-card';
+import { useCampusWorkspace } from '@/features/campus/campus-workspace';
 
 import type { BookingSnapshot, BookingTask } from '../types';
 import type { RewardsSnapshot } from '../api/service';
@@ -101,10 +102,48 @@ export default function BookingDashboard({
   initialRewards: RewardsSnapshot;
 }) {
   const [snapshot, setSnapshot] = useState(initialData);
+  const { activeCampus } = useCampusWorkspace();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [togglingTaskId, setTogglingTaskId] = useState<string | null>(null);
   const [tipIndex, setTipIndex] = useState(0);
-  const summary = snapshot.summary;
+  const scopedSnapshot = useMemo(() => {
+    if (activeCampus === 'all') return snapshot;
+    const accounts = snapshot.accounts.filter(
+      (account) => (account.schoolCode || 'cczu') === activeCampus
+    );
+    const accountIds = new Set(accounts.map((account) => account.id));
+    const tasks = snapshot.tasks.filter((task) => accountIds.has(task.accountId));
+    const runs = snapshot.runs.filter((run) => accountIds.has(run.accountId));
+    const completedRuns = runs.filter((run) => ['success', 'failed'].includes(run.status));
+    const successfulRuns = completedRuns.filter((run) => run.status === 'success');
+    return {
+      ...snapshot,
+      accounts,
+      tasks,
+      runs,
+      summary: {
+        ...snapshot.summary,
+        enabledTasks: tasks.filter((task) => task.enabled).length,
+        totalTasks: tasks.length,
+        totalAccounts: accounts.length,
+        connectedAccounts: accounts.filter((account) => account.status === 'connected').length,
+        successRate: completedRuns.length
+          ? Math.round((successfulRuns.length / completedRuns.length) * 100)
+          : null,
+        candidateGroups: tasks
+          .filter((task) => task.enabled)
+          .reduce(
+            (total, task) =>
+              total + (1 + task.backupSeatIds.length) * task.timeCandidates.length,
+            0
+          ),
+        bookingWindowSeconds: tasks
+          .filter((task) => task.enabled)
+          .reduce((max, task) => Math.max(max, task.bookingWindowSeconds), 0)
+      }
+    };
+  }, [activeCampus, snapshot]);
+  const summary = scopedSnapshot.summary;
   const tip = SEAT_TIPS[tipIndex % SEAT_TIPS.length];
 
   useEffect(() => {
@@ -324,7 +363,7 @@ export default function BookingDashboard({
             </CardHeader>
             <CardContent>
               <ItemGroup className='gap-2'>
-                {snapshot.runs.slice(0, 3).map((run) => (
+                {scopedSnapshot.runs.slice(0, 3).map((run) => (
                   <Item key={run.id} variant='outline' size='sm'>
                     <ItemContent className='min-w-0'>
                       <ItemTitle>{run.account}</ItemTitle>
@@ -391,7 +430,7 @@ export default function BookingDashboard({
           </CardHeader>
           <CardContent>
             <ItemGroup className='gap-2'>
-              {snapshot.tasks.map((task) => (
+              {scopedSnapshot.tasks.map((task) => (
                 <TaskRow
                   key={task.id}
                   task={task}

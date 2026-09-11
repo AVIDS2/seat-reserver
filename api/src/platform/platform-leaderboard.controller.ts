@@ -4,6 +4,7 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { JwtPayloadType } from '../auth/strategies/types/jwt-payload.type';
 import { RequestWithUser } from '../utils/types/request-with-user.type';
 import { PlatformLeaderboardService } from './platform-leaderboard.service';
+import { isSchoolCode } from './school-catalog';
 
 @ApiTags('Platform Leaderboard')
 @ApiBearerAuth()
@@ -16,7 +17,12 @@ export class PlatformLeaderboardController {
   async snapshot(
     @Request() request: RequestWithUser<JwtPayloadType>,
     @Query('period') period?: string,
+    @Query('schoolCode') schoolCode?: string,
   ) {
-    return this.leaderboard.getSnapshot(Number(request.user.id), period);
+    return this.leaderboard.getSnapshot(
+      Number(request.user.id),
+      period,
+      isSchoolCode(schoolCode) ? schoolCode : undefined,
+    );
   }
 }

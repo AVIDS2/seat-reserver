@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Between, FindOptionsWhere, Repository } from 'typeorm';
 import { BookingRunEntity } from './entities/booking-run.entity';
+import type { SchoolCode } from './school-catalog';
 
 export type LeaderboardPeriod = 'week' | 'month' | 'all';
 
@@ -46,6 +47,7 @@ export class PlatformLeaderboardService {
   async getSnapshot(
     userId: number,
     requestedPeriod?: string,
+    schoolCode?: SchoolCode,
   ): Promise<LeaderboardSnapshot> {
     const period = normalizePeriod(requestedPeriod);
     const toDate = getShanghaiDate();
@@ -56,6 +58,9 @@ export class PlatformLeaderboardService {
     };
     if (period !== 'all') {
       where.targetDate = Between(fromDate, toDate);
+    }
+    if (schoolCode) {
+      where.schoolAccount = { schoolCode };
     }
     const runs = await this.runs.find({
       where,

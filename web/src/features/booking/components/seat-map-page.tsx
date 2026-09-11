@@ -39,8 +39,10 @@ import {
 } from '@/components/ui/select';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { cn } from '@/lib/utils';
+import { useCampusWorkspace } from '@/features/campus/campus-workspace';
 
 import {
+  autoSolveBookingCaptcha,
   bookBookingReservation,
   createBookingCaptchaChallenge,
   getSeatCatalog,
@@ -77,9 +79,17 @@ export default function SeatMapPage({
   initialAccounts: BookingAccount[];
   initialDraft?: SeatMapDraft;
 }) {
-  const initialAccountId = initialAccounts.some((account) => account.id === initialDraft?.accountId)
+  const { activeCampus } = useCampusWorkspace();
+  const accounts = useMemo(
+    () =>
+      activeCampus === 'all'
+        ? initialAccounts
+        : initialAccounts.filter((account) => (account.schoolCode || 'cczu') === activeCampus),
+    [activeCampus, initialAccounts]
+  );
+  const initialAccountId = accounts.some((account) => account.id === initialDraft?.accountId)
     ? initialDraft?.accountId || ''
-    : initialAccounts[0]?.id || '';
+    : accounts[0]?.id || '';
   const [accountId, setAccountId] = useState(initialAccountId);
   const [venueType, setVenueType] = useState<VenueType>(initialDraft?.venueType || 'study_room');
   const [buildingId, setBuildingId] = useState('');
@@ -109,6 +119,11 @@ export default function SeatMapPage({
   const [captchaLoading, setCaptchaLoading] = useState(false);
   const [captchaError, setCaptchaError] = useState('');
   const [draftApplied, setDraftApplied] = useState(false);
+
+  useEffect(() => {
+    if (accounts.some((account) => account.id === accountId)) return;
+    setAccountId(accounts[0]?.id || '');
+  }, [accountId, accounts]);
 
   useEffect(() => {
     if (!accountId) {
@@ -378,6 +393,36 @@ export default function SeatMapPage({
     }
   };
 
+  /**
+   * Library bookings can be solved server-side, so the browser never needs to show
+   * the point-and-click challenge when a provider is configured.
+   */
+  const autoSolveInstantBooking = async () => {
+    if (!instantSeatId || !instantStartTime || !instantEndTime) return;
+    const input: InstantBookingInput = {
+      accountId,
+      serviceType: venueType,
+      seatId: instantSeatId,
+      date,
+      startTime: Number(instantStartTime),
+      endTime: Number(instantEndTime)
+    };
+    setInstantSubmitting(true);
+    try {
+      const { reservation, solve } = await autoSolveBookingCaptcha(input);
+      setInstantConfirmOpen(false);
+      setInstantOpen(false);
+      toast.success('图书馆预约成功', {
+        description: `${reservation.location} · ${reservation.startTime}-${reservation.endTime} · ${solve.model} ${solve.latencyMs}ms`
+      });
+      refreshLayout();
+    } catch (reason) {
+      toast.error(reason instanceof Error ? reason.message : '自动识别预约失败');
+    } finally {
+      setInstantSubmitting(false);
+    }
+  };
+
   const refreshCaptcha = async () => {
     if (!captchaBooking) return;
     setCaptchaLoading(true);
@@ -439,7 +484,7 @@ export default function SeatMapPage({
           </Link>
         </div>
 
-        {initialAccounts.length === 0 ? (
+        {accounts.length === 0 ? (
           <Alert>
             <Icons.warning />
             <AlertTitle>先接入学校账号</AlertTitle>
@@ -463,7 +508,7 @@ export default function SeatMapPage({
                     <FieldLabel htmlFor='seat-map-account'>使用账号</FieldLabel>
                     <Select
                       value={accountId}
-                      items={initialAccounts.map((account) => ({
+                      items={accounts.map((account) => ({
                         value: account.id,
                         label: account.label
                       }))}
@@ -475,7 +520,7 @@ export default function SeatMapPage({
                       <SelectContent>
                         <SelectGroup>
                           <SelectLabel>学校账号</SelectLabel>
-                          {initialAccounts.map((account) => (
+                          {accounts.map((account) => (
                             <SelectItem key={account.id} value={account.id}>
                               {account.label}
                             </SelectItem>
@@ -800,11 +845,23 @@ export default function SeatMapPage({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={instantSubmitting}>返回修改</AlertDialogCancel>
+            {venueType === 'library' && catalog?.captchaRequired && catalog?.autoSolveAvailable && (
+              <AlertDialogAction
+                disabled={instantSubmitting}
+                onClick={() => void autoSolveInstantBooking()}
+              >
+                {instantSubmitting ? '提交中…' : '自动识别并预约'}
+              </AlertDialogAction>
+            )}
             <AlertDialogAction
               disabled={instantSubmitting}
               onClick={() => void submitInstantBooking()}
             >
-              {instantSubmitting ? '提交中…' : '确认预约'}
+              {instantSubmitting
+                ? '提交中…'
+                : venueType === 'library' && catalog?.captchaRequired
+                  ? '手动完成验证'
+                  : '确认预约'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

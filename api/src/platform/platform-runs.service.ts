@@ -5,6 +5,7 @@ import { BookingRunEntity } from './entities/booking-run.entity';
 
 export type BookingRunView = {
   id: string;
+  accountId: string;
   account: string;
   task: string;
   targetDate: string;
@@ -77,6 +78,7 @@ export class PlatformRunsService {
                 : '预热中';
     return {
       id: String(run.id),
+      accountId: String(run.schoolAccountId),
       account: run.schoolAccount?.label ?? '未知账号',
       task:
         run.task?.name ??

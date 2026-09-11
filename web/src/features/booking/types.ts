@@ -2,6 +2,8 @@ export type TaskStatus = 'enabled' | 'paused' | 'attention';
 export type RunStatus = 'success' | 'failed' | 'prewarming' | 'running' | 'pending' | 'skipped';
 export type AccountStatus = 'connected' | 'recovering' | 'attention';
 export type VenueType = 'library' | 'study_room';
+export type { CampusCode } from '@/config/campus-config';
+import type { CampusCode } from '@/config/campus-config';
 
 export type TimeCandidate = { start: number; end: number };
 
@@ -59,6 +61,7 @@ export type BookingTask = {
 
 export type BookingAccount = {
   id: string;
+  schoolCode: CampusCode;
   label: string;
   username: string;
   status: AccountStatus;
@@ -80,6 +83,7 @@ export type SeatCatalog = {
   rooms: Array<{ id: string; name: string; buildingId: string; floor: number }>;
   dates: string[];
   captchaRequired: boolean;
+  autoSolveAvailable: boolean;
   hours: number;
   windowStart: number;
   windowEnd: number;
@@ -139,10 +143,24 @@ export type BookingCaptchaChallenge = {
   wordImage: string;
   requiredClicks: number;
   expiresAt: string;
+  autoSolveAvailable: boolean;
+};
+
+export type BookingCaptchaSolve = {
+  provider: string;
+  model: string;
+  latencyMs: number;
+  targets: string[];
+};
+
+export type AutoSolvedBooking = {
+  reservation: BookingReservation;
+  solve: BookingCaptchaSolve;
 };
 
 export type BookingRun = {
   id: string;
+  accountId: string;
   account: string;
   task: string;
   targetDate: string;

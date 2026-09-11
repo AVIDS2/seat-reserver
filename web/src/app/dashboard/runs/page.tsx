@@ -7,5 +7,5 @@ export const metadata = {
 
 export default async function Page() {
   const snapshot = await getBookingSnapshot();
-  return <BookingRunsPage initialRuns={snapshot.runs} />;
+  return <BookingRunsPage initialRuns={snapshot.runs} initialAccounts={snapshot.accounts} />;
 }

@@ -19,9 +19,15 @@ import type { SeatServiceType } from './entities/school-service-connection.entit
 import { PlatformServiceConnectionsService } from './platform-service-connections.service';
 import { PlatformMembershipService } from './platform-membership.service';
 import { PlatformRewardsService } from './platform-rewards.service';
+import {
+  DEFAULT_SCHOOL_CODE,
+  isSchoolCode,
+  type SchoolCode,
+} from './school-catalog';
 
 export type SchoolAccountView = {
   id: string;
+  schoolCode: SchoolCode;
   label: string;
   username: string;
   status: 'connected' | 'recovering' | 'attention';
@@ -66,6 +72,12 @@ export class PlatformAccountsService {
     userId: number,
     dto: CreateSchoolAccountDto,
   ): Promise<SchoolAccountView> {
+    const schoolCode = normalizeSchoolCode(dto.schoolCode);
+    if (schoolCode === 'jou') {
+      throw new UnprocessableEntityException(
+        '江苏海洋大学正在接入，等待授权链路验证后开放绑定',
+      );
+    }
     const label = requireText(dto.label, '账号名称');
     const username = requireText(dto.schoolUsername, '学校账号');
     await this.membership?.assertCanCreateSchoolAccount(userId);
@@ -85,6 +97,7 @@ export class PlatformAccountsService {
     }
 
     const accountData = {
+      schoolCode,
       label,
       schoolUsername: username,
       encryptedSchoolPassword: this.crypto.encrypt(dto.schoolPassword),
@@ -167,6 +180,15 @@ export class PlatformAccountsService {
     dto: UpdateSchoolAccountDto,
   ): Promise<SchoolAccountView> {
     const account = await this.findOwned(userId, id);
+    const requestedSchoolCode =
+      dto.schoolCode === undefined
+        ? account.schoolCode || DEFAULT_SCHOOL_CODE
+        : normalizeSchoolCode(dto.schoolCode);
+    if (requestedSchoolCode !== (account.schoolCode || DEFAULT_SCHOOL_CODE)) {
+      throw new UnprocessableEntityException(
+        '高校归属不能直接修改，请为另一所高校新建账号',
+      );
+    }
     const label =
       dto.label === undefined
         ? account.label
@@ -268,6 +290,7 @@ export class PlatformAccountsService {
 
     return {
       id: String(account.id),
+      schoolCode: account.schoolCode || DEFAULT_SCHOOL_CODE,
       label: account.label,
       username: masked,
       status: viewStatus,
@@ -300,6 +323,16 @@ export class PlatformAccountsService {
       ],
     };
   }
+}
+
+function normalizeSchoolCode(value: unknown): SchoolCode {
+  if (value === undefined || value === null || value === '') {
+    return DEFAULT_SCHOOL_CODE;
+  }
+  if (!isSchoolCode(value)) {
+    throw new UnprocessableEntityException('不支持的高校');
+  }
+  return value;
 }
 
 function requireText(value: string, field: string): string {

@@ -15,6 +15,7 @@ import { PlatformAdminGuard } from './platform-admin.guard';
 import { PlatformAdminService } from './platform-admin.service';
 import { PlatformAuthController } from './platform-auth.controller';
 import { PlatformBookingExecutor } from './platform-booking.executor';
+import { PlatformCaptchaSolverService } from './platform-captcha-solver.service';
 import { PlatformDashboardController } from './platform-dashboard.controller';
 import { PlatformDashboardService } from './platform-dashboard.service';
 import { PlatformHealthController } from './platform-health.controller';
@@ -111,6 +112,7 @@ import { WebVpnSeatClientService } from './webvpn-seat-client.service';
     PlatformAdminGuard,
     PlatformAdminService,
     PlatformBookingExecutor,
+    PlatformCaptchaSolverService,
     PlatformCryptoService,
     PlatformDashboardService,
     PlatformInvitationsService,

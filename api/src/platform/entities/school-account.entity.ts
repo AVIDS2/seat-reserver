@@ -11,6 +11,7 @@ import {
   RelationId,
   UpdateDateColumn,
 } from 'typeorm';
+import type { SchoolCode } from '../school-catalog';
 
 @Entity({ name: 'platform_school_account' })
 export class SchoolAccountEntity extends EntityRelationalHelper {
@@ -19,6 +20,9 @@ export class SchoolAccountEntity extends EntityRelationalHelper {
 
   @Column({ length: 100 })
   label: string;
+
+  @Column({ length: 40, default: 'cczu' })
+  schoolCode: SchoolCode;
 
   @Column({ length: 100 })
   schoolUsername: string;

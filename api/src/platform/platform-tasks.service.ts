@@ -16,6 +16,7 @@ import { PlatformAccountsService } from './platform-accounts.service';
 import { PlatformQueueService } from './platform-queue.service';
 import { SeatClientService } from './seat-client.service';
 import { PlatformServiceConnectionsService } from './platform-service-connections.service';
+import { PlatformCaptchaSolverService } from './platform-captcha-solver.service';
 import { bookingWindow, maxBookingMinutes } from './booking-time.constants';
 
 export type BookingTaskView = {
@@ -76,6 +77,7 @@ export class PlatformTasksService {
     private readonly queue: PlatformQueueService,
     private readonly seatClient: SeatClientService,
     private readonly serviceConnections: PlatformServiceConnectionsService,
+    private readonly captchaSolver: PlatformCaptchaSolverService,
   ) {}
 
   async list(userId: number): Promise<BookingTaskView[]> {
@@ -129,7 +131,10 @@ export class PlatformTasksService {
       bookingWindowSeconds: dto.bookingWindowSeconds ?? 20,
       prewarmOffsetSeconds: dto.prewarmOffsetSeconds ?? 0,
       runOffsetSeconds: dto.runOffsetSeconds ?? 1,
-      enabled: venueType === 'library' ? false : (dto.enabled ?? true),
+      enabled:
+        venueType === 'library' && !this.captchaSolver.isConfigured()
+          ? false
+          : (dto.enabled ?? true),
       user: { id: userId } as UserEntity,
       schoolAccount: account,
     });
@@ -166,7 +171,9 @@ export class PlatformTasksService {
         ? task.schoolAccount
         : await this.accounts.findOwned(userId, dto.accountId);
     const enabled =
-      targetVenueType === 'library' ? false : (dto.enabled ?? task.enabled);
+      targetVenueType === 'library' && !this.captchaSolver.isConfigured()
+        ? false
+        : (dto.enabled ?? task.enabled);
     if (enabled && (dto.enabled === true || dto.accountId !== undefined)) {
       await this.serviceConnections.ensureReady(
         account,
@@ -235,9 +242,13 @@ export class PlatformTasksService {
     enabled: boolean,
   ): Promise<BookingTaskView> {
     const task = await this.findOwned(userId, id);
-    if (enabled && task.venueType === 'library') {
+    if (
+      enabled &&
+      task.venueType === 'library' &&
+      !this.captchaSolver.isConfigured()
+    ) {
       throw new UnprocessableEntityException(
-        '图书馆自动抢座暂未开放；当前仅支持座位图单次验证码预约',
+        '图书馆自动抢座需要先配置验证码识别服务',
       );
     }
     if (enabled) {
@@ -308,9 +319,13 @@ export class PlatformTasksService {
     if (!task.enabled && runType === 'booking') {
       throw new UnprocessableEntityException('任务已暂停');
     }
-    if (runType === 'booking' && task.venueType === 'library') {
+    if (
+      runType === 'booking' &&
+      task.venueType === 'library' &&
+      !this.captchaSolver.isConfigured()
+    ) {
       throw new UnprocessableEntityException(
-        '图书馆自动抢座暂未开放；请前往座位图完成单次验证码预约',
+        '图书馆自动抢座需要先配置验证码识别服务',
       );
     }
     return this.queue.enqueue(
@@ -354,6 +369,10 @@ export class PlatformTasksService {
       .map(({ start, end }) => `${formatTime(start)} - ${formatTime(end)}`)
       .join(' / ');
     const requiresLibraryVerification = task.venueType === 'library';
+    const libraryBlocked =
+      requiresLibraryVerification && !this.captchaSolver.isConfigured();
+    const libraryReady =
+      requiresLibraryVerification && this.captchaSolver.isConfigured();
 
     return {
       id: String(task.id),
@@ -377,8 +396,8 @@ export class PlatformTasksService {
       time,
       nextRun: task.enabled
         ? `${scheduleLabel(task)} · 下次开放窗口`
-        : requiresLibraryVerification
-          ? '仅支持座位图单次预约'
+        : libraryBlocked
+          ? '需要配置验证码识别服务'
           : '已暂停',
       status:
         hasIssue || lastRun?.status === 'failed'
@@ -400,9 +419,11 @@ export class PlatformTasksService {
         lastRun?.message ??
         (hasIssue
           ? '账号授权需要检查'
-          : requiresLibraryVerification
-            ? '图书馆自动抢座暂未开放，座位图支持单次验证码预约'
-            : '等待下一次自动执行'),
+          : libraryBlocked
+            ? '图书馆自动抢座需要配置验证码识别服务'
+            : libraryReady
+              ? '将在开放窗口前预解验证码，开放时自动提交'
+              : '等待下一次自动执行'),
     };
   }
 }

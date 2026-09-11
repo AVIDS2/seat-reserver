@@ -1,7 +1,20 @@
 import { ApiProperty, PartialType } from '@nestjs/swagger';
-import { IsNotEmpty, IsString, MaxLength, MinLength } from 'class-validator';
+import {
+  IsIn,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
 
 export class CreateSchoolAccountDto {
+  @ApiProperty({ enum: ['cczu', 'jou'], default: 'cczu' })
+  @IsOptional()
+  @IsString()
+  @IsIn(['cczu', 'jou'])
+  schoolCode?: 'cczu' | 'jou';
+
   @ApiProperty({ example: '我的账号' })
   @IsString()
   @IsNotEmpty()

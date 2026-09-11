@@ -15,7 +15,20 @@ import { PlatformServiceConnectionsService } from './platform-service-connection
 import { PlatformNotificationsService } from './platform-notifications.service';
 import { PlatformRedisService } from './platform-redis.service';
 import { PlatformRewardsService } from './platform-rewards.service';
+import { PlatformCaptchaSolverService } from './platform-captcha-solver.service';
 import { StatusEnum } from '../statuses/statuses.enum';
+
+type PreparedLibraryChallenge = {
+  challengeToken: string;
+  provider: string;
+  model: string;
+  latencyMs: number;
+};
+
+/** Upper bound on captcha challenges solved during prewarm for one task. */
+const PREPARED_CAPTCHA_LIMIT = 6;
+/** Long enough to cover the gap between prewarm (05:59:50) and the open window. */
+const PREPARED_CAPTCHA_TTL_SECONDS = 15 * 60;
 
 @Injectable()
 export class PlatformBookingExecutor {
@@ -34,6 +47,7 @@ export class PlatformBookingExecutor {
     private readonly notifications: PlatformNotificationsService,
     private readonly redis: PlatformRedisService,
     private readonly rewards: PlatformRewardsService,
+    private readonly captchaSolver: PlatformCaptchaSolverService,
   ) {}
 
   async execute(runId: number): Promise<void> {
@@ -85,18 +99,236 @@ export class PlatformBookingExecutor {
       serviceType(task.venueType),
       true,
     );
+    let message = 'Token 预热成功';
+    if (task.venueType === 'library') {
+      const prepared = await this.prepareLibraryChallenges(run, task, account);
+      message = prepared.captchaCount
+        ? `Token 预热成功；已预解 ${prepared.captchaCount} 个验证码`
+        : `Token 预热成功；验证码预解跳过（${prepared.detail}）`;
+    }
     run.status = 'success';
     run.finishedAt = new Date();
     run.attemptsUsed = 1;
-    run.message = 'Token 预热成功';
+    run.message = message;
     await this.runs.save(run);
     await this.notify(
       run.userId,
       'prewarm',
       '账号预热完成',
-      '预约前 Token 已通过正常登录和用户接口验证。',
+      message,
       '/dashboard/accounts',
     );
+  }
+
+  /**
+   * Solves the library captcha ahead of the booking window so the open moment only
+   * needs the actual submit. The school may still reject a stale challenge, so the
+   * booking pass falls back to solving inline when nothing usable is cached.
+   */
+  private async prepareLibraryChallenges(
+    run: BookingRunEntity,
+    task: BookingTaskEntity,
+    account: SchoolAccountEntity,
+  ): Promise<{ captchaCount: number; detail: string }> {
+    if (!this.captchaSolver.isConfigured()) {
+      return { captchaCount: 0, detail: '未配置识别服务' };
+    }
+    const service = await this.serviceConnections.ensureReady(
+      account,
+      'library',
+    );
+    const candidates = this.seatClient.buildCandidates(
+      task.primarySeatId,
+      task.backupSeatIds,
+      task.timeCandidates,
+    );
+    const wanted = Math.min(
+      Math.max(task.maxAttempts, 1),
+      candidates.length,
+      PREPARED_CAPTCHA_LIMIT,
+    );
+    const prepared: PreparedLibraryChallenge[] = [];
+    for (let index = 0; index < wanted; index += 1) {
+      try {
+        const challenge = await this.schoolAuth.createBookingCaptcha(
+          service.token,
+        );
+        const solved = await this.captchaSolver.solve({
+          image: challenge.image,
+          wordImage: challenge.wordImage,
+          requiredClicks: challenge.requiredClicks,
+        });
+        const verified = await this.schoolAuth.verifyBookingCaptcha(
+          service.token,
+          challenge.token,
+          solved.points,
+        );
+        if (!verified.success) continue;
+        prepared.push({
+          challengeToken: challenge.token,
+          provider: solved.provider,
+          model: solved.model,
+          latencyMs: solved.latencyMs,
+        });
+      } catch (error: unknown) {
+        this.logger.warn(
+          `验证码预解失败 run=${run.id} 第 ${index + 1} 个：${safeErrorMessage(error)}`,
+        );
+        break;
+      }
+    }
+    if (prepared.length) {
+      await this.redis.setJson(
+        preparedCaptchaKey(task.id, run.targetDate),
+        prepared,
+        PREPARED_CAPTCHA_TTL_SECONDS,
+      );
+    }
+    return {
+      captchaCount: prepared.length,
+      detail: prepared.length ? '可用' : '学校未通过预解结果',
+    };
+  }
+
+  private async executeLibraryBooking(
+    run: BookingRunEntity,
+    task: BookingTaskEntity,
+    account: SchoolAccountEntity,
+  ): Promise<void> {
+    if (!this.captchaSolver.isConfigured()) {
+      throw new UnprocessableEntityException(
+        '图书馆自动抢座需要配置验证码识别服务',
+      );
+    }
+    const service = await this.serviceConnections.ensureReady(
+      account,
+      'library',
+    );
+    const token = service.token;
+    const candidates = this.seatClient.buildCandidates(
+      task.primarySeatId,
+      task.backupSeatIds,
+      task.timeCandidates,
+    );
+    const maxAttempts = Math.min(
+      Math.max(task.maxAttempts, 1),
+      candidates.length,
+    );
+    const deadline = Date.now() + Math.max(1, task.bookingWindowSeconds) * 1000;
+    const preparedKey = preparedCaptchaKey(task.id, run.targetDate);
+    const prepared =
+      (await this.redis.getJson<PreparedLibraryChallenge[]>(preparedKey)) || [];
+    let lastMessage = '预约窗口结束';
+    let solvedInline = 0;
+
+    for (let index = 0; index < maxAttempts; index += 1) {
+      const remainingMs = deadline - Date.now();
+      if (remainingMs < 500) break;
+
+      let authId = prepared[index]?.challengeToken;
+      if (!authId) {
+        try {
+          const challenge = await this.schoolAuth.createBookingCaptcha(token);
+          const solved = await this.captchaSolver.solve({
+            image: challenge.image,
+            wordImage: challenge.wordImage,
+            requiredClicks: challenge.requiredClicks,
+          });
+          const verified = await this.schoolAuth.verifyBookingCaptcha(
+            token,
+            challenge.token,
+            solved.points,
+          );
+          if (!verified.success) {
+            lastMessage = verified.message || '验证码自动识别未通过';
+            continue;
+          }
+          solvedInline += 1;
+          authId = challenge.token;
+        } catch (error: unknown) {
+          lastMessage = safeErrorMessage(error);
+          this.logger.warn(`窗口内识别失败 run=${run.id}：${lastMessage}`);
+          break;
+        }
+      }
+
+      const candidate = candidates[index];
+      const timeoutMs = Math.min(5000, Math.max(500, deadline - Date.now()));
+      const response = await this.schoolAuth.book(
+        token,
+        service.mode,
+        run.targetDate,
+        { ...candidate, authId },
+        timeoutMs,
+        'library',
+      );
+      run.attemptsUsed = index + 1;
+      run.httpStatus = response.httpStatus;
+      run.responseCode = response.code || null;
+      lastMessage = response.message || '预约失败';
+
+      if (response.success) {
+        await this.redis.delete(preparedKey);
+        const data =
+          response.payload?.data && typeof response.payload.data === 'object'
+            ? (response.payload.data as Record<string, unknown>)
+            : {};
+        run.status = 'success';
+        run.finishedAt = new Date();
+        run.message = solvedInline
+          ? `预约成功（窗口内识别 ${solvedInline} 次）`
+          : '预约成功（使用预解验证码）';
+        run.receipt = stringValue(data.receipt);
+        run.location = stringValue(data.location);
+        run.reservedBegin = stringValue(data.begin);
+        run.reservedEnd = stringValue(data.end);
+        await this.runs.save(run);
+        const durationMinutes = durationBetween(
+          run.reservedBegin,
+          run.reservedEnd,
+        );
+        let rewardPoints = 0;
+        if (durationMinutes > 0) {
+          rewardPoints = await this.rewards
+            .recordBookingReward(
+              run.userId,
+              run.id,
+              durationMinutes,
+              run.targetDate,
+            )
+            .catch((error: unknown) => {
+              this.logger.warn(
+                `预约金币奖励写入失败 run=${run.id}: ${safeErrorMessage(error)}`,
+              );
+              return 0;
+            });
+        }
+        if (task.scheduleMode === 'once') {
+          task.enabled = false;
+          await this.tasks.save(task);
+        }
+        await this.notify(
+          run.userId,
+          'booking_success',
+          '预约成功',
+          `${run.location ?? '目标座位'} · ${run.reservedBegin ?? ''}-${run.reservedEnd ?? ''}${rewardPoints ? ` · +${rewardPoints} 席定币` : ''}`,
+          '/dashboard/runs',
+        );
+        return;
+      }
+
+      const waitMs = Math.min(
+        Math.max(task.attemptDelaySeconds, 0) * 1000,
+        Math.max(0, deadline - Date.now()),
+      );
+      if (waitMs > 0 && index + 1 < maxAttempts) await sleep(waitMs);
+    }
+
+    run.status = 'failed';
+    run.finishedAt = new Date();
+    run.message = lastMessage;
+    await this.runs.save(run);
+    await this.notifyRunFailure(run);
   }
 
   private async executeBooking(run: BookingRunEntity): Promise<void> {
@@ -117,9 +349,8 @@ export class PlatformBookingExecutor {
       return;
     }
     if (task.venueType === 'library') {
-      throw new UnprocessableEntityException(
-        '图书馆自动抢座暂未开放；请前往座位图完成单次验证码预约',
-      );
+      await this.executeLibraryBooking(run, task, account);
+      return;
     }
     const service = await this.serviceConnections.ensureReady(
       account,
@@ -265,6 +496,10 @@ function serviceType(
   venueType: BookingTaskEntity['venueType'],
 ): 'study_room' | 'library' {
   return venueType === 'library' ? 'library' : 'study_room';
+}
+
+function preparedCaptchaKey(taskId: number, date: string): string {
+  return `platform:library-captcha:${taskId}:${date}`;
 }
 
 function stringValue(value: unknown): string | null {

@@ -82,9 +82,15 @@ function makeExecutor(
   const redis = {
     tryLock: jest.fn<() => Promise<string | null>>(),
     unlock: jest.fn<() => Promise<void>>(),
+    setJson: jest.fn<() => Promise<void>>(),
+    getJson: jest.fn<() => Promise<unknown>>(),
+    delete: jest.fn<() => Promise<void>>(),
   };
   redis.tryLock.mockResolvedValue('lock-token');
   redis.unlock.mockResolvedValue(undefined);
+  redis.setJson.mockResolvedValue(undefined);
+  redis.getJson.mockResolvedValue(null);
+  redis.delete.mockResolvedValue(undefined);
   const notifications = {
     create: jest.fn((...args: unknown[]) => {
       void args;
@@ -118,6 +124,11 @@ function makeExecutor(
       }),
     ),
   };
+  const captchaSolver = {
+    isConfigured: jest.fn(() => true),
+    solve: jest.fn(),
+    modelName: 'test-model',
+  };
   return {
     executor: new PlatformBookingExecutor(
       runs,
@@ -129,6 +140,7 @@ function makeExecutor(
       notifications as never,
       redis as never,
       rewards as never,
+      captchaSolver as never,
     ),
     save,
     book,
@@ -136,6 +148,7 @@ function makeExecutor(
     rewards,
     seatClient,
     schoolAuth,
+    captchaSolver,
   };
 }
 

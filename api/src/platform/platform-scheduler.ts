@@ -53,7 +53,13 @@ export class PlatformScheduler {
         where: { enabled: true, user: { status: { id: StatusEnum.active } } },
         relations: ['user', 'schoolAccount'],
       });
-      const runnableTasks = tasks.filter((task) => isTaskDue(task, date));
+      // Library tasks keep their own opt-in switch; everything else is due-based.
+      const runnableTasks = tasks.filter(
+        (task) =>
+          isTaskDue(task, date) &&
+          (task.venueType !== 'library' ||
+            process.env.PLATFORM_LIBRARY_AUTO_BOOKING !== 'false'),
+      );
       const results = await Promise.allSettled(
         runnableTasks.map((task) =>
           this.queue.enqueue(

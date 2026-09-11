@@ -1,4 +1,5 @@
 import type {
+  AutoSolvedBooking,
   BookingAccount,
   BookingCaptchaChallenge,
   BookingRun,
@@ -11,8 +12,10 @@ import type {
 } from '../types';
 import type { SeatCatalog, SeatLayout, SeatTimes } from '../types';
 import { normalizeAvatarUrl } from '@/lib/avatar-url';
+import type { CampusCode } from '@/config/campus-config';
 
 export type CreateAccountPayload = {
+  schoolCode: CampusCode;
   label: string;
   schoolUsername: string;
   schoolPassword: string;
@@ -620,6 +623,29 @@ export async function verifyBookingCaptchaChallenge(
   return response.reservation;
 }
 
+/**
+ * Asks the server to solve and submit the library booking in one pass, with no
+ * browser interaction. Requires a configured vision provider on the API.
+ */
+export async function autoSolveBookingCaptcha(input: {
+  accountId: string;
+  serviceType: VenueType;
+  seatId: string;
+  date: string;
+  startTime: number;
+  endTime: number;
+}): Promise<AutoSolvedBooking> {
+  const response = await platformRequest<AutoSolvedBooking>(
+    '/platform/reservations/captcha/auto',
+    {
+      method: 'POST',
+      body: JSON.stringify({ ...input, accountId: Number(input.accountId) })
+    }
+  );
+  clearBookingDataCache();
+  return response;
+}
+
 export async function cancelBookingReservation(input: {
   reservationId: string;
   accountId: string;
@@ -744,9 +770,12 @@ export async function getRewardsSnapshot(): Promise<RewardsSnapshot> {
 
 export async function getLeaderboardSnapshot(
   period: LeaderboardPeriod = 'week',
+  schoolCode?: CampusCode,
 ): Promise<LeaderboardSnapshot> {
+  const query = new URLSearchParams({ period });
+  if (schoolCode) query.set('schoolCode', schoolCode);
   return platformRequest<LeaderboardSnapshot>(
-    `/platform/leaderboard?period=${period}`,
+    `/platform/leaderboard?${query.toString()}`,
   );
 }
 

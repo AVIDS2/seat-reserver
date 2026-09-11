@@ -18,11 +18,30 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import PageContainer from '@/components/layout/page-container';
 
 import type { BookingRun } from '../types';
+import type { BookingAccount } from '../types';
+import { useCampusWorkspace } from '@/features/campus/campus-workspace';
 import { RunStatusBadge } from './status-badge';
 import { getClientSnapshot } from '../api/service';
 
-export default function BookingRunsPage({ initialRuns }: { initialRuns: BookingRun[] }) {
+export default function BookingRunsPage({
+  initialRuns,
+  initialAccounts
+}: {
+  initialRuns: BookingRun[];
+  initialAccounts: BookingAccount[];
+}) {
   const [liveRuns, setLiveRuns] = useState(initialRuns);
+  const { activeCampus } = useCampusWorkspace();
+  const accountIds = useMemo(
+    () =>
+      new Set(
+        (activeCampus === 'all'
+          ? initialAccounts
+          : initialAccounts.filter((account) => (account.schoolCode || 'cczu') === activeCampus)
+        ).map((account) => account.id)
+      ),
+    [activeCampus, initialAccounts]
+  );
   const [refreshing, setRefreshing] = useState(false);
   const [filter, setFilter] = useState<'all' | 'success' | 'failed'>('all');
   const [search, setSearch] = useState('');
@@ -31,6 +50,7 @@ export default function BookingRunsPage({ initialRuns }: { initialRuns: BookingR
   const filteredRuns = useMemo(
     () =>
       liveRuns.filter((run) => {
+        if (!accountIds.has(run.accountId)) return false;
         const matchesFilter = filter === 'all' || run.status === filter;
         const value = search.trim().toLowerCase();
         return (
@@ -38,7 +58,7 @@ export default function BookingRunsPage({ initialRuns }: { initialRuns: BookingR
           (!value || `${run.account} ${run.task} ${run.targetDate}`.toLowerCase().includes(value))
         );
       }),
-    [filter, liveRuns, search]
+    [accountIds, filter, liveRuns, search]
   );
 
   const refreshRuns = async () => {

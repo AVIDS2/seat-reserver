@@ -19,6 +19,7 @@ describe('platform tenant isolation', () => {
       {} as never,
       {} as never,
       {} as never,
+      {} as never,
     );
 
     await expect(service.findOwned(21, 9)).rejects.toThrow('预约任务不存在');

@@ -49,6 +49,7 @@ import {
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { useCampusWorkspace } from '@/features/campus/campus-workspace';
 
 import {
   createBookingTask,
@@ -500,7 +501,11 @@ function TaskEditorDialog({
                         value='library'
                         className='w-full'
                         disabled={!task || task.venueType !== 'library'}
-                        title={!task || task.venueType !== 'library' ? '图书馆自动抢座暂未开放' : undefined}
+                        title={
+                          !task || task.venueType !== 'library'
+                            ? '图书馆自动任务请从座位图选中座位后创建'
+                            : undefined
+                        }
                       >
                         图书馆（单次）
                       </ToggleGroupItem>
@@ -508,17 +513,17 @@ function TaskEditorDialog({
                     {venueType === 'library' && (
                       <div className='flex flex-col gap-3'>
                         <FieldDescription>
-                          图书馆当前仅支持座位图里的单次预约。学校要求每次提交前完成点选验证，不能在开放窗口无人值守自动抢座。
+                          图书馆任务会在开放窗口前由服务端自动完成点选验证，开放时直接提交预约；需要先连接图书馆服务。
                         </FieldDescription>
                         <Alert>
                           <Icons.info />
-                          <AlertTitle>自动抢座暂未开放</AlertTitle>
+                          <AlertTitle>自动识别验证码</AlertTitle>
                           <AlertDescription>
-                            可以继续读取馆区、空间和座位，但不要把这条配置理解为每日自动预约。需要连接图书馆时，前往
+                            前提是服务端已配置验证码识别；未配置时任务无法启用。前往
                             <Link href='/dashboard/accounts' className='text-primary underline underline-offset-4'>
                               账号与授权
                             </Link>{' '}
-                            完成连接。
+                            完成图书馆连接。
                           </AlertDescription>
                         </Alert>
                       </div>
@@ -901,7 +906,15 @@ export default function BookingTasksPage({
   initialTaskDraft?: BookingTaskDraft;
 }) {
   const [tasks, setTasks] = useState(initialTasks);
-  const [accounts] = useState(initialAccounts);
+  const { activeCampus } = useCampusWorkspace();
+  const accounts = useMemo(
+    () =>
+      activeCampus === 'all'
+        ? initialAccounts
+        : initialAccounts.filter((account) => (account.schoolCode || 'cczu') === activeCampus),
+    [activeCampus, initialAccounts]
+  );
+  const accountIds = useMemo(() => new Set(accounts.map((account) => account.id)), [accounts]);
   const [search, setSearch] = useState('');
   const [editorTask, setEditorTask] = useState<BookingTask | undefined>();
   const [editorDraft, setEditorDraft] = useState<BookingTaskDraft | undefined>(initialTaskDraft);
@@ -918,11 +931,12 @@ export default function BookingTasksPage({
 
   const filteredTasks = useMemo(() => {
     const value = search.trim().toLowerCase();
-    if (!value) return tasks;
-    return tasks.filter((task) =>
+    const scopedTasks = tasks.filter((task) => accountIds.has(task.accountId));
+    if (!value) return scopedTasks;
+    return scopedTasks.filter((task) =>
       `${task.name} ${task.account} ${task.seat}`.toLowerCase().includes(value)
     );
-  }, [search, tasks]);
+  }, [accountIds, search, tasks]);
 
   const saveTask = async (payload: EditorPayload, taskId?: string) => {
     const updated = taskId
@@ -1020,7 +1034,7 @@ export default function BookingTasksPage({
         <Card className='shadow-none'>
           <CardHeader className='grid-cols-1 border-b sm:grid-cols-[minmax(0,1fr)_auto]'>
             <div>
-              <CardDescription>{tasks.length} 个任务</CardDescription>
+              <CardDescription>{filteredTasks.length} 个任务</CardDescription>
               <CardTitle className='text-xl'>全部任务</CardTitle>
             </div>
             <CardAction className='col-start-1 row-auto w-full justify-self-stretch sm:col-start-2 sm:row-span-2 sm:row-start-1 sm:w-auto sm:justify-self-end'>

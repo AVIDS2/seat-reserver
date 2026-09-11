@@ -7,6 +7,7 @@ import { Icons } from '@/components/icons';
 import { BrandMark } from '@/components/brand-mark';
 import { navGroups } from '@/config/nav-config';
 import { usePlatformSession } from '@/features/auth/platform-session';
+import { CampusSwitcher } from '@/features/campus/components/campus-switcher';
 import {
   Sidebar,
   SidebarContent,
@@ -46,6 +47,9 @@ export default function AppSidebar() {
                 <span className='text-muted-foreground truncate text-xs'>高校座位预约平台</span>
               </div>
             </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <CampusSwitcher />
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>

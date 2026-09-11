@@ -70,6 +70,11 @@ function makeService(
     getJson: jest.fn<(key: string) => Promise<unknown>>(),
     delete: jest.fn(),
   };
+  const solver = {
+    isConfigured: jest.fn(() => false),
+    solve: jest.fn(),
+    describeProviders: jest.fn(() => []),
+  };
   return {
     service: new PlatformReservationsService(
       accounts as never,
@@ -77,11 +82,13 @@ function makeService(
       schoolAuth as never,
       catalog as never,
       redis as never,
+      solver as never,
     ),
     accounts,
     connections,
     schoolAuth,
     redis,
+    solver,
   };
 }
 

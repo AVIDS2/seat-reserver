@@ -2,6 +2,7 @@ import { Injectable, UnprocessableEntityException } from '@nestjs/common';
 import { PlatformAccountsService } from './platform-accounts.service';
 import { PlatformServiceConnectionsService } from './platform-service-connections.service';
 import { SchoolAuthenticationService } from './school-authentication.service';
+import { PlatformCaptchaSolverService } from './platform-captcha-solver.service';
 import type { SeatServiceType } from './entities/school-service-connection.entity';
 import { bookingWindow } from './booking-time.constants';
 
@@ -21,6 +22,7 @@ export class PlatformSeatCatalogService {
     private readonly accounts: PlatformAccountsService,
     private readonly connections: PlatformServiceConnectionsService,
     private readonly schoolAuth: SchoolAuthenticationService,
+    private readonly captchaSolver: PlatformCaptchaSolverService,
   ) {}
 
   async filters(
@@ -59,6 +61,7 @@ export class PlatformSeatCatalogService {
           })),
           dates: strings(data.dates),
           captchaRequired: settingsData.isCaptchaOpen === true,
+          autoSolveAvailable: this.captchaSolver.isConfigured(),
           hours: Number(data.hours ?? 0),
           windowStart: window.start,
           windowEnd: window.end,

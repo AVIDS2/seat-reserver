@@ -13,6 +13,7 @@ import type { SeatServiceType } from './entities/school-service-connection.entit
 import { bookingWindow, maxBookingMinutes } from './booking-time.constants';
 import { PlatformRedisService } from './platform-redis.service';
 import type { BookingCaptchaPointDto } from './dto/reservation.dto';
+import { PlatformCaptchaSolverService } from './platform-captcha-solver.service';
 
 type JsonRecord = Record<string, unknown>;
 
@@ -53,6 +54,17 @@ export type BookingCaptchaView = {
   wordImage: string;
   requiredClicks: number;
   expiresAt: string;
+  autoSolveAvailable: boolean;
+};
+
+export type AutoSolvedBooking = {
+  reservation: ReservationView;
+  solve: {
+    provider: string;
+    model: string;
+    latencyMs: number;
+    targets: string[];
+  };
 };
 
 const CAPTCHA_TTL_SECONDS = 180;
@@ -65,6 +77,7 @@ export class PlatformReservationsService {
     private readonly schoolAuth: SchoolAuthenticationService,
     private readonly catalog: PlatformSeatCatalogService,
     private readonly redis: PlatformRedisService,
+    private readonly solver: PlatformCaptchaSolverService,
   ) {}
 
   async list(
@@ -159,6 +172,49 @@ export class PlatformReservationsService {
       expiresAt: new Date(
         Date.now() + CAPTCHA_TTL_SECONDS * 1000,
       ).toISOString(),
+      autoSolveAvailable: this.solver.isConfigured(),
+    };
+  }
+
+  /**
+   * Solves the challenge with the configured vision model, verifies it against the
+   * school, then submits the pending reservation in one pass.
+   */
+  async autoSolveAndBook(
+    userId: number,
+    dto: ImmediateReservationDto,
+  ): Promise<AutoSolvedBooking> {
+    this.validateBooking(dto);
+    if (dto.serviceType !== 'library') {
+      throw new UnprocessableEntityException('自习室预约不需要图书馆验证');
+    }
+    if (!this.solver.isConfigured()) {
+      throw new UnprocessableEntityException('自动识别服务未配置');
+    }
+
+    const context = await this.context(userId, dto.accountId, 'library');
+    const challenge = await this.schoolAuth.createBookingCaptcha(context.token);
+    const solved = await this.solver.solve({
+      image: challenge.image,
+      wordImage: challenge.wordImage,
+      requiredClicks: challenge.requiredClicks,
+    });
+    const verified = await this.schoolAuth.verifyBookingCaptcha(
+      context.token,
+      challenge.token,
+      solved.points,
+    );
+    assertSuccess(verified, '自动识别结果未通过学校校验');
+
+    const reservation = await this.submitBooking(context, dto, challenge.token);
+    return {
+      reservation,
+      solve: {
+        provider: solved.provider,
+        model: solved.model,
+        latencyMs: solved.latencyMs,
+        targets: solved.targets,
+      },
     };
   }
 
