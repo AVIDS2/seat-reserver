@@ -556,15 +556,17 @@ export async function getSeatTimes(
   );
 }
 
-export async function getBookingReservations(input: {
-  accountId: string;
-  serviceType: VenueType;
-}): Promise<BookingReservation[]> {
+export async function getBookingReservations(
+  input: { accountId: string; serviceType: VenueType },
+  options: { refresh?: boolean } = {}
+): Promise<BookingReservation[]> {
   const query = new URLSearchParams(input);
-  const response = await platformRequest<{
-    reservations: BookingReservation[];
-  }>(`/platform/reservations?${query}`);
-  return response.reservations ?? [];
+  return cachedSeatRequest<{ reservations: BookingReservation[] }>(
+    `reservations:${input.accountId}:${input.serviceType}`,
+    `/platform/reservations?${query}`,
+    20_000,
+    options.refresh === true
+  ).then((response: { reservations: BookingReservation[] }) => response.reservations ?? []);
 }
 
 export async function bookBookingReservation(input: {

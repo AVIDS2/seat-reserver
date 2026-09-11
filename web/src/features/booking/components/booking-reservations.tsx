@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import {
   Empty,
   EmptyContent,
@@ -37,13 +38,14 @@ import {
   SelectValue
 } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { cn } from '@/lib/utils';
 
 import { cancelBookingReservation, getBookingReservations } from '../api/service';
 import type { BookingAccount, BookingReservation, ReservationStatus, VenueType } from '../types';
 
 type ServiceFilter = 'all' | VenueType;
-type StatusFilter = 'all' | 'upcoming' | 'history';
+type StatusFilter = 'today' | 'upcoming' | 'history' | 'all';
 
 export default function BookingReservationsPage({
   initialAccounts
@@ -52,7 +54,7 @@ export default function BookingReservationsPage({
 }) {
   const [reservations, setReservations] = useState<BookingReservation[]>([]);
   const [serviceFilter, setServiceFilter] = useState<ServiceFilter>('all');
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('today');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
@@ -62,19 +64,23 @@ export default function BookingReservationsPage({
   const loadReservations = async (showRefresh = false) => {
     if (showRefresh) setRefreshing(true);
     else setLoading(true);
-    const results = await Promise.allSettled(
-      initialAccounts.flatMap((account) =>
-        (['study_room', 'library'] as const).map((serviceType) =>
-          getBookingReservations({ accountId: account.id, serviceType })
-        )
-      )
-    );
+    const requests = initialAccounts.flatMap((account) => {
+      const services = account.services
+        .filter((service) => service.status === 'connected' || service.status === 'recovering')
+        .map((service) => service.type);
+      return services.map((serviceType) => ({
+        account,
+        serviceType,
+        request: getBookingReservations({ accountId: account.id, serviceType }, { refresh: showRefresh })
+      }));
+    });
+    const results = await Promise.allSettled(requests.map((item) => item.request));
     const nextReservations = results.flatMap((result) =>
       result.status === 'fulfilled' ? result.value : []
     );
-    const nextErrors = results.flatMap((result) =>
+    const nextErrors = results.flatMap((result, index) =>
       result.status === 'rejected'
-        ? [result.reason instanceof Error ? result.reason.message : '部分预约记录暂时不可用']
+        ? [`${requests[index]?.account.label || '账号'} · ${requests[index]?.serviceType === 'library' ? '图书馆' : '自习室'}：${result.reason instanceof Error ? result.reason.message : '记录暂时不可用'}`]
         : []
     );
     setReservations(sortReservations(nextReservations));
@@ -90,19 +96,31 @@ export default function BookingReservationsPage({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialAccounts]);
 
-  const filteredReservations = useMemo(
-    () =>
-      reservations.filter((reservation) => {
-        const matchesService = serviceFilter === 'all' || reservation.venueType === serviceFilter;
-        const matchesStatus =
-          statusFilter === 'all' ||
-          (statusFilter === 'upcoming'
-            ? ['upcoming', 'active'].includes(reservation.status)
-            : ['completed', 'cancelled'].includes(reservation.status));
-        return matchesService && matchesStatus;
-      }),
-    [reservations, serviceFilter, statusFilter]
+  const today = todayDate();
+  const todayReservations = useMemo(
+    () => reservations.filter((reservation) => reservation.date === today),
+    [reservations, today]
   );
+  const upcomingReservations = useMemo(
+    () => reservations.filter((reservation) => ['upcoming', 'active'].includes(reservation.status) && reservation.date >= today),
+    [reservations, today]
+  );
+  const historyReservations = useMemo(
+    () => reservations.filter((reservation) => ['completed', 'cancelled'].includes(reservation.status) || reservation.date < today),
+    [reservations, today]
+  );
+  const filteredReservations = useMemo(() => reservations.filter((reservation) => {
+    const matchesService = serviceFilter === 'all' || reservation.venueType === serviceFilter;
+    const matchesStatus =
+      statusFilter === 'today'
+        ? reservation.date === today
+        : statusFilter === 'upcoming'
+          ? ['upcoming', 'active'].includes(reservation.status) && reservation.date >= today
+          : statusFilter === 'history'
+            ? ['completed', 'cancelled'].includes(reservation.status) || reservation.date < today
+            : true;
+    return matchesService && matchesStatus;
+  }), [reservations, serviceFilter, statusFilter, today]);
 
   const confirmCancel = async () => {
     if (!cancelTarget) return;
@@ -137,7 +155,7 @@ export default function BookingReservationsPage({
             <p className='text-muted-foreground mb-2 text-sm'>学校服务</p>
             <h1 className='text-2xl font-semibold tracking-tight sm:text-3xl'>我的预约</h1>
             <p className='text-muted-foreground mt-2 max-w-2xl text-sm leading-6'>
-              查看已接入账号的实时预约记录，直接处理仍可取消的预约。
+              先看今天的预约，再按需查看待使用和历史记录。数据来自已连接的学校服务。
             </p>
           </div>
           <Button
@@ -163,12 +181,29 @@ export default function BookingReservationsPage({
           </Alert>
         ) : (
           <>
-            <div className='flex flex-col gap-3 rounded-lg border bg-card p-3 sm:flex-row sm:items-center sm:justify-between'>
-              <div>
-                <p className='text-sm font-medium'>全部记录</p>
-                <p className='text-muted-foreground mt-1 text-xs'>数据直接来自学校预约系统。</p>
-              </div>
-              <div className='grid grid-cols-2 gap-2 sm:flex'>
+            <div className='grid gap-3 sm:grid-cols-2 lg:grid-cols-4'>
+              <SummaryCard label='今天' value={todayReservations.length} detail='今日预约记录' active={statusFilter === 'today'} onClick={() => setStatusFilter('today')} />
+              <SummaryCard label='待使用' value={upcomingReservations.length} detail='尚未开始的预约' active={statusFilter === 'upcoming'} onClick={() => setStatusFilter('upcoming')} />
+              <SummaryCard label='历史' value={historyReservations.length} detail='已完成或已取消' active={statusFilter === 'history'} onClick={() => setStatusFilter('history')} />
+              <SummaryCard label='已加载' value={reservations.length} detail='已连接服务返回' active={statusFilter === 'all'} onClick={() => setStatusFilter('all')} />
+            </div>
+
+            <Card className='shadow-none'>
+              <CardContent className='flex flex-col gap-3 p-3 sm:flex-row sm:items-center sm:justify-between'>
+                <ToggleGroup
+                  value={[statusFilter]}
+                  onValueChange={(values) => values[0] && setStatusFilter(values[0] as StatusFilter)}
+                  variant='outline'
+                  spacing={0}
+                  className='grid w-full grid-cols-4 sm:w-fit'
+                  aria-label='选择预约记录视图'
+                >
+                  <ToggleGroupItem value='today'>今天</ToggleGroupItem>
+                  <ToggleGroupItem value='upcoming'>待使用</ToggleGroupItem>
+                  <ToggleGroupItem value='history'>历史</ToggleGroupItem>
+                  <ToggleGroupItem value='all'>全部</ToggleGroupItem>
+                </ToggleGroup>
+                <div className='grid grid-cols-2 gap-2 sm:flex'>
                 <Select
                   value={serviceFilter}
                   onValueChange={(value) => value && setServiceFilter(value as ServiceFilter)}
@@ -185,24 +220,9 @@ export default function BookingReservationsPage({
                     </SelectGroup>
                   </SelectContent>
                 </Select>
-                <Select
-                  value={statusFilter}
-                  onValueChange={(value) => value && setStatusFilter(value as StatusFilter)}
-                >
-                  <SelectTrigger className='w-full sm:w-32' aria-label='筛选预约状态'>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      <SelectLabel>记录状态</SelectLabel>
-                      <SelectItem value='all'>全部状态</SelectItem>
-                      <SelectItem value='upcoming'>待使用</SelectItem>
-                      <SelectItem value='history'>历史记录</SelectItem>
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
               </div>
-            </div>
+              </CardContent>
+            </Card>
 
             {errors.length > 0 && (
               <Alert>
@@ -225,7 +245,7 @@ export default function BookingReservationsPage({
                     <Icons.history />
                   </EmptyMedia>
                   <EmptyTitle>没有匹配的预约</EmptyTitle>
-                  <EmptyDescription>学校返回的预约记录会显示在这里。</EmptyDescription>
+                  <EmptyDescription>{emptyDescription(statusFilter)}</EmptyDescription>
                 </EmptyHeader>
                 <EmptyContent>
                   <Link href='/dashboard/seats' className={buttonVariants({ variant: 'outline' })}>
@@ -345,4 +365,46 @@ function formatDate(value: string): string {
     day: 'numeric',
     weekday: 'short'
   });
+}
+
+function SummaryCard({
+  label,
+  value,
+  detail,
+  active,
+  onClick
+}: {
+  label: string;
+  value: number;
+  detail: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type='button'
+      onClick={onClick}
+      className={cn('bg-card text-left transition-colors', active ? 'border-primary ring-ring/30 rounded-lg border p-4 ring-2' : 'rounded-lg border p-4 hover:bg-muted/30')}
+    >
+      <p className='text-muted-foreground text-xs'>{label}</p>
+      <p className='mt-1 text-2xl font-semibold tabular-nums'>{value}</p>
+      <p className='text-muted-foreground mt-1 text-xs'>{detail}</p>
+    </button>
+  );
+}
+
+function todayDate(): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Shanghai',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).format(new Date());
+}
+
+function emptyDescription(status: StatusFilter): string {
+  if (status === 'today') return '今天还没有预约记录。可以去座位图查看实时空间。';
+  if (status === 'upcoming') return '当前没有待使用的预约。';
+  if (status === 'history') return '还没有历史预约记录。';
+  return '已连接服务返回的预约记录会显示在这里。';
 }
