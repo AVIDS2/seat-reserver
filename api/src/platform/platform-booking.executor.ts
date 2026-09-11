@@ -1,5 +1,6 @@
 import {
   Injectable,
+  Logger,
   NotFoundException,
   UnprocessableEntityException,
 } from '@nestjs/common';
@@ -13,10 +14,13 @@ import { SchoolAuthenticationService } from './school-authentication.service';
 import { PlatformServiceConnectionsService } from './platform-service-connections.service';
 import { PlatformNotificationsService } from './platform-notifications.service';
 import { PlatformRedisService } from './platform-redis.service';
+import { PlatformRewardsService } from './platform-rewards.service';
 import { StatusEnum } from '../statuses/statuses.enum';
 
 @Injectable()
 export class PlatformBookingExecutor {
+  private readonly logger = new Logger(PlatformBookingExecutor.name);
+
   constructor(
     @InjectRepository(BookingRunEntity)
     private readonly runs: Repository<BookingRunEntity>,
@@ -29,6 +33,7 @@ export class PlatformBookingExecutor {
     private readonly serviceConnections: PlatformServiceConnectionsService,
     private readonly notifications: PlatformNotificationsService,
     private readonly redis: PlatformRedisService,
+    private readonly rewards: PlatformRewardsService,
   ) {}
 
   async execute(runId: number): Promise<void> {
@@ -166,6 +171,26 @@ export class PlatformBookingExecutor {
         run.reservedBegin = stringValue(data.begin);
         run.reservedEnd = stringValue(data.end);
         await this.runs.save(run);
+        const durationMinutes = durationBetween(
+          run.reservedBegin,
+          run.reservedEnd,
+        );
+        let rewardPoints = 0;
+        if (durationMinutes > 0) {
+          rewardPoints = await this.rewards
+            .recordBookingReward(
+              run.userId,
+              run.id,
+              durationMinutes,
+              run.targetDate,
+            )
+            .catch((error: unknown) => {
+              this.logger.warn(
+                `预约金币奖励写入失败 run=${run.id}: ${safeErrorMessage(error)}`,
+              );
+              return 0;
+            });
+        }
         if (task.scheduleMode === 'once') {
           task.enabled = false;
           await this.tasks.save(task);
@@ -174,7 +199,7 @@ export class PlatformBookingExecutor {
           run.userId,
           'booking_success',
           '预约成功',
-          `${run.location ?? '目标座位'} · ${run.reservedBegin ?? ''}-${run.reservedEnd ?? ''}`,
+          `${run.location ?? '目标座位'} · ${run.reservedBegin ?? ''}-${run.reservedEnd ?? ''}${rewardPoints ? ` · +${rewardPoints} 席定币` : ''}`,
           '/dashboard/runs',
         );
         return;
@@ -254,4 +279,19 @@ function safeErrorMessage(error: unknown): string {
 
 function sleep(milliseconds: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
+function durationBetween(start: string | null, end: string | null): number {
+  if (!start || !end) return 0;
+  const parse = (value: string) => {
+    const match = value.match(/^(\d{1,2}):(\d{2})/);
+    return match ? Number(match[1]) * 60 + Number(match[2]) : NaN;
+  };
+  const startMinutes = parse(start);
+  const endMinutes = parse(end);
+  return Number.isFinite(startMinutes) &&
+    Number.isFinite(endMinutes) &&
+    endMinutes > startMinutes
+    ? endMinutes - startMinutes
+    : 0;
 }

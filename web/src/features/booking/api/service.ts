@@ -131,6 +131,32 @@ export type RewardsSnapshot = {
   activities: RewardActivity[];
 };
 
+export type LeaderboardPeriod = 'week' | 'month' | 'all';
+
+export type LeaderboardRanking = {
+  userId: string;
+  userName: string;
+  rank: number;
+  value: number;
+  valueLabel: string;
+  byline: string;
+  avatarUrl: string | null;
+  activeDays: number;
+  sessions: number;
+};
+
+export type LeaderboardSnapshot = {
+  period: LeaderboardPeriod;
+  fromDate: string;
+  toDate: string;
+  scopeLabel: string;
+  metricLabel: string;
+  rankings: LeaderboardRanking[];
+  currentUser: LeaderboardRanking | null;
+  participantCount: number;
+  trackedMinutes: number;
+};
+
 export type AttendanceSettings = {
   autoCancelNoShow: boolean;
   checkInAheadMinutes: number;
@@ -712,6 +738,14 @@ export async function disableInvitation(id: string): Promise<Invitation> {
 
 export async function getRewardsSnapshot(): Promise<RewardsSnapshot> {
   return platformRequest<RewardsSnapshot>('/platform/rewards');
+}
+
+export async function getLeaderboardSnapshot(
+  period: LeaderboardPeriod = 'week',
+): Promise<LeaderboardSnapshot> {
+  return platformRequest<LeaderboardSnapshot>(
+    `/platform/leaderboard?period=${period}`,
+  );
 }
 
 export async function checkInForPoints(): Promise<{

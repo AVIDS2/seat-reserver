@@ -91,6 +91,12 @@ function makeExecutor(
       return Promise.resolve(undefined);
     }),
   };
+  const rewards = {
+    recordBookingReward: jest.fn((...args: unknown[]) => {
+      void args;
+      return Promise.resolve(20);
+    }),
+  };
   const seatClient = {
     buildCandidates: jest.fn(() => [
       { seatId: '197', startTime: 840, endTime: 1320 },
@@ -122,10 +128,12 @@ function makeExecutor(
       serviceConnections as never,
       notifications as never,
       redis as never,
+      rewards as never,
     ),
     save,
     book,
     notifications,
+    rewards,
     seatClient,
     schoolAuth,
   };
@@ -144,7 +152,7 @@ describe('PlatformBookingExecutor', () => {
     expect(schoolAuth.verifyToken).not.toHaveBeenCalled();
   });
 
-  it('should record a successful booking and create a notification', async () => {
+  it('should record a successful booking, reward points, and create a notification', async () => {
     const run = makeRun(true);
     const book = jest.fn<BookMock>();
     book.mockResolvedValue({
@@ -161,13 +169,19 @@ describe('PlatformBookingExecutor', () => {
         },
       },
     });
-    const { executor, notifications } = makeExecutor(run, book);
+    const { executor, notifications, rewards } = makeExecutor(run, book);
 
     await executor.execute(run.id);
 
     expect(run.status).toBe('success');
     expect(run.receipt).toBe('0131-600-1');
     expect(run.location).toBe('座位 197');
+    expect(rewards.recordBookingReward).toHaveBeenCalledWith(
+      7,
+      1,
+      480,
+      '2026-09-02',
+    );
     expect(book).toHaveBeenCalledWith(
       'school-token',
       'direct',
@@ -177,7 +191,11 @@ describe('PlatformBookingExecutor', () => {
       'study_room',
     );
     expect(notifications.create).toHaveBeenCalledWith(
-      expect.objectContaining({ kind: 'booking_success', userId: 7 }),
+      expect.objectContaining({
+        kind: 'booking_success',
+        userId: 7,
+        body: expect.stringContaining('+20 席定币'),
+      }),
     );
   });
 });

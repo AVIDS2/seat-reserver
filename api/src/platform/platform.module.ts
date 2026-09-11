@@ -20,6 +20,8 @@ import { PlatformDashboardService } from './platform-dashboard.service';
 import { PlatformHealthController } from './platform-health.controller';
 import { PlatformInvitationsController } from './platform-invitations.controller';
 import { PlatformInvitationsService } from './platform-invitations.service';
+import { PlatformLeaderboardController } from './platform-leaderboard.controller';
+import { PlatformLeaderboardService } from './platform-leaderboard.service';
 import { PlatformNotificationsController } from './platform-notifications.controller';
 import { PlatformNotificationsService } from './platform-notifications.service';
 import { PlatformRewardsController } from './platform-rewards.controller';
@@ -94,6 +96,7 @@ import { WebVpnSeatClientService } from './webvpn-seat-client.service';
     PlatformDashboardController,
     PlatformHealthController,
     PlatformInvitationsController,
+    PlatformLeaderboardController,
     PlatformNotificationsController,
     PlatformPaymentsController,
     PlatformRewardsController,
@@ -111,6 +114,7 @@ import { WebVpnSeatClientService } from './webvpn-seat-client.service';
     PlatformCryptoService,
     PlatformDashboardService,
     PlatformInvitationsService,
+    PlatformLeaderboardService,
     PlatformNotificationsService,
     PlatformPaymentsService,
     PlatformMembershipService,

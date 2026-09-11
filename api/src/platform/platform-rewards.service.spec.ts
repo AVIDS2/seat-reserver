@@ -1,7 +1,23 @@
 import { describe, expect, it, jest } from '@jest/globals';
-import { PlatformRewardsService } from './platform-rewards.service';
+import {
+  bookingRewardPoints,
+  PlatformRewardsService,
+} from './platform-rewards.service';
 
 describe('PlatformRewardsService activities', () => {
+  it.each([
+    [30, 10],
+    [120, 10],
+    [240, 20],
+    [480, 40],
+    [1440, 60],
+  ])(
+    'should calculate booking reward points for %d minutes',
+    (minutes, expected) => {
+      expect(bookingRewardPoints(minutes)).toBe(expected);
+    },
+  );
+
   it('should keep a daily check-in idempotent when its ledger key already exists', async () => {
     const ledger = {
       findOne: jest.fn(() =>

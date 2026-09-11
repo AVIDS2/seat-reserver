@@ -25,7 +25,7 @@ import {
 } from '@/features/booking/api/service';
 import { cn } from '@/lib/utils';
 
-type ShopCategory = '全部' | '权益' | '邀请' | '即将上架';
+type ShopCategory = '全部' | '权益' | '邀请' | '成长' | '即将上架';
 type ProductKind = 'pro' | 'invite' | 'coming';
 
 type ShopProduct = {
@@ -84,6 +84,28 @@ const products: ShopProduct[] = [
     badge: '即将上架',
     icon: 'clock',
     accent: 'bg-slate-700'
+  },
+  {
+    id: 'streak-badge',
+    category: '成长',
+    kind: 'coming',
+    title: '连续签到徽章',
+    subtitle: '把坚持留下来',
+    description: '连续签到达到指定天数后解锁个人徽章和展示标识，当前正在设计中。',
+    badge: '成长中',
+    icon: 'badgeCheck',
+    accent: 'bg-amber-600'
+  },
+  {
+    id: 'focus-plan',
+    category: '成长',
+    kind: 'coming',
+    title: '专注计划模板',
+    subtitle: '一键安排学习节奏',
+    description: '将固定时段、工作日和备选座位组合成可复用的学习计划模板。',
+    badge: '规划中',
+    icon: 'calendar',
+    accent: 'bg-rose-700'
   }
 ];
 
@@ -188,10 +210,16 @@ export default function StoreViewPage({
       pageTitle='席定杂货铺'
       pageDescription='用活跃换权益，把校园预约能力一件件收入自己的货架。'
       pageHeaderAction={
-        <Link href='/dashboard/store/recharge' className={buttonVariants({ variant: 'outline' })}>
-          <Icons.creditCard data-icon='inline-start' />
-          充值席定币
-        </Link>
+        <div className='flex flex-wrap gap-2'>
+          <Link href='/dashboard/leaderboard' className={buttonVariants({ variant: 'outline' })}>
+            <Icons.trendingUp data-icon='inline-start' />
+            学习排行
+          </Link>
+          <Link href='/dashboard/store/recharge' className={buttonVariants({ variant: 'outline' })}>
+            <Icons.creditCard data-icon='inline-start' />
+            充值席定币
+          </Link>
+        </div>
       }
     >
       <div className='mx-auto flex w-full max-w-[1180px] flex-col gap-5 pb-8 sm:gap-6'>
@@ -268,6 +296,7 @@ export default function StoreViewPage({
               <TabsTrigger value='全部'>全部商品</TabsTrigger>
               <TabsTrigger value='权益'>平台权益</TabsTrigger>
               <TabsTrigger value='邀请'>邀请礼物</TabsTrigger>
+              <TabsTrigger value='成长'>成长奖励</TabsTrigger>
               <TabsTrigger value='即将上架'>即将上架</TabsTrigger>
             </TabsList>
             <Link href='/dashboard/membership#invite' className={cn(buttonVariants({ variant: 'outline', size: 'sm' }))}>

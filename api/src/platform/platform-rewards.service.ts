@@ -233,6 +233,28 @@ export class PlatformRewardsService {
     return this.claimActivity(userId, 'daily_check_in');
   }
 
+  async recordBookingReward(
+    userId: number,
+    runId: number,
+    durationMinutes: number,
+    targetDate: string,
+  ): Promise<number> {
+    const reward = bookingRewardPoints(durationMinutes);
+    if (reward <= 0) return 0;
+    const entry = await this.dataSource.transaction((manager) =>
+      this.applyPointsWithinTransaction(
+        manager,
+        userId,
+        reward,
+        `user:${userId}:booking-reward:${runId}`,
+        'booking_reward',
+        `完成 ${formatDuration(durationMinutes)} 预约`,
+        { runId, targetDate, durationMinutes },
+      ),
+    );
+    return Math.max(0, entry.amount);
+  }
+
   async redeemInvitation(userId: number): Promise<{
     invitation: CommunityInvitationView;
     code: string;
@@ -525,4 +547,16 @@ function getShanghaiDate(): string {
     parts.map((part) => [part.type, part.value]),
   );
   return `${values.year}-${values.month}-${values.day}`;
+}
+
+export function bookingRewardPoints(durationMinutes: number): number {
+  if (!Number.isFinite(durationMinutes) || durationMinutes <= 0) return 0;
+  return Math.min(60, Math.max(10, Math.ceil(durationMinutes / 60) * 5));
+}
+
+function formatDuration(minutes: number): string {
+  const hours = Math.floor(minutes / 60);
+  const remainder = minutes % 60;
+  if (!hours) return `${remainder} 分钟`;
+  return remainder ? `${hours} 小时 ${remainder} 分钟` : `${hours} 小时`;
 }
