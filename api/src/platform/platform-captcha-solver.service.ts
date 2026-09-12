@@ -1,5 +1,7 @@
 import {
+  Inject,
   Injectable,
+  Optional,
   Logger,
   ServiceUnavailableException,
   UnprocessableEntityException,
@@ -48,6 +50,8 @@ export type CaptchaProviderStatus = {
 };
 
 type AdapterKind = 'openai-compatible';
+
+export const PLATFORM_CAPTCHA_PROFILES = 'PLATFORM_CAPTCHA_PROFILES';
 
 export type CaptchaProviderProfile = {
   name: string;
@@ -129,7 +133,11 @@ export class PlatformCaptchaSolverService {
   private readonly logger = new Logger(PlatformCaptchaSolverService.name);
   private readonly profiles: CaptchaProviderProfile[];
 
-  constructor(profiles?: CaptchaProviderProfile[]) {
+  constructor(
+    @Optional()
+    @Inject(PLATFORM_CAPTCHA_PROFILES)
+    profiles?: CaptchaProviderProfile[],
+  ) {
     this.profiles = profiles ?? loadCaptchaProviderProfiles();
     const ready = this.profiles
       .filter((profile) => profile.configured)
