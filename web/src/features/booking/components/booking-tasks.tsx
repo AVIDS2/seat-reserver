@@ -133,11 +133,16 @@ function TaskEditorDialog({
   const [venueType, setVenueType] = useState<VenueType>('study_room');
   const [buildingId, setBuildingId] = useState('');
   const [roomId, setRoomId] = useState('');
+  const [manualBuildingName, setManualBuildingName] = useState('');
+  const [manualRoomName, setManualRoomName] = useState('');
   const [previewDate, setPreviewDate] = useState('');
   const [scheduleMode, setScheduleMode] = useState<ScheduleMode>('daily');
   const [scheduleWeekdays, setScheduleWeekdays] = useState<number[]>([1, 2, 3, 4, 5]);
   const [scheduleDates, setScheduleDates] = useState<string[]>([]);
   const [selectedSeatIds, setSelectedSeatIds] = useState<string[]>([]);
+  const [manualPrimarySeatId, setManualPrimarySeatId] = useState('');
+  const [manualPrimarySeatLabel, setManualPrimarySeatLabel] = useState('');
+  const [manualBackupSeatIds, setManualBackupSeatIds] = useState('');
   const [catalog, setCatalog] = useState<SeatCatalog | null>(null);
   const [layout, setLayout] = useState<SeatLayout | null>(null);
   const [catalogLoading, setCatalogLoading] = useState(false);
@@ -164,6 +169,8 @@ function TaskEditorDialog({
     setVenueType(task?.venueType || draft?.venueType || 'study_room');
     setBuildingId(task?.buildingId || draft?.buildingId || '');
     setRoomId(task?.roomId || draft?.roomId || '');
+    setManualBuildingName(task?.building && task.building !== '未指定' ? task.building : '');
+    setManualRoomName(task?.roomName && task.roomName !== '未指定' ? task.roomName : '');
     setPreviewDate('');
     setScheduleMode(task?.scheduleMode === 'once' ? 'dates' : task?.scheduleMode || 'daily');
     setScheduleWeekdays(task?.scheduleWeekdays?.length ? task.scheduleWeekdays : [1, 2, 3, 4, 5]);
@@ -175,6 +182,13 @@ function TaskEditorDialog({
           : []
     );
     setSelectedSeatIds(task ? [task.seatId, ...task.backupSeatIds] : draft?.seatIds || []);
+    setManualPrimarySeatId(task?.seatId || draft?.seatIds?.[0] || '');
+    setManualPrimarySeatLabel(task?.seatLabel || '');
+    setManualBackupSeatIds(
+      task?.backupSeatIds?.length
+        ? task.backupSeatIds.join(', ')
+        : draft?.seatIds?.slice(1).join(', ') || ''
+    );
     setCatalog(null);
     setLayout(null);
     setAvailableStartTimes([]);
@@ -306,17 +320,29 @@ function TaskEditorDialog({
     setBuildingId('');
     setRoomId('');
     setSelectedSeatIds([]);
+    setManualBuildingName('');
+    setManualRoomName('');
+    setManualPrimarySeatId('');
+    setManualPrimarySeatLabel('');
+    setManualBackupSeatIds('');
     setAvailableStartTimes([]);
     setStep(1);
   };
 
+  const manualBackupIds = parseSeatIds(manualBackupSeatIds);
+  const effectiveSeatIds = layout && selectedSeatIds.length
+    ? selectedSeatIds
+    : [manualPrimarySeatId.trim(), ...manualBackupIds].filter(Boolean);
+  const selectedBuildingName = selectedBuilding?.name || manualBuildingName.trim() || task?.building || '未指定';
+  const selectedRoomName = selectedRoom?.name || manualRoomName.trim() || task?.roomName || '未指定';
   const canContinue = Boolean(
-    name.trim() && accountId && selectedBuilding && selectedRoom && !catalogLoading
+    name.trim() && accountId && !catalogLoading &&
+    (selectedBuilding && selectedRoom || catalogError || !catalog || manualBuildingName.trim() || manualRoomName.trim())
   );
 
   const handleContinue = () => {
     if (!canContinue) {
-      toast.error('请先填写任务名称并选择账号、系统和空间');
+      toast.error('请先填写任务名称和账号，并选择或填写预约空间');
       return;
     }
     setStep(2);
@@ -328,8 +354,8 @@ function TaskEditorDialog({
       handleContinue();
       return;
     }
-    if (!name.trim() || !selectedSeatIds[0] || !accountId || !selectedRoom || !selectedBuilding) {
-      toast.error('请选择账号、场馆和至少一个座位');
+    if (!name.trim() || !effectiveSeatIds[0] || !accountId) {
+      toast.error('请选择账号和至少一个座位');
       return;
     }
     if (!timeCandidates.length || timeCandidates.some((range) => range.end <= range.start)) {
@@ -352,22 +378,25 @@ function TaskEditorDialog({
           accountId,
           name: name.trim(),
           venueType,
-          building: selectedBuilding.name,
-          buildingId,
-          roomName: selectedRoom.name,
-          roomId,
+          building: selectedBuildingName,
+          buildingId: selectedBuilding?.id || null,
+          roomName: selectedRoomName,
+          roomId: selectedRoom?.id || null,
           scheduleMode: normalizedScheduleMode,
           targetDate: null,
           scheduleWeekdays,
           scheduleDates,
-          primarySeatLabel: selectedNodes[0]?.label || task?.seatLabel || null,
-          primarySeatId: selectedSeatIds[0],
-          backupSeatIds: selectedSeatIds.slice(1),
-          backupSeatLabels: selectedNodes
+          primarySeatLabel:
+            selectedNodes[0]?.label || manualPrimarySeatLabel.trim() || task?.seatLabel || null,
+          primarySeatId: effectiveSeatIds[0],
+          backupSeatIds: effectiveSeatIds.slice(1),
+          backupSeatLabels: layout
+            ? selectedNodes
             .slice(1)
             .map(
               (node, index) => node?.label || task?.backupSeatLabels[index] || `备选 ${index + 1}`
-            ),
+            )
+            : effectiveSeatIds.slice(1).map((_, index) => `备选 ${index + 1}`),
           timeCandidates,
           maxAttempts: clampNumber(maxAttempts, 1, 100, 12),
           attemptDelaySeconds: clampNumber(delay, 0, 30, 1.2),
@@ -500,26 +529,20 @@ function TaskEditorDialog({
                       <ToggleGroupItem
                         value='library'
                         className='w-full'
-                        disabled={!task || task.venueType !== 'library'}
-                        title={
-                          !task || task.venueType !== 'library'
-                            ? '图书馆自动任务请从座位图选中座位后创建'
-                            : undefined
-                        }
                       >
-                        图书馆（单次）
+                        图书馆
                       </ToggleGroupItem>
                     </ToggleGroup>
                     {venueType === 'library' && (
                       <div className='flex flex-col gap-3'>
                         <FieldDescription>
-                          图书馆任务会在开放窗口前由服务端自动完成点选验证，开放时直接提交预约；需要先连接图书馆服务。
+                          图书馆任务会在开放窗口前由服务端完成点选验证，开放时自动提交预约；连接暂时不可用时仍可先保存闹钟。
                         </FieldDescription>
                         <Alert>
                           <Icons.info />
                           <AlertTitle>自动识别验证码</AlertTitle>
                           <AlertDescription>
-                            前提是服务端已配置验证码识别；未配置时任务无法启用。前往
+                            前提是服务端已配置验证码识别；未配置时任务会保持暂停。前往
                             <Link href='/dashboard/accounts' className='text-primary underline underline-offset-4'>
                               账号与授权
                             </Link>{' '}
@@ -607,13 +630,49 @@ function TaskEditorDialog({
                     </FieldDescription>
                   </Field>
                 </FieldGroup>
+                {(!catalog || catalogError || !selectedBuilding || !selectedRoom) && (
+                  <div className='flex flex-col gap-3 rounded-lg border border-dashed bg-muted/20 p-3'>
+                    <div>
+                      <p className='text-sm font-medium'>实时目录暂不可用，也能先设置闹钟</p>
+                      <p className='text-muted-foreground mt-1 text-xs leading-5'>
+                        座位图只负责浏览和辅助选择。填写学校系统中的座位 ID 后，闹钟会在开放时间自动重试。
+                      </p>
+                    </div>
+                    <FieldGroup className='grid gap-3 sm:grid-cols-2'>
+                      <Field>
+                        <FieldLabel htmlFor='task-manual-building'>楼栋或馆区（可选）</FieldLabel>
+                        <Input
+                          id='task-manual-building'
+                          value={manualBuildingName}
+                          onChange={(event) => setManualBuildingName(event.target.value)}
+                          placeholder='例如：5号楼或苍梧校区馆'
+                        />
+                      </Field>
+                      <Field>
+                        <FieldLabel htmlFor='task-manual-room'>空间名称（可选）</FieldLabel>
+                        <Input
+                          id='task-manual-room'
+                          value={manualRoomName}
+                          onChange={(event) => setManualRoomName(event.target.value)}
+                          placeholder='例如：智能自习室'
+                        />
+                      </Field>
+                    </FieldGroup>
+                  </div>
+                )}
                 {catalogError && (
                   <Alert variant={catalogNotice.maintenance ? 'default' : 'destructive'}>
                     {catalogNotice.maintenance ? <Icons.clock /> : <Icons.warning />}
                     <AlertTitle>
-                      {catalogNotice.maintenance ? '学校系统维护中' : '实时数据未加载'}
+                      {catalogNotice.maintenance
+                        ? '实时目录暂不可用，闹钟仍可配置'
+                        : '实时数据未加载'}
                     </AlertTitle>
-                    <AlertDescription>{catalogNotice.message}</AlertDescription>
+                    <AlertDescription>
+                      {catalogNotice.maintenance
+                        ? '学校正在维护实时目录；这不会影响已保存的任务，执行时平台会在开放窗口自动重试。'
+                        : catalogNotice.message}
+                    </AlertDescription>
                   </Alert>
                 )}
                 <div className='rounded-lg bg-muted/40 px-3 py-2.5 text-sm'>
@@ -640,6 +699,46 @@ function TaskEditorDialog({
                   onRefresh={() => void loadLayout()}
                   className='w-full'
                 />
+                {!layout && (
+                  <section className='flex flex-col gap-4 rounded-xl border border-dashed bg-muted/20 p-4'>
+                    <div>
+                      <p className='text-sm font-medium'>手动配置座位</p>
+                      <p className='text-muted-foreground mt-1 text-xs leading-5'>
+                        座位图暂时不可用时，仍可填写已知座位 ID。学校恢复后，闹钟会按候选顺序尝试。
+                      </p>
+                    </div>
+                    <FieldGroup className='grid gap-3 sm:grid-cols-2'>
+                      <Field>
+                        <FieldLabel htmlFor='task-manual-seat-id'>主座位 ID</FieldLabel>
+                        <Input
+                          id='task-manual-seat-id'
+                          value={manualPrimarySeatId}
+                          onChange={(event) => setManualPrimarySeatId(event.target.value)}
+                          placeholder='例如：197'
+                          required
+                        />
+                      </Field>
+                      <Field>
+                        <FieldLabel htmlFor='task-manual-seat-label'>座位显示名称（可选）</FieldLabel>
+                        <Input
+                          id='task-manual-seat-label'
+                          value={manualPrimarySeatLabel}
+                          onChange={(event) => setManualPrimarySeatLabel(event.target.value)}
+                          placeholder='例如：044'
+                        />
+                      </Field>
+                      <Field className='sm:col-span-2'>
+                        <FieldLabel htmlFor='task-manual-backup-ids'>备选座位 ID（可选）</FieldLabel>
+                        <Input
+                          id='task-manual-backup-ids'
+                          value={manualBackupSeatIds}
+                          onChange={(event) => setManualBackupSeatIds(event.target.value)}
+                          placeholder='多个 ID 用英文逗号分隔，例如：198, 199'
+                        />
+                      </Field>
+                    </FieldGroup>
+                  </section>
+                )}
                 {catalog?.captchaRequired && (
                   <Alert>
                     <Icons.shield />
@@ -653,9 +752,15 @@ function TaskEditorDialog({
                   <Alert variant={catalogNotice.maintenance ? 'default' : 'destructive'}>
                     {catalogNotice.maintenance ? <Icons.clock /> : <Icons.warning />}
                     <AlertTitle>
-                      {catalogNotice.maintenance ? '学校系统维护中' : '实时数据未加载'}
+                      {catalogNotice.maintenance
+                        ? '实时目录暂不可用，闹钟仍可配置'
+                        : '实时数据未加载'}
                     </AlertTitle>
-                    <AlertDescription>{catalogNotice.message}</AlertDescription>
+                    <AlertDescription>
+                      {catalogNotice.maintenance
+                        ? '学校正在维护实时目录；这不会影响已保存的任务，执行时平台会在开放窗口自动重试。'
+                        : catalogNotice.message}
+                    </AlertDescription>
                   </Alert>
                 )}
                 <div className='grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(280px,0.7fr)]'>
@@ -845,7 +950,7 @@ function TaskEditorDialog({
             <Button
               type='submit'
               form='booking-task-editor'
-              disabled={saving || accounts.length === 0 || !selectedSeatIds.length}
+              disabled={saving || accounts.length === 0 || !effectiveSeatIds.length}
             >
               {saving
                 ? '保存中'
@@ -1103,8 +1208,6 @@ export default function BookingTasksPage({
                     <Switch
                       checked={task.enabled}
                       onCheckedChange={(checked) => void toggleTask(task.id, checked)}
-                      disabled={task.venueType === 'library'}
-                      title={task.venueType === 'library' ? '图书馆需要预约前人工验证' : undefined}
                       aria-label={`${task.name}自动执行`}
                     />
                   </div>
@@ -1276,6 +1379,17 @@ function defaultWindow(venueType: VenueType): { start: number; end: number } {
 
 function defaultTimeCandidates(venueType: VenueType): TimeCandidate[] {
   return [{ start: 480, end: venueType === 'library' ? 720 : 840 }];
+}
+
+function parseSeatIds(value: string): string[] {
+  return Array.from(
+    new Set(
+      value
+        .split(/[\s,，]+/)
+        .map((item) => item.trim())
+        .filter(Boolean)
+    )
+  );
 }
 
 function normalizeTimeCandidates(

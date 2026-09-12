@@ -106,10 +106,6 @@ export class PlatformTasksService {
       scheduleDates,
     );
     const account = await this.accounts.findOwned(userId, dto.accountId);
-    await this.serviceConnections.ensureReady(
-      account,
-      venueType === 'library' ? 'library' : 'study_room',
-    );
     const task = this.tasks.create({
       name: requireText(dto.name, '任务名称'),
       venueType,
@@ -174,12 +170,6 @@ export class PlatformTasksService {
       targetVenueType === 'library' && !this.captchaSolver.isConfigured()
         ? false
         : (dto.enabled ?? task.enabled);
-    if (enabled && (dto.enabled === true || dto.accountId !== undefined)) {
-      await this.serviceConnections.ensureReady(
-        account,
-        targetVenueType === 'library' ? 'library' : 'study_room',
-      );
-    }
     task.schoolAccount = account;
     Object.assign(task, {
       name:
@@ -249,12 +239,6 @@ export class PlatformTasksService {
     ) {
       throw new UnprocessableEntityException(
         '图书馆自动抢座需要先配置验证码识别服务',
-      );
-    }
-    if (enabled) {
-      await this.serviceConnections.ensureReady(
-        task.schoolAccount,
-        task.venueType === 'library' ? 'library' : 'study_room',
       );
     }
     task.enabled = enabled;
@@ -361,7 +345,7 @@ export class PlatformTasksService {
         item.serviceType ===
         (task.venueType === 'library' ? 'library' : 'study_room'),
     );
-    const hasIssue =
+    const hasConnectionIssue =
       !connection ||
       connection.status !== 'active' ||
       !connection.encryptedToken;
@@ -399,12 +383,7 @@ export class PlatformTasksService {
         : libraryBlocked
           ? '需要配置验证码识别服务'
           : '已暂停',
-      status:
-        hasIssue || lastRun?.status === 'failed'
-          ? 'attention'
-          : task.enabled
-            ? 'enabled'
-            : 'paused',
+      status: task.enabled ? 'enabled' : 'paused',
       enabled: task.enabled,
       backupSeatIds: task.backupSeatIds,
       backupSeatLabels: task.backupSeatLabels,
@@ -417,8 +396,8 @@ export class PlatformTasksService {
       lastRun: lastRun ? formatDate(lastRun.createdAt) : '尚未运行',
       lastMessage:
         lastRun?.message ??
-        (hasIssue
-          ? '账号授权需要检查'
+        (hasConnectionIssue
+          ? '学校暂时不可访问，闹钟会在开放窗口自动重试'
           : libraryBlocked
             ? '图书馆自动抢座需要配置验证码识别服务'
             : libraryReady

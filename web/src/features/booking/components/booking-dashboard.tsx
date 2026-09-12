@@ -78,15 +78,9 @@ function TaskRow({
           <Switch
             checked={task.enabled}
             onCheckedChange={(enabled) => onToggle(task, enabled)}
-            disabled={task.venueType === 'library' || isToggling}
+            disabled={isToggling}
             aria-label={`${task.name}${task.enabled ? '暂停' : '继续'}自动预约`}
-            title={
-              task.venueType === 'library'
-                ? '图书馆需要预约前人工验证'
-                : task.enabled
-                  ? '暂停自动预约'
-                  : '继续自动预约'
-            }
+            title={task.enabled ? '暂停自动预约' : '继续自动预约'}
           />
         </ItemActions>
       </Item>

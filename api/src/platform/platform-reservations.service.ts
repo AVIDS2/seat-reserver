@@ -1,9 +1,12 @@
 import {
   Injectable,
   NotFoundException,
+  Optional,
   UnprocessableEntityException,
 } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
 import { randomUUID } from 'node:crypto';
+import { Repository } from 'typeorm';
 import { PlatformAccountsService } from './platform-accounts.service';
 import { PlatformServiceConnectionsService } from './platform-service-connections.service';
 import { SchoolAuthenticationService } from './school-authentication.service';
@@ -14,6 +17,7 @@ import { bookingWindow, maxBookingMinutes } from './booking-time.constants';
 import { PlatformRedisService } from './platform-redis.service';
 import type { BookingCaptchaPointDto } from './dto/reservation.dto';
 import { PlatformCaptchaSolverService } from './platform-captcha-solver.service';
+import { BookingRunEntity } from './entities/booking-run.entity';
 
 type JsonRecord = Record<string, unknown>;
 
@@ -78,6 +82,9 @@ export class PlatformReservationsService {
     private readonly catalog: PlatformSeatCatalogService,
     private readonly redis: PlatformRedisService,
     private readonly solver: PlatformCaptchaSolverService,
+    @Optional()
+    @InjectRepository(BookingRunEntity)
+    private readonly runs?: Repository<BookingRunEntity>,
   ) {}
 
   async list(
@@ -85,20 +92,30 @@ export class PlatformReservationsService {
     accountId: number,
     serviceType: SeatServiceType,
   ): Promise<ReservationView[]> {
-    const context = await this.context(userId, accountId, serviceType);
-    const response = await this.request(
-      context,
-      '/rest/v2/history/1/50?page=1&pageSize=50',
-    );
-    const data = record(response.payload?.data);
-    const reservations = Array.isArray(data.reservations)
-      ? data.reservations
-      : [];
-    return reservations
-      .map((item) =>
-        this.normalize(item, context.account.label, accountId, serviceType),
-      )
-      .filter((item): item is ReservationView => item !== null);
+    try {
+      const context = await this.context(userId, accountId, serviceType);
+      const response = await this.request(
+        context,
+        '/rest/v2/history/1/50?page=1&pageSize=50',
+      );
+      const data = record(response.payload?.data);
+      const reservations = Array.isArray(data.reservations)
+        ? data.reservations
+        : [];
+      return reservations
+        .map((item) =>
+          this.normalize(item, context.account.label, accountId, serviceType),
+        )
+        .filter((item): item is ReservationView => item !== null);
+    } catch (error: unknown) {
+      const fallback = await this.listFromPlatformRuns(
+        userId,
+        accountId,
+        serviceType,
+      );
+      if (fallback.length) return fallback;
+      throw error;
+    }
   }
 
   async cancel(
@@ -254,6 +271,43 @@ export class PlatformReservationsService {
     const account = await this.accounts.findOwned(userId, accountId);
     const connection = await this.connections.ensureReady(account, serviceType);
     return { ...connection, account };
+  }
+
+  private async listFromPlatformRuns(
+    userId: number,
+    accountId: number,
+    serviceType: SeatServiceType,
+  ): Promise<ReservationView[]> {
+    if (!this.runs) return [];
+    const today = getShanghaiDate();
+    const runs = await this.runs.find({
+      where: {
+        user: { id: userId },
+        schoolAccount: { id: accountId },
+        task: { venueType: serviceType },
+        runType: 'booking',
+        status: 'success',
+      },
+      relations: ['task', 'schoolAccount'],
+      order: { targetDate: 'DESC', createdAt: 'DESC' },
+      take: 50,
+    });
+    return runs.map((run) => ({
+      id: `platform-run-${run.id}`,
+      receipt: run.receipt,
+      accountId: String(accountId),
+      account: run.schoolAccount?.label ?? '学校账号',
+      venueType: serviceType,
+      venueLabel: serviceType === 'library' ? '图书馆' : '自习室',
+      date: run.targetDate,
+      startTime: run.reservedBegin ?? '',
+      endTime: run.reservedEnd ?? '',
+      location: run.location ?? run.task?.primarySeatLabel ?? '学校座位',
+      status: run.targetDate >= today ? 'upcoming' : 'completed',
+      statusLabel: '平台记录，学校状态待同步',
+      checkedIn: false,
+      canCancel: false,
+    }));
   }
 
   private validateBooking(dto: ImmediateReservationDto): void {
@@ -472,4 +526,17 @@ function formatTime(minutes: number): string {
   return `${Math.floor(minutes / 60)
     .toString()
     .padStart(2, '0')}:${(minutes % 60).toString().padStart(2, '0')}`;
+}
+
+function getShanghaiDate(): string {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Shanghai',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(new Date());
+  const values = Object.fromEntries(
+    parts.map((part) => [part.type, part.value]),
+  );
+  return `${values.year}-${values.month}-${values.day}`;
 }

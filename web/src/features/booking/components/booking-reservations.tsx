@@ -63,7 +63,7 @@ export default function BookingReservationsPage({
     [activeCampus, initialAccounts]
   );
   const [serviceFilter, setServiceFilter] = useState<ServiceFilter>('all');
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('today');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('upcoming');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
@@ -164,7 +164,7 @@ export default function BookingReservationsPage({
             <p className='text-muted-foreground mb-2 text-sm'>学校服务</p>
             <h1 className='text-2xl font-semibold tracking-tight sm:text-3xl'>我的预约</h1>
             <p className='text-muted-foreground mt-2 max-w-2xl text-sm leading-6'>
-              先看今天的预约，再按需查看待使用和历史记录。数据来自已连接的学校服务。
+              默认展示待使用的预约，可切换到今天和历史记录。数据来自已连接的学校服务。
             </p>
           </div>
           <Button

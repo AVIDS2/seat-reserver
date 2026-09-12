@@ -39,6 +39,7 @@ type VerifyCaptchaFunction = (
 
 function makeService(
   get: jest.MockedFunction<GetFunction> = jest.fn<GetFunction>(),
+  runs?: { find: jest.Mock },
 ) {
   const account = { id: 4, userId: 7, label: '我的账号' };
   const accounts = {
@@ -83,6 +84,7 @@ function makeService(
       catalog as never,
       redis as never,
       solver as never,
+      runs as never,
     ),
     accounts,
     connections,
@@ -151,6 +153,48 @@ describe('PlatformReservationsService', () => {
       'direct',
       '/rest/v2/history/1/50?page=1&pageSize=50',
       'study_room',
+    );
+  });
+
+  it('should show successful platform runs when the school history endpoint is unavailable', async () => {
+    const get = jest.fn<GetFunction>(() =>
+      Promise.reject(new Error('学校系统维护中')),
+    );
+    const runs = {
+      find: jest.fn(() =>
+        Promise.resolve([
+          {
+            id: 88,
+            receipt: 'platform-receipt',
+            targetDate: '2026-09-13',
+            reservedBegin: '08:00',
+            reservedEnd: '12:00',
+            location: '5号楼智能自习室044号',
+            schoolAccount: { label: '我的账号' },
+            task: { primarySeatLabel: '044' },
+          },
+        ]),
+      ) as unknown as jest.Mock,
+    };
+    const { service } = makeService(get, runs);
+
+    await expect(service.list(7, 4, 'study_room')).resolves.toEqual([
+      expect.objectContaining({
+        id: 'platform-run-88',
+        date: '2026-09-13',
+        status: 'upcoming',
+        statusLabel: '平台记录，学校状态待同步',
+        canCancel: false,
+      }),
+    ]);
+    expect(runs.find).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          user: { id: 7 },
+          schoolAccount: { id: 4 },
+          task: { venueType: 'study_room' },
+        }),
+      }),
     );
   });
 
