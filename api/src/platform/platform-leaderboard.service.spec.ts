@@ -11,21 +11,21 @@ describe('PlatformLeaderboardService', () => {
             targetDate: '2026-09-08',
             reservedBegin: '14:00',
             reservedEnd: '22:00',
-            user: null,
+            user: { firstName: '张', lastName: '涛', photo: null },
           },
           {
             userId: 7,
             targetDate: '2026-09-08',
             reservedBegin: '16:00',
             reservedEnd: '20:00',
-            user: null,
+            user: { firstName: '张', lastName: '涛', photo: null },
           },
           {
             userId: 8,
             targetDate: '2026-09-08',
             reservedBegin: '12:00',
             reservedEnd: '15:00',
-            user: null,
+            user: { firstName: '伯', lastName: '乐', photo: null },
           },
         ]),
       ),
@@ -36,7 +36,7 @@ describe('PlatformLeaderboardService', () => {
 
     expect(result.rankings[0]).toMatchObject({
       userId: '7',
-      userName: '同学07',
+      userName: '张 涛',
       value: 480,
       valueLabel: '8 小时',
       activeDays: 1,

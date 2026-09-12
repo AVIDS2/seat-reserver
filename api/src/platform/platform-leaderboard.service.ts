@@ -79,8 +79,8 @@ export class PlatformLeaderboardService {
 
       const existing = aggregates.get(run.userId) ?? {
         userId: run.userId,
-        userName: publicUserName(run.userId),
-        avatarUrl: null,
+        userName: displayUserName(run.user, run.userId),
+        avatarUrl: run.user?.photo?.path ?? null,
         intervalsByDate: new Map<string, Array<[number, number]>>(),
       };
       const intervals = existing.intervalsByDate.get(run.targetDate) ?? [];
@@ -162,8 +162,17 @@ function mergeIntervals(
   return merged;
 }
 
-function publicUserName(userId: number): string {
-  return `同学${String(userId).slice(-2).padStart(2, '0')}`;
+function displayUserName(
+  user: BookingRunEntity['user'] | null | undefined,
+  userId: number,
+): string {
+  const name = [user?.firstName, user?.lastName]
+    .filter((value): value is string => Boolean(value?.trim()))
+    .join(' ')
+    .trim();
+  if (name) return name;
+  const emailName = user?.email?.split('@')[0]?.trim();
+  return emailName || `用户${String(userId)}`;
 }
 
 function normalizePeriod(value: string | undefined): LeaderboardPeriod {

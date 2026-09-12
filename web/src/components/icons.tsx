@@ -4,6 +4,7 @@ import {
   IconAlertTriangle,
   IconArrowRight,
   IconBell,
+  IconAward,
   IconBolt,
   IconBold,
   IconBox,
@@ -43,6 +44,7 @@ import {
   IconFileTypeDoc,
   IconFileTypeXls,
   IconFileZip,
+  IconFlame,
   IconFolder,
   IconGripVertical,
   IconGift,
@@ -67,6 +69,7 @@ import {
   IconPhone,
   IconPhoto,
   IconMapPin,
+  IconMedal,
   IconMenu2,
   IconPlayerPause,
   IconPlayerPlay,
@@ -88,6 +91,7 @@ import {
   IconSun,
   IconTarget,
   IconTrash,
+  IconTrophy,
   IconTrendingDown,
   IconTrendingUp,
   IconTypography,
@@ -101,8 +105,8 @@ import {
   IconVideo,
   IconWorld,
   IconCrown,
-  IconX
-} from '@tabler/icons-react';
+  IconX,
+} from "@tabler/icons-react";
 
 export type Icon = React.ComponentType<IconProps>;
 
@@ -217,8 +221,13 @@ export const Icons = {
   product: IconBox,
   pro: IconCrown,
   exclusive: IconStar,
+  star: IconStar,
   sparkles: IconSparkles,
   badgeCheck: IconRosetteDiscountCheck,
+  award: IconAward,
+  flame: IconFlame,
+  medal: IconMedal,
+  trophy: IconTrophy,
   lock: IconLock,
 
   // Data / Charts
@@ -247,5 +256,5 @@ export const Icons = {
   slash: IconSlash,
   calendar: IconCalendar,
   galleryVerticalEnd: IconStack2,
-  moreHorizontal: IconDots
+  moreHorizontal: IconDots,
 };
