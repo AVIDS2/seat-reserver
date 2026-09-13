@@ -3,6 +3,10 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Between, FindOptionsWhere, Repository } from 'typeorm';
 import { BookingRunEntity } from './entities/booking-run.entity';
 import type { SchoolCode } from './school-catalog';
+import {
+  PlatformProfileShowcaseService,
+  type PublicProfileDecoration,
+} from './platform-profile-showcase.service';
 
 export type LeaderboardPeriod = 'week' | 'month' | 'all';
 
@@ -10,10 +14,17 @@ export type LeaderboardRanking = {
   userId: string;
   userName: string;
   rank: number;
+  previousRank: number | null;
+  rankChange: number | null;
   value: number;
   valueLabel: string;
   byline: string;
   avatarUrl: string | null;
+  avatarFrameId: string;
+  badgeId: string;
+  badgeLabel: string;
+  titleId: string;
+  titleLabel: string;
   activeDays: number;
   sessions: number;
 };
@@ -42,6 +53,7 @@ export class PlatformLeaderboardService {
   constructor(
     @InjectRepository(BookingRunEntity)
     private readonly runs: Repository<BookingRunEntity>,
+    private readonly showcase: PlatformProfileShowcaseService,
   ) {}
 
   async getSnapshot(
@@ -89,8 +101,13 @@ export class PlatformLeaderboardService {
       aggregates.set(run.userId, existing);
     }
 
+    const decorations = await this.showcase.getPublicDecorations([
+      ...aggregates.keys(),
+    ]);
     const rankings = [...aggregates.values()]
-      .map((aggregate) => toRanking(aggregate))
+      .map((aggregate) =>
+        toRanking(aggregate, decorations.get(aggregate.userId)),
+      )
       .sort((left, right) => {
         if (right.value !== left.value) return right.value - left.value;
         if (right.activeDays !== left.activeDays)
@@ -98,9 +115,37 @@ export class PlatformLeaderboardService {
         return left.userName.localeCompare(right.userName, 'zh-CN');
       })
       .map((ranking, index) => ({ ...ranking, rank: index + 1 }));
+
+    const previousRanks = new Map<number, number>();
+    if (period !== 'all') {
+      const elapsedDays = dayDifference(fromDate, toDate) + 1;
+      const previousToDate = shiftDate(fromDate, -1);
+      const previousFromDate = shiftDate(previousToDate, -(elapsedDays - 1));
+      const previousRuns = await this.runs.find({
+        where: {
+          ...where,
+          targetDate: Between(previousFromDate, previousToDate),
+        },
+        relations: ['user'],
+        order: { targetDate: 'ASC', createdAt: 'ASC' },
+        take: 10000,
+      });
+      aggregateRunRankings(previousRuns).forEach((ranking) => {
+        previousRanks.set(Number(ranking.userId), ranking.rank);
+      });
+    }
+    const trendingRankings = rankings.map((ranking) => {
+      const previousRank = previousRanks.get(Number(ranking.userId)) ?? null;
+      return {
+        ...ranking,
+        previousRank,
+        rankChange: previousRank === null ? null : previousRank - ranking.rank,
+      };
+    });
     const currentUser =
-      rankings.find((ranking) => ranking.userId === String(userId)) ?? null;
-    const trackedMinutes = rankings.reduce(
+      trendingRankings.find((ranking) => ranking.userId === String(userId)) ??
+      null;
+    const trackedMinutes = trendingRankings.reduce(
       (total, ranking) => total + ranking.value,
       0,
     );
@@ -111,7 +156,7 @@ export class PlatformLeaderboardService {
       toDate,
       scopeLabel: '席定预约榜',
       metricLabel: '预约时长',
-      rankings: rankings.slice(0, 100),
+      rankings: trendingRankings.slice(0, 100),
       currentUser,
       participantCount: rankings.length,
       trackedMinutes,
@@ -119,7 +164,45 @@ export class PlatformLeaderboardService {
   }
 }
 
-function toRanking(aggregate: UserAggregate): LeaderboardRanking {
+function aggregateRunRankings(runs: BookingRunEntity[]): LeaderboardRanking[] {
+  const aggregates = new Map<number, UserAggregate>();
+  for (const run of runs) {
+    const start = parseTime(run.reservedBegin);
+    const end = parseTime(run.reservedEnd);
+    if (
+      !run.userId ||
+      !run.targetDate ||
+      start === null ||
+      end === null ||
+      end <= start
+    )
+      continue;
+    const aggregate = aggregates.get(run.userId) ?? {
+      userId: run.userId,
+      userName: displayUserName(run.user, run.userId),
+      avatarUrl: run.user?.photo?.path ?? null,
+      intervalsByDate: new Map<string, Array<[number, number]>>(),
+    };
+    const intervals = aggregate.intervalsByDate.get(run.targetDate) ?? [];
+    intervals.push([start, end]);
+    aggregate.intervalsByDate.set(run.targetDate, intervals);
+    aggregates.set(run.userId, aggregate);
+  }
+  return [...aggregates.values()]
+    .map((aggregate) => toRanking(aggregate))
+    .sort((left, right) => {
+      if (right.value !== left.value) return right.value - left.value;
+      if (right.activeDays !== left.activeDays)
+        return right.activeDays - left.activeDays;
+      return left.userName.localeCompare(right.userName, 'zh-CN');
+    })
+    .map((ranking, index) => ({ ...ranking, rank: index + 1 }));
+}
+
+function toRanking(
+  aggregate: UserAggregate,
+  decoration?: PublicProfileDecoration,
+): LeaderboardRanking {
   const merged = [...aggregate.intervalsByDate.values()].map(mergeIntervals);
   const value = merged.reduce(
     (total, intervals) =>
@@ -137,10 +220,17 @@ function toRanking(aggregate: UserAggregate): LeaderboardRanking {
     userId: String(aggregate.userId),
     userName: aggregate.userName,
     rank: 0,
+    previousRank: null,
+    rankChange: null,
     value,
     valueLabel: formatDuration(value),
     byline: `${activeDays} 天 · ${sessions} 次成功预约`,
     avatarUrl: aggregate.avatarUrl,
+    avatarFrameId: decoration?.avatarFrameId ?? 'plain',
+    badgeId: decoration?.badgeId ?? 'welcome',
+    badgeLabel: decoration?.badgeLabel ?? '席定新星',
+    titleId: decoration?.titleId ?? 'newcomer',
+    titleLabel: decoration?.titleLabel ?? '初来乍到',
     activeDays,
     sessions,
   };
@@ -189,6 +279,19 @@ function periodStart(period: LeaderboardPeriod, toDate: string): string {
     date.setUTCDate(1);
   }
   return formatDate(date);
+}
+
+function dayDifference(from: string, to: string): number {
+  return Math.round(
+    (Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) /
+      86_400_000,
+  );
+}
+
+function shiftDate(value: string, days: number): string {
+  const date = new Date(`${value}T00:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
 }
 
 function parseTime(value: string | null): number | null {

@@ -9,7 +9,8 @@ import type {
   AdminProRequest,
   Invitation,
   PlatformUser,
-  RewardsSnapshot
+  RewardsSnapshot,
+  ProfileDecoration
 } from './service';
 import { normalizeAvatarUrl } from '@/lib/avatar-url';
 
@@ -31,10 +32,11 @@ export async function getBookingSnapshot(): Promise<BookingSnapshot> {
 
 export async function getPlatformUserServer(): Promise<PlatformUser | null> {
   try {
-    const response = await platformServerRequest<{ user: Record<string, unknown> }>(
-      '/platform/auth/me'
-    );
-    return toPlatformUser(response.user);
+    const response = await platformServerRequest<{
+      user: Record<string, unknown>;
+      profileDecoration?: ProfileDecoration;
+    }>('/platform/auth/me');
+    return toPlatformUser({ ...response.user, profileDecoration: response.profileDecoration });
   } catch {
     return null;
   }
@@ -105,6 +107,7 @@ function toPlatformUser(value: Record<string, unknown>): PlatformUser {
     displayName: [firstName, lastName].filter(Boolean).join(' ') || '平台用户',
     avatarUrl: normalizeAvatarUrl(photo?.path),
     role: Number(role?.id) === 1 ? 'admin' : 'user',
-    status: Number(status?.id) === 1 ? 'active' : 'disabled'
+    status: Number(status?.id) === 1 ? 'active' : 'disabled',
+    profileDecoration: value.profileDecoration as ProfileDecoration | undefined
   };
 }

@@ -58,4 +58,4 @@ src/config/nav-config.ts 侧边栏和命令菜单导航
 
 ## 设计来源
 
-UI 基于 Kiranism starter 的 Next.js 16、Tailwind CSS 4、shadcn/ui、TanStack Query、TanStack Table、Motion 和 Tabler Icons 体系。业务文案、导航和页面结构已替换为座位预约场景。
+UI 基于 Kiranism starter 的 Next.js 16、Tailwind CSS 4、shadcn/ui、TanStack Query、TanStack Table、Motion 和 Tabler Icons 体系。学习排行与资料徽章复用 MIT 许可的 Trophy Gamification UI registry 组件，并适配项目 Tabler 图标；许可文本见 [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md)。业务文案、导航和页面结构已替换为座位预约场景。

@@ -30,6 +30,7 @@ import { PlatformProfileDto } from './dto/platform-profile.dto';
 import { DataSource } from 'typeorm';
 import bcrypt from 'bcryptjs';
 import { UserEntity } from '../users/infrastructure/persistence/relational/entities/user.entity';
+import { PlatformProfileShowcaseService } from './platform-profile-showcase.service';
 
 @ApiTags('Platform Auth')
 @Throttle({ default: { limit: 10, ttl: 60_000, blockDuration: 60_000 } })
@@ -40,6 +41,7 @@ export class PlatformAuthController {
     private readonly users: UsersService,
     private readonly invitations: PlatformInvitationsService,
     private readonly dataSource: DataSource,
+    private readonly showcase: PlatformProfileShowcaseService,
   ) {}
 
   @Post('register')
@@ -112,7 +114,12 @@ export class PlatformAuthController {
   @SkipThrottle()
   @UseGuards(AuthGuard('jwt'))
   async me(@Request() request: RequestWithUser<JwtPayloadType>) {
-    return { user: await this.auth.me(request.user) };
+    return {
+      user: await this.auth.me(request.user),
+      profileDecoration: await this.showcase.getSelectedDecoration(
+        Number(request.user.id),
+      ),
+    };
   }
 
   @Patch('me')
@@ -121,7 +128,12 @@ export class PlatformAuthController {
     @Request() request: RequestWithUser<JwtPayloadType>,
     @Body() dto: PlatformProfileDto,
   ) {
-    return { user: await this.auth.update(request.user, dto) };
+    return {
+      user: await this.auth.update(request.user, dto),
+      profileDecoration: await this.showcase.getSelectedDecoration(
+        Number(request.user.id),
+      ),
+    };
   }
 
   @Post('refresh')

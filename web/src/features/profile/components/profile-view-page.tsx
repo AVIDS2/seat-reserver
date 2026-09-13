@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { Icons } from '@/components/icons';
 import PageContainer from '@/components/layout/page-container';
@@ -10,11 +10,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
-import { Avatar, AvatarBadge, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { ProfileAvatar } from '@/components/profile/profile-avatar';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
 import { Badge } from '@/components/ui/badge';
 import { usePlatformSession, useSetPlatformSession } from '@/features/auth/platform-session';
-import { uploadPlatformAvatar, updatePlatformProfile } from '@/features/booking/api/service';
+import {
+  getProfileShowcase,
+  uploadPlatformAvatar,
+  updatePlatformProfile,
+  type ProfileShowcase
+} from '@/features/booking/api/service';
+import { ProfileShowcasePanel } from './profile-showcase';
 
 export default function ProfileViewPage() {
   const user = usePlatformSession();
@@ -25,7 +31,15 @@ export default function ProfileViewPage() {
   const [oldPassword, setOldPassword] = useState('');
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [showcase, setShowcase] = useState<ProfileShowcase | undefined>();
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (showcase) return;
+    void getProfileShowcase()
+      .then(setShowcase)
+      .catch(() => undefined);
+  }, [showcase]);
 
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -93,46 +107,92 @@ export default function ProfileViewPage() {
                     />
                   }
                 >
-                  <Avatar size='lg'>
-                    <AvatarImage src={user?.avatarUrl || ''} alt={user?.displayName || '头像'} />
-                    <AvatarFallback>
-                      {user?.displayName?.slice(0, 2)?.toUpperCase() || 'CN'}
-                    </AvatarFallback>
-                    <AvatarBadge className='bg-emerald-500' aria-label='在线' />
-                  </Avatar>
+                  <ProfileAvatar
+                    avatarUrl={user?.avatarUrl}
+                    name={user?.displayName}
+                    frameId={
+                      showcase?.selected.avatarFrameId ?? user?.profileDecoration?.avatarFrameId
+                    }
+                    size='lg'
+                    showStatus
+                  />
                 </HoverCardTrigger>
                 <HoverCardContent className='w-72'>
                   <div className='flex items-start gap-3'>
-                    <Avatar>
-                      <AvatarImage src={user?.avatarUrl || ''} alt='' />
-                      <AvatarFallback>{user?.displayName?.slice(0, 2)?.toUpperCase() || 'CN'}</AvatarFallback>
-                    </Avatar>
+                    <ProfileAvatar
+                      avatarUrl={user?.avatarUrl}
+                      name={user?.displayName}
+                      frameId={
+                        showcase?.selected.avatarFrameId ?? user?.profileDecoration?.avatarFrameId
+                      }
+                      size='default'
+                    />
                     <div className='min-w-0'>
                       <p className='truncate font-medium'>{user?.displayName || '平台用户'}</p>
                       <p className='text-muted-foreground truncate text-xs'>{user?.email}</p>
-                      <Badge variant='outline' className='mt-2'><span className='mr-1 size-1.5 rounded-full bg-emerald-500' />在线</Badge>
+                      <div className='mt-2 flex flex-wrap gap-1.5'>
+                        <Badge variant='secondary'>
+                          {showcase?.selected.titleLabel ||
+                            user?.profileDecoration?.titleLabel ||
+                            '初来乍到'}
+                        </Badge>
+                        <Badge variant='outline'>
+                          {showcase?.selected.badgeLabel ||
+                            user?.profileDecoration?.badgeLabel ||
+                            '席定新星'}
+                        </Badge>
+                      </div>
+                      <Badge variant='outline' className='mt-2'>
+                        <span className='mr-1 size-1.5 rounded-full bg-emerald-500' />
+                        在线
+                      </Badge>
                     </div>
                   </div>
                 </HoverCardContent>
               </HoverCard>
               <div className='min-w-0'>
                 <CardTitle>头像与气泡</CardTitle>
-                <CardDescription className='mt-1'>使用模板头像组件展示图片和在线状态气泡。</CardDescription>
+                <CardDescription className='mt-1'>
+                  使用模板头像组件展示图片和在线状态气泡。
+                </CardDescription>
               </div>
             </div>
           </CardHeader>
           <CardContent className='flex flex-col gap-4 pt-5'>
             <div className='flex flex-wrap items-center gap-2'>
-              <Button type='button' variant='outline' onClick={() => fileInputRef.current?.click()} disabled={uploading}>
+              <Button
+                type='button'
+                variant='outline'
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+              >
                 <Icons.upload data-icon='inline-start' />
                 {uploading ? '上传中' : '上传头像'}
               </Button>
-              <input ref={fileInputRef} type='file' accept='image/*' aria-label='选择头像图片' className='sr-only' onChange={(event) => void uploadAvatar(event.target.files?.[0])} />
+              <input
+                ref={fileInputRef}
+                type='file'
+                accept='image/*'
+                aria-label='选择头像图片'
+                className='sr-only'
+                onChange={(event) => void uploadAvatar(event.target.files?.[0])}
+              />
               <span className='text-muted-foreground text-xs'>支持 JPG、PNG，最大 5 MB</span>
             </div>
-            <p className='text-muted-foreground text-xs'>头像会保存到平台文件存储，并在顶部用户菜单同步显示在线状态。</p>
+            <p className='text-muted-foreground text-xs'>
+              头像会保存到平台文件存储，并在顶部用户菜单同步显示在线状态。
+            </p>
           </CardContent>
         </Card>
+
+        <ProfileShowcasePanel
+          user={user}
+          initialShowcase={showcase}
+          onSelectionSaved={(updatedShowcase) => {
+            if (user) setUser({ ...user, profileDecoration: updatedShowcase.selected });
+            setShowcase(updatedShowcase);
+          }}
+        />
 
         <Card className='shadow-none'>
           <CardHeader className='border-b'>

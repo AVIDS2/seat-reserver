@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 
 import { Icons } from '@/components/icons';
 import { BrandMark } from '@/components/brand-mark';
+import { ProfileAvatar } from '@/components/profile/profile-avatar';
 import { navGroups } from '@/config/nav-config';
 import { usePlatformSession } from '@/features/auth/platform-session';
 import { CampusSwitcher } from '@/features/campus/components/campus-switcher';
@@ -89,13 +90,18 @@ export default function AppSidebar() {
               tooltip='个人设置'
               render={<Link href='/dashboard/profile' aria-label='个人设置' />}
             >
-              <div className='bg-muted flex size-8 shrink-0 items-center justify-center rounded-lg text-xs font-semibold'>
-                你
-              </div>
+              <ProfileAvatar
+                avatarUrl={user?.avatarUrl}
+                name={user?.displayName}
+                frameId={user?.profileDecoration?.avatarFrameId}
+                size='default'
+                className='size-8 rounded-full'
+              />
               <div className='grid flex-1 text-left text-sm leading-tight'>
                 <span className='truncate font-medium'>{user?.displayName || '个人账户'}</span>
                 <span className='text-muted-foreground truncate text-xs'>
-                  {user?.role === 'admin' ? '管理员 · 个人设置' : '个人设置'}
+                  {user?.profileDecoration?.titleLabel ||
+                    (user?.role === 'admin' ? '管理员' : '个人设置')}
                 </span>
               </div>
               <Icons.chevronRight className='ml-auto size-4' />

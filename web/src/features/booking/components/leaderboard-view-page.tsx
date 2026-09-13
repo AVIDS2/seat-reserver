@@ -202,12 +202,16 @@ export default function LeaderboardViewPage({ initialData }: { initialData: Lead
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3, ease: 'easeOut' }}
             >
-              <LeaderboardPodium rankings={data.rankings.slice(0, 3)} />
+              <LeaderboardPodium
+                rankings={data.rankings.slice(0, 3)}
+                showTrend={data.period !== 'all'}
+              />
             </motion.div>
             {data.rankings.length ? (
               <LeaderboardRankings
                 rankings={data.rankings}
                 currentUserId={data.currentUser?.userId}
+                showTrend={data.period !== 'all'}
               />
             ) : (
               <div className='flex flex-col items-center gap-2 rounded-xl border border-dashed bg-muted/20 px-4 py-12 text-center'>

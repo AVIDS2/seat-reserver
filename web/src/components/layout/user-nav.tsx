@@ -1,5 +1,7 @@
 'use client';
 import { Button } from '@/components/ui/button';
+import { ProfileAvatar } from '@/components/profile/profile-avatar';
+import { Badge } from '@/components/ui/badge';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,7 +11,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
-import { UserAvatarProfile } from '@/components/user-avatar-profile';
 import { usePlatformSession } from '@/features/auth/platform-session';
 import { signOutPlatform } from '@/features/booking/api/service';
 import { useRouter } from 'next/navigation';
@@ -23,12 +24,6 @@ export function UserNav() {
   if (!user) return null;
 
   const displayName = user.displayName || user.email;
-  const profileUser = {
-    imageUrl: user.avatarUrl || '',
-    fullName: displayName,
-    emailAddresses: [{ emailAddress: user.email }]
-  };
-
   const signOut = async () => {
     setSigningOut(true);
     try {
@@ -48,7 +43,12 @@ export function UserNav() {
         render={<Button variant='ghost' className='relative h-8 w-8 rounded-full' />}
         aria-label='打开用户菜单'
       >
-        <UserAvatarProfile user={profileUser} />
+        <ProfileAvatar
+          avatarUrl={user.avatarUrl}
+          name={displayName}
+          frameId={user.profileDecoration?.avatarFrameId}
+          showStatus
+        />
       </DropdownMenuTrigger>
       <DropdownMenuContent className='w-60' align='end' sideOffset={10}>
         <DropdownMenuGroup>
@@ -62,6 +62,12 @@ export function UserNav() {
                   {user.role === 'admin' ? '管理员' : '普通用户'} · 在线
                 </p>
               </div>
+              {user.profileDecoration && (
+                <div className='mt-2 flex flex-wrap gap-1.5'>
+                  <Badge variant='secondary'>{user.profileDecoration.titleLabel}</Badge>
+                  <Badge variant='outline'>{user.profileDecoration.badgeLabel}</Badge>
+                </div>
+              )}
             </div>
           </DropdownMenuLabel>
         </DropdownMenuGroup>

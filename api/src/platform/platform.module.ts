@@ -23,6 +23,8 @@ import { PlatformInvitationsController } from './platform-invitations.controller
 import { PlatformInvitationsService } from './platform-invitations.service';
 import { PlatformLeaderboardController } from './platform-leaderboard.controller';
 import { PlatformLeaderboardService } from './platform-leaderboard.service';
+import { PlatformProfileShowcaseController } from './platform-profile-showcase.controller';
+import { PlatformProfileShowcaseService } from './platform-profile-showcase.service';
 import { PlatformNotificationsController } from './platform-notifications.controller';
 import { PlatformNotificationsService } from './platform-notifications.service';
 import { PlatformRewardsController } from './platform-rewards.controller';
@@ -40,6 +42,7 @@ import { PlatformPointsLedgerEntity } from './entities/platform-points-ledger.en
 import { PlatformPointsWalletEntity } from './entities/platform-points-wallet.entity';
 import { PlatformProRequestEntity } from './entities/platform-pro-request.entity';
 import { PlatformReferralEntity } from './entities/platform-referral.entity';
+import { PlatformProfileDecorationEntity } from './entities/platform-profile-decoration.entity';
 import { PlatformNotificationEntity } from './entities/platform-notification.entity';
 import { SchoolAccountEntity } from './entities/school-account.entity';
 import { SchoolServiceConnectionEntity } from './entities/school-service-connection.entity';
@@ -84,6 +87,7 @@ import { WebVpnSeatClientService } from './webvpn-seat-client.service';
       PlatformPointsWalletEntity,
       PlatformProRequestEntity,
       PlatformReferralEntity,
+      PlatformProfileDecorationEntity,
       SchoolAccountEntity,
       SchoolServiceConnectionEntity,
       UserEntity,
@@ -98,6 +102,7 @@ import { WebVpnSeatClientService } from './webvpn-seat-client.service';
     PlatformHealthController,
     PlatformInvitationsController,
     PlatformLeaderboardController,
+    PlatformProfileShowcaseController,
     PlatformNotificationsController,
     PlatformPaymentsController,
     PlatformRewardsController,
@@ -117,6 +122,7 @@ import { WebVpnSeatClientService } from './webvpn-seat-client.service';
     PlatformDashboardService,
     PlatformInvitationsService,
     PlatformLeaderboardService,
+    PlatformProfileShowcaseService,
     PlatformNotificationsService,
     PlatformPaymentsService,
     PlatformMembershipService,

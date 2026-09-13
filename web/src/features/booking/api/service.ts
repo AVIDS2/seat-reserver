@@ -61,6 +61,47 @@ export type PlatformUser = {
   avatarUrl: string | null;
   role: 'admin' | 'user';
   status: 'active' | 'disabled';
+  profileDecoration?: ProfileDecoration;
+};
+
+export type ProfileDecoration = {
+  avatarFrameId: string;
+  titleId: string;
+  titleLabel: string;
+  badgeId: string;
+  badgeLabel: string;
+};
+
+export type ProfileShowcaseItem = {
+  id: string;
+  name: string;
+  description: string;
+  kind: 'frame' | 'title' | 'badge';
+  unlocked: boolean;
+  unlockedAt: string | null;
+  lockedReason: string | null;
+};
+
+export type ProfileShowcase = {
+  selected: {
+    avatarFrameId: string;
+    titleId: string;
+    titleLabel: string;
+    badgeId: string;
+    badgeLabel: string;
+  };
+  frames: ProfileShowcaseItem[];
+  titles: ProfileShowcaseItem[];
+  badges: ProfileShowcaseItem[];
+  stats: {
+    pointsBalance: number;
+    successCount: number;
+    activeDays: number;
+    checkInDays: number;
+    checkInStreak: number;
+    pointsEarned: number;
+    taskCount: number;
+  };
 };
 
 export type MembershipPlan = 'free' | 'pro' | 'admin';
@@ -140,10 +181,17 @@ export type LeaderboardRanking = {
   userId: string;
   userName: string;
   rank: number;
+  previousRank: number | null;
+  rankChange: number | null;
   value: number;
   valueLabel: string;
   byline: string;
   avatarUrl: string | null;
+  avatarFrameId: string;
+  badgeId: string;
+  badgeLabel?: string;
+  titleId: string;
+  titleLabel: string;
   activeDays: number;
   sessions: number;
 };
@@ -334,8 +382,11 @@ async function platformRequest<T>(
 }
 
 export async function getPlatformUser(): Promise<PlatformUser> {
-  const response = await platformRequest<{ user: Record<string, unknown> }>('/platform/auth/me');
-  return toPlatformUser(response.user);
+  const response = await platformRequest<{
+    user: Record<string, unknown>;
+    profileDecoration?: ProfileDecoration;
+  }>('/platform/auth/me');
+  return toPlatformUser({ ...response.user, profileDecoration: response.profileDecoration });
 }
 
 export async function signOutPlatform(): Promise<void> {
@@ -353,11 +404,29 @@ export async function updatePlatformProfile(payload: {
   oldPassword?: string;
   photo?: { id: string } | null;
 }): Promise<PlatformUser> {
-  const response = await platformRequest<{ user: Record<string, unknown> }>('/platform/auth/me', {
+  const response = await platformRequest<{
+    user: Record<string, unknown>;
+    profileDecoration?: ProfileDecoration;
+  }>('/platform/auth/me', {
     method: 'PATCH',
     body: JSON.stringify(payload)
   });
-  return toPlatformUser(response.user);
+  return toPlatformUser({ ...response.user, profileDecoration: response.profileDecoration });
+}
+
+export async function getProfileShowcase(): Promise<ProfileShowcase> {
+  return platformRequest<ProfileShowcase>('/platform/profile/showcase');
+}
+
+export async function updateProfileShowcase(payload: {
+  avatarFrameId?: string;
+  titleId?: string;
+  badgeId?: string;
+}): Promise<ProfileShowcase> {
+  return platformRequest<ProfileShowcase>('/platform/profile/showcase', {
+    method: 'PATCH',
+    body: JSON.stringify(payload)
+  });
 }
 
 export async function uploadPlatformAvatar(file: File): Promise<PlatformUser> {
@@ -375,7 +444,9 @@ export async function uploadPlatformAvatar(file: File): Promise<PlatformUser> {
     } | null;
     const message = Array.isArray(body?.message)
       ? body.message.join('；')
-      : body?.message || Object.values(body?.errors || {})[0] || `头像上传失败（${response.status}）`;
+      : body?.message ||
+        Object.values(body?.errors || {})[0] ||
+        `头像上传失败（${response.status}）`;
     throw new Error(message);
   }
   const uploaded = (await response.json()) as { file?: { id?: string } };
@@ -635,13 +706,10 @@ export async function autoSolveBookingCaptcha(input: {
   startTime: number;
   endTime: number;
 }): Promise<AutoSolvedBooking> {
-  const response = await platformRequest<AutoSolvedBooking>(
-    '/platform/reservations/captcha/auto',
-    {
-      method: 'POST',
-      body: JSON.stringify({ ...input, accountId: Number(input.accountId) })
-    }
-  );
+  const response = await platformRequest<AutoSolvedBooking>('/platform/reservations/captcha/auto', {
+    method: 'POST',
+    body: JSON.stringify({ ...input, accountId: Number(input.accountId) })
+  });
   clearBookingDataCache();
   return response;
 }
@@ -770,13 +838,11 @@ export async function getRewardsSnapshot(): Promise<RewardsSnapshot> {
 
 export async function getLeaderboardSnapshot(
   period: LeaderboardPeriod = 'week',
-  schoolCode?: CampusCode,
+  schoolCode?: CampusCode
 ): Promise<LeaderboardSnapshot> {
   const query = new URLSearchParams({ period });
   if (schoolCode) query.set('schoolCode', schoolCode);
-  return platformRequest<LeaderboardSnapshot>(
-    `/platform/leaderboard?${query.toString()}`,
-  );
+  return platformRequest<LeaderboardSnapshot>(`/platform/leaderboard?${query.toString()}`);
 }
 
 export async function checkInForPoints(): Promise<{
@@ -942,6 +1008,7 @@ function toPlatformUser(value: Record<string, unknown>): PlatformUser {
     displayName: [firstName, lastName].filter(Boolean).join(' ') || '平台用户',
     avatarUrl: normalizeAvatarUrl(photo?.path),
     role: Number(role?.id) === 1 ? 'admin' : 'user',
-    status: Number(status?.id) === 1 ? 'active' : 'disabled'
+    status: Number(status?.id) === 1 ? 'active' : 'disabled',
+    profileDecoration: value.profileDecoration as ProfileDecoration | undefined
   };
 }
