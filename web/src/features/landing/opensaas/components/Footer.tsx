@@ -29,7 +29,7 @@ export function Footer({
               席定
             </div>
             <p className='text-muted-foreground mt-5 text-sm leading-7'>
-              把账号授权、座位策略和每次执行结果，交给一套真正清晰的工作流。
+              选座、抢座、查结果，全部在一个工作台完成。
             </p>
           </div>
           <div className='flex gap-20'>

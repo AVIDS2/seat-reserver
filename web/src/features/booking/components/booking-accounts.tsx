@@ -115,8 +115,8 @@ function AccountEditorDialog({
           <DialogTitle>{account ? '编辑学校账号' : '添加学校账号'}</DialogTitle>
           <DialogDescription>
             {account
-              ? '修改学校账号或密码时，系统会重新完成正常登录验证。密码留空表示不修改。'
-              : '系统会立即完成一次正常登录验证，验证通过后才会保存账号。'}
+              ? '修改账号或密码时，会重新验证登录。密码留空表示不修改。'
+              : '会立即验证登录，验证通过后再保存账号。'}
           </DialogDescription>
         </DialogHeader>
         <div className='min-h-0 flex-1 overflow-y-auto overscroll-contain px-0.5'>
@@ -276,7 +276,7 @@ export default function BookingAccountsPage({
       <div className='mx-auto flex w-full max-w-[1200px] flex-col gap-5 sm:gap-6'>
         <div className='flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between'>
           <div className='min-w-0'>
-            <p className='text-muted-foreground mb-2 text-sm'>连接管理</p>
+            <p className='text-muted-foreground mb-2 text-sm'>学校账号</p>
             <h1 className='text-2xl font-semibold tracking-tight sm:text-3xl'>账号与授权</h1>
             <p className='text-muted-foreground mt-2 text-sm leading-6'>
               一个校园账号可以连接多个座位服务，授权状态分别维护。
@@ -299,9 +299,9 @@ export default function BookingAccountsPage({
         </div>
         <Alert>
           <Icons.shield />
-          <AlertTitle>自动续期已开启</AlertTitle>
+          <AlertTitle>账号自动维护已开启</AlertTitle>
           <AlertDescription>
-            系统会在预约前检查连接并在需要时自动重新登录。图书馆是独立服务，点击账号卡片中的“连接图书馆”即可启用。页面和运行记录不会显示密码或授权凭证。
+            预约前会自动检查连接，失效时尝试恢复。图书馆需要单独启用，点击账号卡片中的“连接图书馆”即可开始。页面和记录不会显示密码或授权凭证。
           </AlertDescription>
         </Alert>
         {visibleAccounts.length === 0 ? (
@@ -392,9 +392,9 @@ export default function BookingAccountsPage({
                                 {serviceConnected
                                   ? '已连接'
                                   : serviceRecovering
-                                    ? '系统自动恢复中'
+                                    ? '正在恢复连接'
                                     : serviceAttention
-                                      ? '需要检查账号'
+                                      ? '登录已失效'
                                       : '未连接'}
                               </Badge>
                               {!serviceConnected && (
@@ -410,7 +410,7 @@ export default function BookingAccountsPage({
                                     : serviceRecovering
                                       ? '立即重试'
                                       : serviceAttention
-                                        ? '检查连接'
+                                      ? '验证账号'
                                         : `连接${service.label}`}
                                 </Button>
                               )}
@@ -452,7 +452,7 @@ export default function BookingAccountsPage({
                           disabled={isRefreshing}
                         >
                           <Icons.refresh className={cn(isRefreshing && 'animate-spin')} />
-                          {isRefreshing ? '刷新中' : '检查连接'}
+                          {isRefreshing ? '检查中' : '验证账号'}
                         </Button>
                       </div>
                     </CardContent>

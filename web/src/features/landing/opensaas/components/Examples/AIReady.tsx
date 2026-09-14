@@ -7,7 +7,7 @@ export function Automation() {
     <HighlightedFeature
       id='flow'
       name='开放之前，系统已经准备好。'
-      description='平台在场馆开放前完成连接检查和任务准备，开放后按你的座位偏好准时执行，并把最终结果送回工作台。'
+      description='开放前自动检查账号和任务，开放后按你的座位偏好尝试，并把结果送回工作台。'
       highlightedComponent={<AutomationExample />}
       direction='row-reverse'
     />
@@ -22,7 +22,7 @@ function AutomationExample() {
           <p className='text-muted-foreground text-xs font-medium tracking-[0.16em] uppercase'>
             Daily execution
           </p>
-          <p className='mt-2 text-lg font-semibold'>自动执行流程</p>
+          <p className='mt-2 text-lg font-semibold'>抢座流程</p>
         </div>
         <span className='bg-secondary/15 text-secondary inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium'>
           <span className='size-1.5 rounded-full bg-current' />
@@ -33,15 +33,15 @@ function AutomationExample() {
         <TimelineRow
           icon={<Icons.shield />}
           time='已完成'
-          title='授权预热'
-          detail='检查账号连接与预约偏好'
+          title='连接检查'
+          detail='确认账号和预约设置'
           tone='success'
         />
         <TimelineRow
           icon={<Icons.clock />}
           time='进行中'
-          title='预约执行'
-          detail='按候选顺序提交策略'
+          title='开始抢座'
+          detail='按候选顺序提交预约'
           tone='active'
         />
         <TimelineRow

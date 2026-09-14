@@ -90,8 +90,8 @@ export function TimeRangePicker({
     <div className='flex flex-col gap-3'>
       <div className='flex items-center justify-between gap-3'>
         <div>
-          <p className='text-sm font-medium'>候选时间段</p>
-          <p className='text-muted-foreground mt-1 text-xs'>按座位优先级，再按时间顺序尝试。</p>
+          <p className='text-sm font-medium'>备选时段</p>
+          <p className='text-muted-foreground mt-1 text-xs'>首选座位被占时，按顺序尝试备选座位与时段。</p>
           <p className='text-muted-foreground mt-1 text-xs'>
             自动任务在开放窗口提交；可选时段为 {formatTime(windowStartMinutes)}–
             {formatTime(windowEndMinutes)}，单次最长 {maxDurationHours} 小时。

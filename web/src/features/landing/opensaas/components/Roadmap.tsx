@@ -13,7 +13,7 @@ export function Roadmap() {
             运行路线图
           </h2>
           <p className='text-muted-foreground mt-4 text-lg leading-8'>
-            已上线的基础能力，以及正在持续打磨的体验。
+            已上线能力与接下来的更新。
           </p>
         </div>
         <div className='grid gap-6 md:grid-cols-4'>
@@ -29,7 +29,7 @@ export function Roadmap() {
           href='/auth/sign-up'
           className='text-primary hover:text-primary/80 mx-auto mt-10 flex w-fit items-center gap-2 text-sm font-medium'
         >
-          从今天开始配置
+          开始创建任务
           <IconArrowRight className='size-4' />
         </Link>
       </div>

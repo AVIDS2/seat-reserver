@@ -18,8 +18,8 @@ export default function SignUpViewPage() {
     <main className='bg-muted/20 grid min-h-[100dvh] lg:grid-cols-[0.9fr_1.1fr]'>
       <AuthBrandPanel
         eyebrow='A CLEARER WAY TO BOOK'
-        title='你的座位策略，值得一套清晰的工作台。'
-        description='从账号授权到每一次运行，所有状态都在一个地方被看见。'
+        title='把常坐的位置，交给席定。'
+        description='绑定学校账号，设置座位和时段，开放后自动提交。'
       />
 
       <section className='flex items-center justify-center px-6 py-12'>

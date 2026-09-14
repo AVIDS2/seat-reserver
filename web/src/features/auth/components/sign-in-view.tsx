@@ -18,8 +18,8 @@ export default function SignInViewPage() {
     <main className='bg-muted/20 grid min-h-[100dvh] lg:grid-cols-[0.9fr_1.1fr]'>
       <AuthBrandPanel
         eyebrow='AUTOMATION FOR DAILY SEATS'
-        title='把每一次预约，交给更稳定的自动化。'
-        description='统一管理学校账号、候选策略和每次运行结果，让每一次预约清晰可控。'
+        title='明早的座位，交给自动抢座。'
+        description='选好座位和时段，开放后自动提交，结果回到工作台。'
       />
 
       <section className='flex items-center justify-center px-6 py-12'>

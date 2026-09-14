@@ -106,7 +106,7 @@ export default function AttendanceProtectionPage({
           <Icons.info />
           <AlertTitle>这项保护默认关闭</AlertTitle>
           <AlertDescription>
-            开启后，仅针对自习室预约：学校接口在开始后仍显示未签到时，平台会在允许迟到窗口结束前 1 分钟自动取消，避免产生违约记录。
+            只保护自习室预约。开始后仍未签到时，会在迟到期限前 1 分钟自动取消，避免留下违约记录。
           </AlertDescription>
         </Alert>
 

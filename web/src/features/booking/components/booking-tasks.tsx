@@ -96,8 +96,8 @@ const WEEKDAYS = [
 async function runTask(task: BookingTask) {
   try {
     await runBookingTask(task.id);
-    toast.success(`${task.name} 已开始执行`, {
-      description: '系统正在按你设置的座位和时间尝试预约，完成后会通知结果。'
+    toast.success(`${task.name} 已开始抢座`, {
+      description: '平台正在按你设置的座位和时段尝试，完成后会通知结果。'
     });
   } catch (error) {
     toast.error(error instanceof Error ? error.message : '运行任务失败');
@@ -107,9 +107,9 @@ async function runTask(task: BookingTask) {
 async function prewarmTask(task: BookingTask) {
   try {
     await prewarmBookingTask(task.id);
-    toast.success(`${task.name} 正在检查账号连接`);
+    toast.success(`${task.name} 正在检查账号`);
   } catch (error) {
-    toast.error(error instanceof Error ? error.message : '预热任务失败');
+      toast.error(error instanceof Error ? error.message : '账号检查失败');
   }
 }
 
@@ -419,7 +419,7 @@ function TaskEditorDialog({
       <DialogContent className='flex h-[calc(100svh-1rem)] max-h-[calc(100svh-1rem)] w-[calc(100%-1rem)] max-w-[calc(100%-1rem)] flex-col overflow-hidden overscroll-contain p-3 sm:h-auto sm:max-h-[min(900px,calc(100svh-2rem))] sm:w-[min(1040px,calc(100%-2rem))] sm:max-w-[1040px] sm:p-5'>
         <DialogHeader className='shrink-0 pr-8'>
           <DialogTitle>{task ? '编辑预约任务' : '新建预约任务'}</DialogTitle>
-          <DialogDescription>配置一次预约任务，系统会按规则自动执行。</DialogDescription>
+          <DialogDescription>选好座位和时段，开放后自动提交。</DialogDescription>
         </DialogHeader>
         <ToggleGroup
           value={[String(step)]}
@@ -458,9 +458,9 @@ function TaskEditorDialog({
             {step === 1 ? (
               <section className='flex flex-col gap-5 rounded-xl border bg-card p-4 sm:p-5'>
                 <div>
-                  <h3 className='text-base font-semibold'>选择预约位置</h3>
+                  <h3 className='text-base font-semibold'>先选空间</h3>
                   <p className='text-muted-foreground mt-1 text-sm'>
-                    先确定账号和空间，下一步选择座位与时间。
+                    选择学校账号和空间，下一步挑座位与时段。
                   </p>
                 </div>
                 <FieldGroup className='grid gap-4 sm:grid-cols-2'>
@@ -509,7 +509,7 @@ function TaskEditorDialog({
                     <FieldDescription>一个任务对应一个账号。</FieldDescription>
                   </Field>
                   <Field className='sm:col-span-2'>
-                    <FieldLabel>预约系统</FieldLabel>
+                    <FieldLabel>预约场馆</FieldLabel>
                     <ToggleGroup
                       value={[venueType]}
                       onValueChange={(value) => {
@@ -626,16 +626,16 @@ function TaskEditorDialog({
                       </SelectContent>
                     </Select>
                     <FieldDescription>
-                      {catalogLoading ? '正在读取学校实时空间…' : '名称来自学校实时目录。'}
+                      {catalogLoading ? '正在读取学校空间…' : '名称来自学校目录。'}
                     </FieldDescription>
                   </Field>
                 </FieldGroup>
                 {(!catalog || catalogError || !selectedBuilding || !selectedRoom) && (
                   <div className='flex flex-col gap-3 rounded-lg border border-dashed bg-muted/20 p-3'>
                     <div>
-                      <p className='text-sm font-medium'>实时目录暂不可用，也能先设置闹钟</p>
+                        <p className='text-sm font-medium'>目录暂时不可用，仍可设置抢座任务</p>
                       <p className='text-muted-foreground mt-1 text-xs leading-5'>
-                        座位图只负责浏览和辅助选择。填写学校系统中的座位 ID 后，闹钟会在开放时间自动重试。
+                        座位图用于选座，不影响任务保存。填写已知座位 ID 后，开放时仍会按规则尝试。
                       </p>
                     </div>
                     <FieldGroup className='grid gap-3 sm:grid-cols-2'>
@@ -665,12 +665,12 @@ function TaskEditorDialog({
                     {catalogNotice.maintenance ? <Icons.clock /> : <Icons.warning />}
                     <AlertTitle>
                       {catalogNotice.maintenance
-                        ? '实时目录暂不可用，闹钟仍可配置'
-                        : '实时数据未加载'}
+                        ? '空间目录暂不可用，任务仍可配置'
+                        : '空间目录加载失败'}
                     </AlertTitle>
                     <AlertDescription>
                       {catalogNotice.maintenance
-                        ? '学校正在维护实时目录；这不会影响已保存的任务，执行时平台会在开放窗口自动重试。'
+                        ? '学校目录正在维护；已保存的任务不受影响，开放时会自动重试。'
                         : catalogNotice.message}
                     </AlertDescription>
                   </Alert>
@@ -753,12 +753,12 @@ function TaskEditorDialog({
                     {catalogNotice.maintenance ? <Icons.clock /> : <Icons.warning />}
                     <AlertTitle>
                       {catalogNotice.maintenance
-                        ? '实时目录暂不可用，闹钟仍可配置'
-                        : '实时数据未加载'}
+                        ? '空间目录暂不可用，任务仍可配置'
+                        : '空间目录加载失败'}
                     </AlertTitle>
                     <AlertDescription>
                       {catalogNotice.maintenance
-                        ? '学校正在维护实时目录；这不会影响已保存的任务，执行时平台会在开放窗口自动重试。'
+                        ? '学校目录正在维护；已保存的任务不受影响，开放时会自动重试。'
                         : catalogNotice.message}
                     </AlertDescription>
                   </Alert>
@@ -786,7 +786,7 @@ function TaskEditorDialog({
                   <section className='min-w-0 rounded-xl border bg-card p-4'>
                     <FieldGroup>
                       <Field>
-                        <FieldLabel>执行频率</FieldLabel>
+                    <FieldLabel>重复周期</FieldLabel>
                         <ToggleGroup
                           value={[scheduleMode]}
                           onValueChange={(value) =>
@@ -797,23 +797,23 @@ function TaskEditorDialog({
                           className='grid w-full grid-cols-2 sm:grid-cols-4'
                         >
                           <ToggleGroupItem value='daily' className='w-full'>
-                            每天
+                            每天重复
                           </ToggleGroupItem>
                           <ToggleGroupItem value='weekdays' className='w-full'>
-                            工作日
+                            工作日重复
                           </ToggleGroupItem>
                           <ToggleGroupItem value='weekly' className='w-full'>
-                            按星期
+                            自选星期
                           </ToggleGroupItem>
                           <ToggleGroupItem value='dates' className='w-full'>
-                            指定日期
+                            自选日期
                           </ToggleGroupItem>
                         </ToggleGroup>
                       </Field>
                       {scheduleMode === 'weekly' && (
                         <Field>
                           <div className='flex items-center justify-between gap-3'>
-                            <FieldLabel>执行星期</FieldLabel>
+                          <FieldLabel>重复星期</FieldLabel>
                             <span className='text-muted-foreground text-xs'>至少一天</span>
                           </div>
                           <ToggleGroup
@@ -846,12 +846,12 @@ function TaskEditorDialog({
                     </FieldGroup>
                     <div className='mt-4 rounded-lg bg-muted/40 px-3 py-2 text-xs text-muted-foreground'>
                       {scheduleMode === 'daily'
-                        ? '每天按照下面的时间段自动尝试。'
+                        ? '每天在下面的时段自动抢座。'
                         : scheduleMode === 'weekdays'
-                          ? '周一至周五自动尝试。'
+                          ? '周一至周五在下面的时段自动抢座。'
                           : scheduleMode === 'weekly'
-                            ? '只在选中的星期自动尝试。'
-                            : '只在日历中选中的日期自动尝试。'}
+                            ? '只在选中的星期自动抢座。'
+                            : '只在选中的日期自动抢座。'}
                     </div>
                   </section>
                 </div>
@@ -895,7 +895,7 @@ function TaskEditorDialog({
                       />
                       <NumberField
                         id='task-prewarm-offset'
-                        label='预热错峰（秒）'
+                        label='账号检查错峰（秒）'
                         value={prewarmOffset}
                         onChange={setPrewarmOffset}
                         min='0'
@@ -1062,7 +1062,7 @@ export default function BookingTasksPage({
               ...task,
               enabled,
               status: enabled ? 'enabled' : 'paused',
-              nextRun: enabled ? '等待下一次开放窗口' : '已暂停'
+              nextRun: enabled ? '待执行 · 下次开放时自动提交' : '已暂停'
             }
           : task
       )
@@ -1072,7 +1072,7 @@ export default function BookingTasksPage({
       setTasks((current) => current.map((task) => (task.id === id ? updated : task)));
       toast.success(enabled ? '任务已启用' : '任务已暂停', {
         description: enabled
-          ? '系统会在下一次开放时按你的设置自动预约。'
+          ? '下次开放时按你的设置自动抢座。'
           : '暂停后不会再自动预约，已有预约不会被取消。'
       });
     } catch (error) {
@@ -1098,7 +1098,7 @@ export default function BookingTasksPage({
     try {
       setDryRun(await dryRunBookingTask(task.id));
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'dry-run 失败');
+      toast.error(error instanceof Error ? error.message : '任务检查失败');
     }
   };
 
@@ -1107,10 +1107,10 @@ export default function BookingTasksPage({
       <div className='mx-auto w-full max-w-[1440px] space-y-5 sm:space-y-6'>
         <div className='flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between'>
           <div>
-            <p className='text-muted-foreground mb-2 text-sm'>自动化规则</p>
+            <p className='text-muted-foreground mb-2 text-sm'>抢座安排</p>
             <h1 className='text-2xl font-semibold tracking-tight sm:text-3xl'>预约任务</h1>
             <p className='text-muted-foreground mt-2 text-sm leading-6'>
-              管理座位优先级、时间候选和每日自动执行状态。
+              管理座位顺序、预约时段和重复日期。
             </p>
           </div>
           <Button
@@ -1131,7 +1131,7 @@ export default function BookingTasksPage({
         {accounts.length === 0 && (
           <Alert>
             <Icons.warning />
-            <AlertTitle>先接入学校账号</AlertTitle>
+            <AlertTitle>先绑定学校账号</AlertTitle>
             <AlertDescription>完成一次正常登录验证后，才能创建预约任务。</AlertDescription>
           </Alert>
         )}
@@ -1221,7 +1221,7 @@ export default function BookingTasksPage({
                     </Button>
                     <Button variant='ghost' size='sm' onClick={() => void prewarmTask(task)}>
                       <Icons.refresh data-icon='inline-start' />
-                      预热
+                      检查账号
                     </Button>
                     <Button
                       variant='ghost'
@@ -1358,10 +1358,10 @@ function formatTime(minutes: number): string {
 
 function tokenStatusLabel(status: DryRunResult['tokenStatus']): string {
   return {
-    valid: '连接正常',
-    missing: '尚未建立连接',
-    invalid: '连接已失效',
-    unavailable: '连接检查暂不可用'
+    valid: '已连接',
+    missing: '未连接',
+    invalid: '登录已失效',
+    unavailable: '暂时无法验证'
   }[status];
 }
 

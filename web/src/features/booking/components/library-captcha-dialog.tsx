@@ -60,9 +60,9 @@ export function LibraryCaptchaDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className='flex max-h-[calc(100svh-1rem)] w-[calc(100%-1rem)] max-w-[520px] flex-col overflow-hidden p-4 sm:p-5'>
         <DialogHeader className='shrink-0 pr-8'>
-          <DialogTitle>完成单次预约验证</DialogTitle>
+          <DialogTitle>验证本次预约</DialogTitle>
           <DialogDescription>
-            按提示顺序点选图片。验证通过后平台只会提交刚才确认的这一次预约，不会开启自动抢座。
+            按提示顺序点选图片。验证通过后只提交这一次预约，不会开启自动抢座。
           </DialogDescription>
         </DialogHeader>
 
@@ -70,7 +70,7 @@ export function LibraryCaptchaDialog({
           {error && (
             <Alert variant='destructive' className='mb-4'>
               <Icons.warning />
-              <AlertTitle>验证未通过</AlertTitle>
+              <AlertTitle>验证失败</AlertTitle>
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
@@ -81,12 +81,12 @@ export function LibraryCaptchaDialog({
               aria-live='polite'
             >
               <Spinner />
-              <p className='text-muted-foreground text-sm'>正在获取学校验证图片…</p>
+                <p className='text-muted-foreground text-sm'>正在获取验证图片…</p>
             </div>
           ) : !challenge ? (
             <div className='flex min-h-72 flex-col items-center justify-center gap-3 rounded-lg border px-6 text-center'>
               <Icons.warning className='text-muted-foreground' />
-              <p className='text-sm font-medium'>验证图片需要重新获取</p>
+                <p className='text-sm font-medium'>验证图片已失效</p>
               <Button type='button' variant='outline' onClick={onRefresh}>
                 <Icons.refresh data-icon='inline-start' />
                 重新获取
@@ -191,7 +191,7 @@ export function LibraryCaptchaDialog({
             ) : (
               <Icons.shield data-icon='inline-start' />
             )}
-            {loading ? '正在验证' : '验证并提交本次预约'}
+            {loading ? '验证中' : '验证并预约'}
           </Button>
         </DialogFooter>
       </DialogContent>

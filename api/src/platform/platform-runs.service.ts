@@ -75,14 +75,13 @@ export class PlatformRunsService {
               ? '排队中'
               : status === 'skipped'
                 ? '已跳过'
-                : '预热中';
+                : '准备中';
     return {
       id: String(run.id),
       accountId: String(run.schoolAccountId),
       account: run.schoolAccount?.label ?? '未知账号',
       task:
-        run.task?.name ??
-        (run.runType === 'prewarm' ? 'Token 预热' : '预约任务'),
+        run.task?.name ?? (run.runType === 'prewarm' ? '账号检查' : '预约任务'),
       targetDate: run.targetDate,
       startedAt: formatDate(run.startedAt ?? run.createdAt),
       status,

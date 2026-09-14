@@ -140,7 +140,9 @@ export class PlatformAccountsService {
         authenticated.mode,
       );
       if (!verified.success)
-        throw new UnprocessableEntityException('学校账号 Token 验证失败');
+        throw new UnprocessableEntityException(
+          '学校登录状态已过期，请重新输入密码',
+        );
 
       account.encryptedToken = this.crypto.encrypt(authenticated.token);
       account.authMode = authenticated.mode;
@@ -296,16 +298,16 @@ export class PlatformAccountsService {
       status: viewStatus,
       statusLabel:
         viewStatus === 'connected'
-          ? '连接正常'
+          ? '已连接'
           : viewStatus === 'recovering'
-            ? '系统自动恢复中'
-            : '需要处理',
+            ? '正在恢复连接'
+            : '登录已失效',
       tokenLabel:
         viewStatus === 'connected'
-          ? '连接可用'
+          ? '账号可用'
           : viewStatus === 'recovering'
-            ? '正在自动检查连接'
-            : '请检查学校账号信息',
+            ? '正在检查账号'
+            : '请重新验证账号',
       refreshedAt: formatDate(account.tokenRefreshedAt),
       lastVerifiedAt: formatDate(account.lastVerifiedAt),
       tasks,

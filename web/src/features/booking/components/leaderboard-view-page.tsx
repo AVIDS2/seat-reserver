@@ -102,10 +102,10 @@ export default function LeaderboardViewPage({ initialData }: { initialData: Lead
               <div className='flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between'>
                 <div className='min-w-0'>
                   <Badge variant='outline' className='border-white/20 bg-white/10 text-white'>
-                    <Icons.trophy className='text-amber-300' data-icon='inline-start' /> 席定学习榜
+                    <Icons.trophy className='text-amber-300' data-icon='inline-start' /> 自习时长榜
                   </Badge>
                   <h2 className='mt-4 text-2xl font-semibold tracking-tight text-white sm:text-3xl'>
-                    把每一次预约，变成看得见的进步
+                    今天坐哪里，看榜单就知道
                   </h2>
                   <p className='mt-2 max-w-xl text-sm leading-6 text-white/65'>
                     {data.fromDate} 至 {data.toDate} · {campusLabel}公开昵称展示
@@ -125,17 +125,17 @@ export default function LeaderboardViewPage({ initialData }: { initialData: Lead
                     <Icons.trophy className='size-8' />
                   </motion.div>
                   <div>
-                    <p className='text-xs text-white/55'>当前榜单</p>
+                    <p className='text-xs text-white/55'>上榜同学</p>
                     <p className='mt-1 text-3xl font-semibold tabular-nums text-white'>
                       {data.participantCount}
                     </p>
-                    <p className='text-xs text-white/55'>位同学正在积累</p>
+                    <p className='text-xs text-white/55'>位同学正在学习</p>
                   </div>
                 </div>
               </div>
               <StarryGradientRail
                 value={effortValue}
-                label='我的学习势能'
+                label='我的自习时长'
                 status={data.currentUser ? `榜首时长的 ${effortValue}%` : '完成一次预约后点亮'}
               />
             </CardContent>
@@ -168,7 +168,7 @@ export default function LeaderboardViewPage({ initialData }: { initialData: Lead
             <CardContent className='flex items-center gap-3 p-4 text-sm'>
               <Icons.info className='text-muted-foreground' />
               <span className='text-muted-foreground'>
-                本周期还没有你的成功预约记录，完成一次后会出现在排行榜中。
+                本周期还没有你的上榜记录，完成一次成功预约后会显示在这里。
               </span>
             </CardContent>
           </Card>
@@ -182,7 +182,7 @@ export default function LeaderboardViewPage({ initialData }: { initialData: Lead
             <CardDescription>
               {loading
                 ? '正在更新榜单…'
-                : `累计记录 ${formatMinutes(data.trackedMinutes)}，每一次成功预约都会留下成长足迹。`}
+                : `累计记录 ${formatMinutes(data.trackedMinutes)}，按成功预约时长排名。`}
             </CardDescription>
             <CardAction>
               <Badge variant={loading ? 'secondary' : 'outline'}>
@@ -216,9 +216,9 @@ export default function LeaderboardViewPage({ initialData }: { initialData: Lead
             ) : (
               <div className='flex flex-col items-center gap-2 rounded-xl border border-dashed bg-muted/20 px-4 py-12 text-center'>
                 <Icons.sparkles className='text-primary size-8' />
-                <p className='text-sm font-medium'>榜单正在等待第一份学习记录</p>
+                <p className='text-sm font-medium'>本周期还没有上榜记录</p>
                 <p className='text-muted-foreground text-xs'>
-                  完成一次成功预约后，这里会出现你的真实昵称。
+                  完成一次成功预约后，你的昵称会显示在这里。
                 </p>
               </div>
             )}

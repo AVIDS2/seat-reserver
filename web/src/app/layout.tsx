@@ -21,13 +21,13 @@ export const metadata: Metadata = {
     default: '席定 · 高校座位预约平台',
     template: '%s | 席定'
   },
-  description: '把每一次预约，交给更稳定的自动化。',
+  description: '选好座位和时段，开放后自动抢座。',
   icons: {
     icon: '/brand/WUDlogo.svg'
   },
   openGraph: {
     title: '席定 · 高校座位预约平台',
-    description: '把学校账号、候选策略和每日执行结果放进同一个清晰的工作台。',
+    description: '选好座位和时段，开放后自动抢座，结果随时可查。',
     siteName: '席定',
     type: 'website',
     images: [
@@ -42,7 +42,7 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: '席定 · 高校座位预约平台',
-    description: '把学校账号、候选策略和每日执行结果放进同一个清晰的工作台。',
+    description: '选好座位和时段，开放后自动抢座，结果随时可查。',
     images: ['/brand/WUDlogo.svg']
   }
 };

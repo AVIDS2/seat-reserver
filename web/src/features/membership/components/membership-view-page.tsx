@@ -114,7 +114,7 @@ export default function MembershipViewPage({ initialData }: { initialData: Rewar
   return (
     <PageContainer
       pageTitle='会员与邀请'
-      pageDescription='管理你的 Pro 权益、活跃积分和好友邀请。'
+      pageDescription='查看 Pro 权益、签到奖励和邀请记录。'
       pageHeaderAction={
         <Link href='/dashboard/store' className={buttonVariants()}>
           <Icons.product data-icon='inline-start' />
@@ -125,9 +125,9 @@ export default function MembershipViewPage({ initialData }: { initialData: Rewar
       <div className='mx-auto flex w-full max-w-[1120px] flex-col gap-4 sm:gap-5'>
         <Alert>
           <Icons.shield />
-          <AlertTitle>权益由平台统一维护</AlertTitle>
+          <AlertTitle>Pro 权益说明</AlertTitle>
           <AlertDescription>
-            Pro 为一次开通、永久有效；账号额度在服务端校验，邀请和积分变更都会留下记录。
+            Pro 一次开通、永久有效，可绑定 3 个校园账号。
           </AlertDescription>
         </Alert>
 
@@ -208,7 +208,7 @@ export default function MembershipViewPage({ initialData }: { initialData: Rewar
                 </div>
               </Progress>
               <p className='text-muted-foreground text-sm leading-6'>
-                每日签到获得 {data.dailyActivityPoints} 席定币；支线活动和好友邀请也会留下可追溯流水。
+                每日签到 +{data.dailyActivityPoints} 席定币，活动和邀请也可获得奖励。
               </p>
               <Button
                 variant='outline'
@@ -232,10 +232,10 @@ export default function MembershipViewPage({ initialData }: { initialData: Rewar
           <CardHeader className='border-b'>
             <div className='flex items-start justify-between gap-3'>
               <div>
-                <CardDescription>每日来看看</CardDescription>
+                  <CardDescription>签到之外</CardDescription>
                 <CardTitle className='mt-1 flex items-center gap-2 text-xl'>
                   <Icons.sparkles className='text-primary' />
-                  活动中心
+                  额外活动
                 </CardTitle>
               </div>
               <ShinyText text='BONUS TRACKS' className='text-xs font-semibold tracking-[0.16em]' />
@@ -274,7 +274,7 @@ export default function MembershipViewPage({ initialData }: { initialData: Rewar
             </CardHeader>
             <CardContent className='pt-4'>
               {data.invitations.length === 0 ? (
-                <EmptyState text='还没有兑换过邀请码' />
+                <EmptyState text='还没有邀请码' />
               ) : (
                 <div className='flex flex-col gap-3'>
                   {data.invitations.map((invitation) => (
@@ -309,11 +309,11 @@ export default function MembershipViewPage({ initialData }: { initialData: Rewar
           <Card className='shadow-none'>
             <CardHeader className='border-b'>
               <CardTitle className='text-lg'>积分流水</CardTitle>
-              <CardDescription>每笔积分变化都可追溯，避免重复奖励或重复扣分。</CardDescription>
+              <CardDescription>签到、活动和兑换都会记录在这里。</CardDescription>
             </CardHeader>
             <CardContent className='pt-4'>
               {data.ledger.length === 0 ? (
-                <EmptyState text='完成签到或支线活动后会显示积分记录' />
+                <EmptyState text='完成签到或活动后会显示记录' />
               ) : (
                 <div className='flex flex-col gap-3'>
                   {data.ledger.map((entry, index) => (

@@ -6,8 +6,8 @@ export function Admin() {
   return (
     <HighlightedFeature
       id='admin-feature'
-      name='所有预约状态，一眼掌握。'
-      description='今日任务、连接状态、执行进度和最终结果集中呈现。无论管理一个安排还是多个学习计划，重要信息都不会被埋在层层页面里。'
+      name='所有预约状态，集中查看。'
+      description='今日任务、账号状态、执行进度和结果集中呈现。常用操作都在工作台里完成。'
       highlightedComponent={<AdminExample />}
     />
   );
@@ -39,7 +39,7 @@ function AdminExample() {
           <Icons.history className='size-4 text-[#f2ad4c]' />
         </div>
         <div className='mt-4 space-y-3'>
-          <StatusRow label='授权预热' value='已完成' />
+          <StatusRow label='连接检查' value='已完成' />
           <StatusRow label='预约任务' value='运行中' active />
           <StatusRow label='运行记录' value='已写入' />
         </div>

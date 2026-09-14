@@ -38,8 +38,8 @@ const mockNotifications: Notification[] = [
   },
   {
     id: '2',
-    title: '授权链路正常',
-    body: '我的账号和朋友账号最近一次 Token 验证均已通过。',
+    title: '账号已连接',
+    body: '我的账号和朋友账号最近一次检查均已通过。',
     status: 'unread',
     createdAt: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
     actions: [
@@ -68,8 +68,8 @@ const mockNotifications: Notification[] = [
   },
   {
     id: '4',
-    title: '账号预热完成',
-    body: '今天的两个账号都在预约前完成了 Token 刷新。',
+    title: '账号检查完成',
+    body: '今天的两个账号都已完成预约前检查。',
     status: 'read',
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
     actions: [
@@ -83,8 +83,8 @@ const mockNotifications: Notification[] = [
   },
   {
     id: '5',
-    title: '候选策略待优化',
-    body: '最近 7 日成功率为 86%，可以在任务页调整座位和时间候选。',
+    title: '座位候选可调整',
+    body: '最近 7 日成功率为 86%，可以在任务页调整座位和时段。',
     status: 'read',
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3).toISOString(),
     actions: [

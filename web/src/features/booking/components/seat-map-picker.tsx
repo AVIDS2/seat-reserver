@@ -176,8 +176,8 @@ export function SeatMapPicker({
       ) : (
         <div className='flex min-h-64 flex-col items-center justify-center gap-2 p-6 text-center'>
           <Icons.mapPin className='size-8 text-muted-foreground/40' />
-          <p className='text-sm font-medium'>尚未加载座位图</p>
-          <p className='text-muted-foreground text-xs'>选择账号、预约系统、场馆和日期。</p>
+          <p className='text-sm font-medium'>还没有座位图</p>
+          <p className='text-muted-foreground text-xs'>先选择账号、场馆、空间和日期。</p>
         </div>
       )}
 

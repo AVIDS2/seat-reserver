@@ -191,8 +191,8 @@ export class PlatformAdminService {
           label: account.label,
           username: maskUsername(account.schoolUsername),
           status: connected ? 'connected' : 'attention',
-          statusLabel: connected ? '连接正常' : '需要关注',
-          tokenLabel: connected ? 'Token 已缓存' : 'Token 不可用',
+          statusLabel: connected ? '已连接' : '需要检查',
+          tokenLabel: connected ? '账号可用' : '登录状态不可用',
           ownerName: formatUserName(account.user),
           ownerEmail: account.user?.email ?? null,
           taskCount,
@@ -277,7 +277,7 @@ export class PlatformAdminService {
         ownerEmail: run.user?.email ?? null,
         task:
           run.task?.name ??
-          (run.runType === 'prewarm' ? 'Token 预热' : '预约任务'),
+          (run.runType === 'prewarm' ? '账号检查' : '预约任务'),
         account: run.schoolAccount?.label ?? '账号已移除',
         targetDate: run.targetDate,
         status,
@@ -396,7 +396,7 @@ function runStatusLabel(status: AdminRunView['status']): string {
           ? '排队中'
           : status === 'skipped'
             ? '已跳过'
-            : '预热中';
+            : '准备中';
 }
 
 function getShanghaiDate(): string {

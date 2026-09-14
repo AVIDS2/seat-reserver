@@ -22,7 +22,7 @@ export const roadmapItems: GithubEpic[] = [
     url: '/auth/sign-up'
   },
   {
-    name: '学校账号授权与自动预热',
+    name: '学校账号连接',
     totalIssues: 5,
     doneIssues: 5,
     status: GithubEpicStatus.Done,

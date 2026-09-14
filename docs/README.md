@@ -2,7 +2,7 @@
 
 | 文档 | 用途 | 状态 |
 |---|---|---|
-| [planning/platform-mvp.md](planning/platform-mvp.md) | 平台范围、技术栈、阶段任务和验收标准 | 自习室生产可用，图书馆实时目录与会员邀请权益已接入 |
+| [planning/platform-mvp.md](planning/platform-mvp.md) | 平台范围、技术栈、阶段任务和验收标准 | 自习室生产可用，图书馆实时目录、会员邀请权益与番茄自习室已接入 |
 | [planning/architecture-proposal.md](planning/architecture-proposal.md) | 平台架构、数据模型、接口和部署取舍 | 多服务连接、实时座位图与 Pro/积分/邀请域已落地 |
 | [planning/account-binding-research.md](planning/account-binding-research.md) | 登录、绑定和授权链路的协议结论与安全边界 | 自习室自动链路投产，图书馆连接与验证码边界已确认 |
 | [deployment/platform.md](deployment/platform.md) | 平台生产部署、使用、自动执行、连接自动恢复和 Reqable 采集 | 当前部署说明 |

@@ -22,7 +22,7 @@ export default function RechargeViewPage({ initialBalance }: { initialBalance: n
   return (
     <PageContainer
       pageTitle='充值席定币'
-      pageDescription='把活跃积分变成可使用的权益额度，支付通道准备完成后会在这里开放。'
+      pageDescription='席定币可用于兑换杂货铺中的平台权益。'
       pageHeaderAction={
         <Link href='/dashboard/store' className={buttonVariants({ variant: 'outline' })}>
           <Icons.product data-icon='inline-start' /> 回到杂货铺
@@ -32,9 +32,9 @@ export default function RechargeViewPage({ initialBalance }: { initialBalance: n
       <div className='mx-auto flex w-full max-w-[1080px] flex-col gap-5'>
         <Alert>
           <Icons.info />
-          <AlertTitle>充值通道暂未上架</AlertTitle>
+          <AlertTitle>充值暂未开放</AlertTitle>
           <AlertDescription>
-            价格和权益先完整展示，暂时不会扣款。当前余额为 <strong>{initialBalance} 席定币</strong>，可通过活跃和邀请获得。
+            当前不会扣款。你的余额为 <strong>{initialBalance} 席定币</strong>，也可以通过签到和活动获得。
           </AlertDescription>
         </Alert>
 
@@ -50,11 +50,11 @@ export default function RechargeViewPage({ initialBalance }: { initialBalance: n
                 <p className='text-muted-foreground text-sm leading-6'>{item.description}</p>
                 <Separator className='my-4' />
                 <p className='text-xl font-semibold tabular-nums'>¥{item.price}</p>
-                <p className='text-muted-foreground mt-1 text-xs'>预计上架价格锚点</p>
+                <p className='text-muted-foreground mt-1 text-xs'>参考价格</p>
               </CardContent>
               <CardFooter>
                 <Button className='w-full' variant='outline' onClick={() => toast.info('充值通道还未上架，当前可以通过每日活跃和邀请获得席定币。')}>
-                  <Icons.lock data-icon='inline-start' /> 暂未开放
+                  <Icons.lock data-icon='inline-start' /> 敬请期待
                 </Button>
               </CardFooter>
             </Card>
@@ -63,8 +63,8 @@ export default function RechargeViewPage({ initialBalance }: { initialBalance: n
 
         <Card className='shadow-none'>
           <CardHeader>
-            <CardTitle className='flex items-center gap-2'><Icons.history /> 当前获得方式</CardTitle>
-            <CardDescription>先用公开、可追踪的方式积累，不需要额外购买。</CardDescription>
+            <CardTitle className='flex items-center gap-2'><Icons.history /> 获取席定币</CardTitle>
+            <CardDescription>充值开放前，可以通过签到和邀请获得。</CardDescription>
           </CardHeader>
           <CardContent className='grid gap-3 sm:grid-cols-2'>
             <EarnRow icon={<Icons.check />} title='每日签到' description='每天进入活动中心完成一次签到，领取每日席定币。' />

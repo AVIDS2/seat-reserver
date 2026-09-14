@@ -77,10 +77,10 @@ export default function BookingRunsPage({
     <PageContainer>
       <div className='mx-auto flex w-full max-w-[1440px] flex-col gap-5 sm:gap-6'>
         <div>
-          <p className='text-muted-foreground mb-2 text-sm'>可追溯的执行历史</p>
+          <p className='text-muted-foreground mb-2 text-sm'>每次尝试都有记录</p>
           <h1 className='text-2xl font-semibold tracking-tight sm:text-3xl'>运行记录</h1>
           <p className='text-muted-foreground mt-2 text-sm leading-6'>
-            每一次预热和预约请求都会留下结果，方便确认系统是否按计划工作。
+            成功、失败和原因都会留下结果，方便确认预约是否完成。
           </p>
           <Button
             variant='outline'
@@ -98,7 +98,7 @@ export default function BookingRunsPage({
           <CardHeader className='border-b'>
             <div>
               <CardDescription>{liveRuns.length} 条记录</CardDescription>
-              <CardTitle className='text-xl'>执行历史</CardTitle>
+              <CardTitle className='text-xl'>预约记录</CardTitle>
             </div>
             <div className='flex flex-col gap-2 sm:flex-row'>
               <div className='relative w-full sm:w-auto'>

@@ -99,12 +99,12 @@ export class PlatformBookingExecutor {
       serviceType(task.venueType),
       true,
     );
-    let message = 'Token 预热成功';
+    let message = '账号检查完成';
     if (task.venueType === 'library') {
       const prepared = await this.prepareLibraryChallenges(run, task, account);
       message = prepared.captchaCount
-        ? `Token 预热成功；已预解 ${prepared.captchaCount} 个验证码`
-        : `Token 预热成功；验证码预解跳过（${prepared.detail}）`;
+        ? `预约准备完成；已准备 ${prepared.captchaCount} 个验证`
+        : `预约准备完成；验证准备跳过（${prepared.detail}）`;
     }
     run.status = 'success';
     run.finishedAt = new Date();
@@ -114,7 +114,7 @@ export class PlatformBookingExecutor {
     await this.notify(
       run.userId,
       'prewarm',
-      '账号预热完成',
+      '账号检查完成',
       message,
       '/dashboard/accounts',
     );
@@ -454,7 +454,7 @@ export class PlatformBookingExecutor {
     await this.notify(
       run.userId,
       run.runType === 'prewarm' ? 'prewarm_failed' : 'booking_failed',
-      run.runType === 'prewarm' ? '账号预热失败' : '预约未成功',
+      run.runType === 'prewarm' ? '账号检查失败' : '预约未成功',
       run.message ?? '任务执行失败，请查看运行记录。',
       run.runType === 'prewarm' ? '/dashboard/accounts' : '/dashboard/runs',
     );

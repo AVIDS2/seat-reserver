@@ -43,7 +43,7 @@ export function RunStatusBadge({ status }: { status: RunStatus }) {
       className: 'border-red-500/20 bg-red-500/10 text-red-700 dark:text-red-400'
     },
     prewarming: {
-      label: '预热中',
+      label: '准备中',
       icon: Icons.refresh,
       className: 'border-blue-500/20 bg-blue-500/10 text-blue-700 dark:text-blue-400'
     },

@@ -227,7 +227,9 @@ export class PlatformServiceConnectionsService {
         serviceType,
       );
       if (!verified.success) {
-        throw new UnprocessableEntityException('学校服务授权验证失败');
+        throw new UnprocessableEntityException(
+          '学校账号验证失败，请重新输入密码',
+        );
       }
       connection = await this.saveAuthenticated(
         account,

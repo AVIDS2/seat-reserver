@@ -288,7 +288,7 @@ export default function AdminDashboard({ initialData }: { initialData: AdminSnap
           <StatCard
             label='学校账号'
             value={`${overview.connectedAccounts} / ${overview.accounts}`}
-            detail='连接正常 / 总账号'
+            detail='已连接 / 总账号'
             icon={Icons.shield}
           />
           <StatCard
@@ -609,7 +609,7 @@ export default function AdminDashboard({ initialData }: { initialData: AdminSnap
               <CardHeader className='border-b'>
                 <CardTitle className='text-xl'>全局运行记录</CardTitle>
                 <CardDescription>
-                  仅显示运行结果和归属信息，不显示学校密码、Token 或原始敏感请求。
+                  仅显示运行结果和归属信息，不显示学校密码、登录凭证或原始敏感请求。
                 </CardDescription>
               </CardHeader>
               <CardContent className='overflow-x-auto px-3 pt-3 sm:px-4'>
@@ -885,7 +885,7 @@ export default function AdminDashboard({ initialData }: { initialData: AdminSnap
                     <TableRow>
                       <TableHead>账号</TableHead>
                       <TableHead>成员</TableHead>
-                      <TableHead>授权状态</TableHead>
+                      <TableHead>账号状态</TableHead>
                       <TableHead>关联任务</TableHead>
                       <TableHead>最近验证</TableHead>
                     </TableRow>

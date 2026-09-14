@@ -33,6 +33,13 @@ export const navGroups: NavGroup[] = [
         items: []
       },
       {
+        title: '番茄自习室',
+        url: '/dashboard/focus',
+        icon: 'clock',
+        shortcut: ['f', 'r'],
+        items: []
+      },
+      {
         title: '学习排行',
         url: '/dashboard/leaderboard',
         icon: 'trendingUp',

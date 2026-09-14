@@ -54,7 +54,7 @@ export function Hero({ user }: { user: PlatformUser | null }) {
             <span className='font-black text-amber-300'>一步到位。</span>
           </h1>
           <p className='mt-6 max-w-2xl text-base leading-7 text-white/80 sm:text-lg sm:leading-8'>
-            一个面向校园场景的座位预约自动化平台。连接校园账号，在实时座位图中选好位置与时间，剩下的准备、执行和结果追踪交给平台。
+            绑定学校账号，选好座位和时段。预约开放后自动提交，结果及时回到工作台。
           </p>
           <div className='mt-8 flex flex-wrap items-center gap-3 sm:mt-10'>
             <Link
@@ -74,7 +74,7 @@ export function Hero({ user }: { user: PlatformUser | null }) {
                 'bg-amber-300 text-black hover:bg-amber-200'
               )}
             >
-              开始配置
+              开始创建任务
               <Icons.arrowRight />
             </Link>
           </div>

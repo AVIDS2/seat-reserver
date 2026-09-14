@@ -10,6 +10,8 @@ import { PlatformAccountsController } from './platform-accounts.controller';
 import { PlatformAccountsService } from './platform-accounts.service';
 import { PlatformAttendanceController } from './platform-attendance.controller';
 import { PlatformAttendanceService } from './platform-attendance.service';
+import { PlatformFocusRoomsController } from './platform-focus-rooms.controller';
+import { PlatformFocusRoomsService } from './platform-focus-rooms.service';
 import { PlatformAdminController } from './platform-admin.controller';
 import { PlatformAdminGuard } from './platform-admin.guard';
 import { PlatformAdminService } from './platform-admin.service';
@@ -44,6 +46,8 @@ import { PlatformProRequestEntity } from './entities/platform-pro-request.entity
 import { PlatformReferralEntity } from './entities/platform-referral.entity';
 import { PlatformProfileDecorationEntity } from './entities/platform-profile-decoration.entity';
 import { PlatformNotificationEntity } from './entities/platform-notification.entity';
+import { PlatformFocusRoomEntity } from './entities/platform-focus-room.entity';
+import { PlatformFocusRoomMemberEntity } from './entities/platform-focus-room-member.entity';
 import { SchoolAccountEntity } from './entities/school-account.entity';
 import { SchoolServiceConnectionEntity } from './entities/school-service-connection.entity';
 import { PlatformProcessor } from './platform-processor';
@@ -83,6 +87,8 @@ import { WebVpnSeatClientService } from './webvpn-seat-client.service';
       PlatformAttendanceSettingEntity,
       PlatformMembershipEntity,
       PlatformNotificationEntity,
+      PlatformFocusRoomEntity,
+      PlatformFocusRoomMemberEntity,
       PlatformPointsLedgerEntity,
       PlatformPointsWalletEntity,
       PlatformProRequestEntity,
@@ -96,6 +102,7 @@ import { WebVpnSeatClientService } from './webvpn-seat-client.service';
   controllers: [
     PlatformAccountsController,
     PlatformAttendanceController,
+    PlatformFocusRoomsController,
     PlatformAdminController,
     PlatformAuthController,
     PlatformDashboardController,
@@ -114,6 +121,7 @@ import { WebVpnSeatClientService } from './webvpn-seat-client.service';
   providers: [
     PlatformAccountsService,
     PlatformAttendanceService,
+    PlatformFocusRoomsService,
     PlatformAdminGuard,
     PlatformAdminService,
     PlatformBookingExecutor,

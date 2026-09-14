@@ -58,7 +58,7 @@ const products: ShopProduct[] = [
     kind: 'invite',
     title: '好友邀请码',
     subtitle: '一次性 · 可转赠 · 30 天有效',
-    description: '给认识的同学一个席定入口。邀请码只展示一次，生成后可以复制并转交。',
+  description: '给认识的同学一个席定入口。生成后只展示一次，请及时转交。',
     badge: '600 席定币',
     icon: 'gift',
     accent: 'bg-emerald-600'
@@ -69,7 +69,7 @@ const products: ShopProduct[] = [
     kind: 'coming',
     title: '高校扩展位',
     subtitle: '更多学校、更多校区',
-    description: '江苏海洋大学和更多高校空间正在接入，新的服务会先在这里出现。',
+  description: '江苏海洋大学和更多高校正在接入，新的服务会先在这里出现。',
     badge: '筹备中',
     icon: 'building',
     accent: 'bg-sky-700'
@@ -80,7 +80,7 @@ const products: ShopProduct[] = [
     kind: 'coming',
     title: '专注时段包',
     subtitle: '让学习计划更有秩序',
-    description: '围绕固定时段、连续学习和个人偏好设计的后续权益，目前不开放兑换。',
+  description: '固定时段和连续学习计划，正在准备中。',
     badge: '即将上架',
     icon: 'clock',
     accent: 'bg-slate-700'
@@ -91,7 +91,7 @@ const products: ShopProduct[] = [
     kind: 'coming',
     title: '连续签到徽章',
     subtitle: '把坚持留下来',
-    description: '连续签到达到指定天数后解锁个人徽章和展示标识，当前正在设计中。',
+  description: '连续签到可解锁个人徽章和展示标识，正在准备中。',
     badge: '成长中',
     icon: 'badgeCheck',
     accent: 'bg-amber-600'
@@ -102,7 +102,7 @@ const products: ShopProduct[] = [
     kind: 'coming',
     title: '专注计划模板',
     subtitle: '一键安排学习节奏',
-    description: '将固定时段、工作日和备选座位组合成可复用的学习计划模板。',
+  description: '把固定时段、工作日和备选座位保存成计划，正在准备中。',
     badge: '规划中',
     icon: 'calendar',
     accent: 'bg-rose-700'
@@ -174,7 +174,7 @@ export default function StoreViewPage({
         invitations: [result.invitation, ...current.invitations]
       }));
       setGeneratedCode(result.code);
-      toast.success('好友邀请码已兑换');
+      toast.success('邀请码已兑换');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : '兑换失败');
     } finally {
@@ -208,7 +208,7 @@ export default function StoreViewPage({
   return (
     <PageContainer
       pageTitle='席定杂货铺'
-      pageDescription='用活跃换权益，把校园预约能力一件件收入自己的货架。'
+      pageDescription='签到和活动获得席定币，再兑换可用权益。'
       pageHeaderAction={
         <div className='flex flex-wrap gap-2'>
           <Link href='/dashboard/leaderboard' className={buttonVariants({ variant: 'outline' })}>
@@ -255,7 +255,7 @@ export default function StoreViewPage({
                 席定杂货铺
               </h1>
               <p className='mt-3 max-w-xl text-sm leading-6 text-background/65 sm:text-base'>
-                不卖噱头，只把真实可用的预约权益放到货架上。今天的活跃，换成之后的选择权。
+                每日签到，积累席定币；需要时兑换平台权益。
               </p>
               <div className='mt-5 flex flex-wrap gap-2'>
                 <Badge variant='secondary'>{membership.planLabel}</Badge>
@@ -275,7 +275,7 @@ export default function StoreViewPage({
               />
               <div className='flex items-center justify-between gap-3'>
                 <div>
-                  <p className='text-xs text-background/55'>下一件可兑换商品</p>
+                  <p className='text-xs text-background/55'>距下个兑换目标</p>
                   <p className='mt-1 font-semibold'>好友邀请码</p>
                 </div>
                 <Icons.gift className='text-primary' />
@@ -285,7 +285,7 @@ export default function StoreViewPage({
                 <p className='text-right text-xs text-background/55'>{pointsMissing ? `还差 ${pointsMissing} 席定币` : '现在可以兑换'}</p>
               </div>
               <Progress value={progress} aria-label='兑换进度' className='mt-3 [&_[data-slot=progress-track]]:bg-background/15 [&_[data-slot=progress-indicator]]:bg-primary' />
-              <p className='mt-2 text-xs text-background/50'>按每日 +{data.dailyActivityPoints} 席定币计算，约需 {activeDaysNeeded} 天活跃</p>
+              <p className='mt-2 text-xs text-background/50'>每日签到 +{data.dailyActivityPoints} 席定币，约 {activeDaysNeeded} 天可兑换</p>
             </div>
           </div>
         </section>
@@ -325,8 +325,8 @@ export default function StoreViewPage({
             <CardHeader>
               <div className='flex items-start justify-between gap-3'>
                 <div>
-                  <CardTitle className='flex items-center gap-2'><Icons.gift />我的货架</CardTitle>
-                  <CardDescription className='mt-1'>已兑换的邀请商品和当前权益。</CardDescription>
+                  <CardTitle className='flex items-center gap-2'><Icons.gift />我的权益</CardTitle>
+                  <CardDescription className='mt-1'>已兑换的商品和当前权益。</CardDescription>
                 </div>
                 <Badge variant='outline'>{data.invitations.length + (membership.isPro ? 1 : 0)} 件</Badge>
               </div>
@@ -345,8 +345,8 @@ export default function StoreViewPage({
               {!membership.isPro && data.invitations.length === 0 && (
                 <div className='rounded-lg border border-dashed p-5 text-center'>
                   <Icons.product className='text-muted-foreground mx-auto' />
-                  <p className='mt-2 text-sm font-medium'>货架还是空的</p>
-                  <p className='text-muted-foreground mt-1 text-xs'>从上面的精选商品开始积累。</p>
+                  <p className='mt-2 text-sm font-medium'>还没有已兑换权益</p>
+                  <p className='text-muted-foreground mt-1 text-xs'>从上面的商品开始选择。</p>
                 </div>
               )}
             </CardContent>
@@ -354,22 +354,22 @@ export default function StoreViewPage({
 
           <Card className='shadow-none'>
             <CardHeader>
-              <CardTitle>杂货铺规则</CardTitle>
-              <CardDescription>积分有门槛，权益有记录。</CardDescription>
+              <CardTitle>兑换说明</CardTitle>
+              <CardDescription>席定币来源和兑换规则。</CardDescription>
             </CardHeader>
             <CardContent>
               <Accordion>
                 <AccordionItem value='earn'>
-                  <AccordionTrigger>席定币怎么获得？</AccordionTrigger>
+                  <AccordionTrigger>席定币从哪里来？</AccordionTrigger>
                   <AccordionContent className='text-muted-foreground'>每日签到获得 {data.dailyActivityPoints} 席定币；好友完成首次验证后，邀请人获得 {data.referralRewardPoints} 席定币。</AccordionContent>
                 </AccordionItem>
                 <AccordionItem value='redeem'>
-                  <AccordionTrigger>为什么邀请码要 {data.invitePointsCost} 席定币？</AccordionTrigger>
-                  <AccordionContent className='text-muted-foreground'>兑换门槛按约 60 元价值锚定，避免批量滥发。按每日活跃计算，需要约 {Math.ceil(data.invitePointsCost / Math.max(1, data.dailyActivityPoints))} 天。</AccordionContent>
+                  <AccordionTrigger>兑换邀请码需要多少席定币？</AccordionTrigger>
+                  <AccordionContent className='text-muted-foreground'>需要 {data.invitePointsCost} 席定币，按每日签到计算约需 {Math.ceil(data.invitePointsCost / Math.max(1, data.dailyActivityPoints))} 天。</AccordionContent>
                 </AccordionItem>
                 <AccordionItem value='source'>
-                  <AccordionTrigger>邀请码可以公开出售吗？</AccordionTrigger>
-                  <AccordionContent className='text-muted-foreground'>平台不提供公开售卖入口。邀请码只建议转赠给真实认识的同学，生成记录和使用状态都由服务端保存。</AccordionContent>
+                  <AccordionTrigger>邀请码怎么使用？</AccordionTrigger>
+                  <AccordionContent className='text-muted-foreground'>平台不提供公开售卖入口。邀请码只建议转赠给认识的同学，生成记录和使用状态都会保存。</AccordionContent>
                 </AccordionItem>
               </Accordion>
             </CardContent>
@@ -388,13 +388,13 @@ export default function StoreViewPage({
               <div className='flex items-center justify-between gap-4'><span>兑换门槛</span><strong>{inviteCost} 席定币</strong></div>
               <Separator className='my-3' />
               <div className='flex items-center justify-between gap-4'><span>当前余额</span><strong>{data.pointsBalance} 席定币</strong></div>
-              <p className='text-muted-foreground mt-3 text-xs'>生成后只显示一次，请确认有明确的转赠对象。</p>
+              <p className='text-muted-foreground mt-3 text-xs'>生成后只显示一次，请确认转赠对象。</p>
             </div>
           )}
           {selectedProduct?.kind === 'pro' && (
             <div className='rounded-lg border bg-muted/30 p-4 text-sm'>¥20，一次支付，永久有效。支付成功后由 webhook 自动授予 Pro。</div>
           )}
-          {selectedProduct?.kind === 'coming' && <div className='rounded-lg border bg-muted/30 p-4 text-sm'>这个商品正在准备真实的后端能力，当前不会扣除积分，也不会伪造兑换结果。</div>}
+          {selectedProduct?.kind === 'coming' && <div className='rounded-lg border bg-muted/30 p-4 text-sm'>该权益还在准备中，当前不会扣除席定币。</div>}
           <DialogFooter>
             <Button variant='outline' onClick={() => setSelectedProduct(null)}>返回货架</Button>
             {selectedProduct?.kind === 'pro' && <Button onClick={() => void openProCheckout()} disabled={busy === 'pro' || !canRequest}>{busy === 'pro' ? '处理中' : membership.paymentAvailable ? '前往支付' : '申请开通'}</Button>}

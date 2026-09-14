@@ -47,7 +47,7 @@ const onboardingSteps: Tour[] = [
       {
         icon: '03',
         title: '在座位图里找位置',
-        content: '按场馆、楼栋、空间和日期查看实时座位。选中的座位可以直接预约，也可以带入自动任务。',
+        content: '按场馆、楼栋、空间和日期找座位。选中后可以直接预约，也可以加入抢座任务。',
         selector: '#nextstep-seat-map-title',
         side: 'top',
         nextRoute: '/dashboard/tasks',
@@ -62,7 +62,7 @@ const onboardingSteps: Tour[] = [
       {
         icon: '04',
         title: '把偏好保存成任务',
-        content: '设置主座位、备选座位、预约时间和执行日期。系统会在开放窗口按顺序尝试。',
+        content: '设置主座位、备选座位、预约时间和执行日期。开放后按顺序尝试。',
         selector: '#nextstep-task-create',
         side: 'bottom',
         nextRoute: '/dashboard/attendance',

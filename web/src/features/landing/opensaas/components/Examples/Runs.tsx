@@ -7,7 +7,7 @@ export function Runs() {
     <HighlightedFeature
       id='runs-feature'
       name='每一次运行，都有清楚的结果。'
-      description='连接准备、预约尝试、成功回执和失败原因都会写进运行记录。打开工作台，就能知道每一步发生了什么。'
+      description='成功、失败和原因都会按时间记录。打开工作台，就能快速确认结果。'
       highlightedComponent={<RunsExample />}
       direction='row-reverse'
     />
@@ -20,7 +20,7 @@ function RunsExample() {
       <div className='flex items-start justify-between border-b pb-5'>
         <div>
           <p className='text-muted-foreground text-xs font-medium tracking-[0.16em] uppercase'>
-            Run history
+            执行记录
           </p>
           <p className='mt-2 text-lg font-semibold'>今日运行记录</p>
         </div>
@@ -36,15 +36,15 @@ function RunsExample() {
         />
         <RunRow
           icon={<Icons.shield />}
-          title='授权预热'
-          detail='校园账号连接正常，预约准备完成'
+          title='连接检查'
+          detail='学校账号已连接，预约准备完成'
           time='2 分钟前'
           tone='active'
         />
         <RunRow
           icon={<Icons.info />}
-          title='候选检查'
-          detail='已载入 3 个座位和时间候选'
+          title='座位候选'
+          detail='已载入 3 个座位和时段'
           time='已记录'
           tone='muted'
         />

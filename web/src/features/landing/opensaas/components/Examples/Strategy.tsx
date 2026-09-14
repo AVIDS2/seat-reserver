@@ -6,8 +6,8 @@ export function Strategy() {
   return (
     <HighlightedFeature
       id='strategy-feature'
-      name='你选位置，平台记住偏好。'
-      description='从实时座位图中选定首选与备选，再安排日期和时间。位置变化、可用状态和执行顺序都以直观的方式呈现。'
+      name='选好位置，开放时自动尝试。'
+      description='从座位图选主座位和备选位置，再设置日期与时段。开放后按这个顺序自动提交。'
       highlightedComponent={<StrategyExample />}
     />
   );
@@ -19,7 +19,7 @@ function StrategyExample() {
       <div className='flex items-start justify-between border-b pb-5'>
         <div>
           <p className='text-muted-foreground text-xs font-medium tracking-[0.16em] uppercase'>
-            Booking plan
+            抢座计划
           </p>
           <p className='mt-2 text-lg font-semibold'>今日学习计划</p>
         </div>
@@ -34,7 +34,7 @@ function StrategyExample() {
       </div>
       <div className='text-muted-foreground mt-5 flex items-center gap-2 border-t pt-4 text-xs'>
         <Icons.clock className='size-4' />
-        尝试窗口 · 20 秒 · 按顺序执行
+        开放后尝试 · 20 秒 · 按顺序提交
       </div>
     </div>
   );

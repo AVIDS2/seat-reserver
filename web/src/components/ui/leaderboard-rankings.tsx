@@ -63,8 +63,8 @@ export function LeaderboardRankings({
             <Icons.flame />
           </span>
           <div>
-            <p className='text-sm font-semibold'>全量榜单</p>
-            <p className='text-muted-foreground text-xs'>按预约学习时长排序</p>
+            <p className='text-sm font-semibold'>完整榜单</p>
+            <p className='text-muted-foreground text-xs'>按自习时长排序</p>
           </div>
         </div>
         <Badge variant='secondary'>{rankings.length} 人</Badge>

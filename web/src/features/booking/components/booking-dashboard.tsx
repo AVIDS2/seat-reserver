@@ -185,7 +185,7 @@ export default function BookingDashboard({
               ...item,
               enabled,
               status: enabled ? 'enabled' : 'paused',
-              nextRun: enabled ? '等待下一次开放窗口' : '已暂停'
+              nextRun: enabled ? '待执行 · 下次开放时自动提交' : '已暂停'
             }
           : item
       )
@@ -198,7 +198,7 @@ export default function BookingDashboard({
       }));
       toast.success(enabled ? '任务已继续' : '任务已暂停', {
         description: enabled
-          ? '系统会在下一次开放窗口按你的设置自动预约。'
+          ? '下次开放时按你的设置自动抢座。'
           : '暂停后不会再自动预约，已经成功的预约不会被取消。'
       });
     } catch (error) {
@@ -227,8 +227,8 @@ export default function BookingDashboard({
             </h1>
             <p className='text-muted-foreground mt-2 max-w-2xl text-sm leading-6'>
               {summary.enabledTasks > 0
-                ? `你的 ${summary.enabledTasks} 个启用任务已排程。系统会在开放时间自动预热账号，并按候选策略完成预约。`
-                : '还没有启用任务，先去配置一条自动预约策略。'}
+                ? `你的 ${summary.enabledTasks} 个任务已启用，下次开放时自动尝试。`
+                : '还没有启用任务，先创建一条预约任务。'}
             </p>
           </div>
           <div className='grid grid-cols-2 gap-2 sm:flex'>
@@ -256,7 +256,7 @@ export default function BookingDashboard({
           <MetricCard
             label='已启用任务'
             value={String(summary.enabledTasks)}
-            detail={summary.enabledTasks ? '将在下一次开放窗口自动执行' : '暂无启用任务'}
+            detail={summary.enabledTasks ? '下次开放时自动提交' : '暂无启用任务'}
             icon={Icons.target}
             accent='success'
           />
@@ -276,7 +276,7 @@ export default function BookingDashboard({
           <MetricCard
             label='账号状态'
             value={`${summary.connectedAccounts} / ${summary.totalAccounts}`}
-            detail={summary.totalAccounts ? '连接正常 / 总账号' : '尚未接入学校账号'}
+            detail={summary.totalAccounts ? '已连接 / 总账号' : '尚未接入学校账号'}
             icon={Icons.shield}
             accent='success'
           />
@@ -304,7 +304,7 @@ export default function BookingDashboard({
                 <BookingOpenCountdown />
                 <div className='grid grid-cols-2 gap-x-8 gap-y-3 text-sm'>
                   <div>
-                    <p className='text-muted-foreground text-xs'>准备阶段</p>
+                    <p className='text-muted-foreground text-xs'>账号检查</p>
                     <p className='mt-1 font-medium'>{summary.prewarmTime}</p>
                   </div>
                   <div>
@@ -318,7 +318,7 @@ export default function BookingDashboard({
                     <p className='mt-1 font-medium'>{summary.enabledTasks} 个</p>
                   </div>
                   <div>
-                    <p className='text-muted-foreground text-xs'>候选策略</p>
+                    <p className='text-muted-foreground text-xs'>座位候选</p>
                     <p className='mt-1 font-medium'>{summary.candidateGroups} 组</p>
                   </div>
                 </div>
@@ -409,7 +409,7 @@ export default function BookingDashboard({
 
         <Card className='shadow-none'>
           <CardHeader className='border-b'>
-            <CardDescription>自动化任务</CardDescription>
+            <CardDescription>任务概览</CardDescription>
             <CardTitle className='text-xl'>预约任务</CardTitle>
             <CardAction>
               <Link

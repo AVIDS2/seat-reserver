@@ -286,10 +286,10 @@ export class PlatformTasksService {
       })),
       message:
         tokenStatus === 'valid'
-          ? 'Token 有效；本次 dry-run 未发送预约请求。'
+          ? '账号可用；本次检查未提交预约。'
           : tokenStatus === 'missing'
-            ? '尚未缓存 Token；本次 dry-run 未发送预约请求。'
-            : 'Token 检查未通过；本次 dry-run 未发送预约请求。',
+            ? '账号尚未验证；本次检查未提交预约。'
+            : '账号验证未通过；本次检查未提交预约。',
     };
   }
 

@@ -25,8 +25,8 @@ export function FeaturesGrid({ features, className = '' }: FeaturesGridProps) {
   return (
     <div className='mx-auto my-16 flex max-w-7xl flex-col gap-4 md:my-24 lg:my-40' id='features'>
       <SectionTitle
-        title='产品能力'
-        description='把授权、策略、执行和结果放在同一套清晰的工作流里。'
+        title='从选座到结果，全部在一处'
+        description='绑定账号、选择座位、设置时段，开放后查看结果。'
       />
       <div
         className={cn(

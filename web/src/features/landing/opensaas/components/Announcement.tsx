@@ -3,10 +3,10 @@ import { Icons } from '@/components/icons';
 export function Announcement() {
   return (
     <div className='bg-secondary text-secondary-foreground relative flex w-full items-center justify-center gap-2 p-2.5 text-center text-xs font-semibold sm:gap-3 sm:p-3 sm:text-sm'>
-      <span className='sm:hidden'>实时座位图已上线</span>
-      <span className='hidden sm:inline'>实时座位图已上线，选座与自动执行进入同一个流程</span>
+      <span className='sm:hidden'>座位图已上线</span>
+      <span className='hidden sm:inline'>在座位图上选座，直接加入抢座任务</span>
       <span className='rounded-full bg-background/20 px-2.5 py-1 text-xs tracking-wide'>
-        多场馆支持
+        多场馆
       </span>
       <a
         href='#flow'

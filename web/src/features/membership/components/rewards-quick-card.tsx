@@ -68,7 +68,7 @@ export function RewardsQuickCard({ initialData }: { initialData: RewardsSnapshot
           </div>
           <div className='mt-4 space-y-2'>
             <div className='flex items-center justify-between gap-3 text-xs'>
-              <span className='text-muted-foreground'>兑换好友邀请码</span>
+              <span className='text-muted-foreground'>距好友邀请码</span>
               <span className='font-medium tabular-nums'>
                 {data.pointsBalance} / {data.invitePointsCost}
               </span>
@@ -76,8 +76,8 @@ export function RewardsQuickCard({ initialData }: { initialData: RewardsSnapshot
             <Progress value={progress} aria-label='席定币兑换进度' />
           </div>
           <div className='mt-3 flex flex-wrap items-center gap-2'>
-            <Badge variant='secondary'>支线活动 {availableActivities} 个可领取</Badge>
-            <span className='text-muted-foreground text-xs'>每日签到 +30</span>
+            <Badge variant='secondary'>{availableActivities} 个活动可领取</Badge>
+            <span className='text-muted-foreground text-xs'>每日签到 +30 席定币</span>
           </div>
         </div>
         <div className='flex flex-col gap-2 sm:min-w-40'>
@@ -93,14 +93,14 @@ export function RewardsQuickCard({ initialData }: { initialData: RewardsSnapshot
             href='/dashboard/membership'
             className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'w-full')}
           >
-            查看活动中心
+            查看活动
             <Icons.arrowRight data-icon='inline-end' />
           </Link>
           <Link
             href='/dashboard/store'
             className='text-muted-foreground hover:text-foreground text-center text-xs underline-offset-4 hover:underline'
           >
-            去席定商店兑换
+            去杂货铺兑换
           </Link>
         </div>
       </CardContent>

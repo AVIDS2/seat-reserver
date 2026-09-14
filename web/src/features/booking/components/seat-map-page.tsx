@@ -467,7 +467,7 @@ export default function SeatMapPage({
       >
         <div className='flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between'>
           <div className='min-w-0'>
-            <p className='text-muted-foreground mb-2 text-sm'>实时空间</p>
+            <p className='text-muted-foreground mb-2 text-sm'>选座与预约</p>
             <h1
               id='nextstep-seat-map-title'
               className='text-2xl font-semibold tracking-tight sm:text-3xl'
@@ -475,7 +475,7 @@ export default function SeatMapPage({
               座位图
             </h1>
             <p className='text-muted-foreground mt-2 max-w-2xl text-sm leading-6'>
-              查看学校实时座位状态，按日期、楼栋和空间快速找到合适的位置。
+              按日期、楼栋和空间找座位；选中后可直接预约或加入抢座任务。
             </p>
           </div>
           <Link href='/dashboard/tasks' className={cn(buttonVariants({ variant: 'outline' }))}>
@@ -487,12 +487,12 @@ export default function SeatMapPage({
         {accounts.length === 0 ? (
           <Alert>
             <Icons.warning />
-            <AlertTitle>先接入学校账号</AlertTitle>
+              <AlertTitle>先绑定学校账号</AlertTitle>
             <AlertDescription>
               <Link href='/dashboard/accounts' className='underline underline-offset-4'>
                 前往账号与授权
               </Link>
-              ，完成验证后即可查看实时座位图。
+              ，验证后即可查看座位图。
             </AlertDescription>
           </Alert>
         ) : (
@@ -601,10 +601,10 @@ export default function SeatMapPage({
                         </SelectGroup>
                       </SelectContent>
                     </Select>
-                    <FieldDescription>名称来自学校实时目录。</FieldDescription>
+                    <FieldDescription>空间名称来自学校目录。</FieldDescription>
                   </Field>
                   <Field>
-                    <FieldLabel htmlFor='seat-map-date'>查看日期</FieldLabel>
+                    <FieldLabel htmlFor='seat-map-date'>预约日期</FieldLabel>
                     <Select
                       value={date}
                       items={(catalog?.dates ?? []).map((item) => ({
@@ -624,7 +624,7 @@ export default function SeatMapPage({
                       </SelectTrigger>
                       <SelectContent>
                         <SelectGroup>
-                          <SelectLabel>可查看日期</SelectLabel>
+                          <SelectLabel>可预约日期</SelectLabel>
                           {catalog?.dates.map((item) => (
                             <SelectItem key={item} value={item}>
                               {formatDateLabel(item)}
@@ -663,14 +663,14 @@ export default function SeatMapPage({
                   <AlertTitle>
                     {error
                       ? catalogNotice.maintenance
-                        ? '学校系统维护中'
-                        : '实时数据未加载'
+                        ? '学校目录暂不可用'
+                        : '座位数据加载失败'
                       : '图书馆单次预约需要验证'}
                   </AlertTitle>
                   <AlertDescription>
                     {error
                       ? catalogNotice.message
-                      : '座位状态仍可查看；点选验证码只确认当前这一次预约，不会变成每日自动抢座授权。'}
+                      : '座位状态仍可查看；验证只确认当前这一次预约，不会开启每日自动抢座。'}
                   </AlertDescription>
                 </Alert>
               )}
@@ -692,7 +692,7 @@ export default function SeatMapPage({
                 <div className='min-w-0'>
                   <p className='text-sm font-medium'>已选 {selectedIds.length} 个座位</p>
                   <p className='text-muted-foreground mt-1 text-xs'>
-                    自动任务可以把任意真实座位加入候选；单次预约会再读取所选日期的可用时段。
+                    可把任意真实座位加入抢座任务；单次预约会读取所选日期的可用时段。
                   </p>
                 </div>
                 <div className='flex flex-wrap gap-2 sm:justify-end'>
@@ -810,7 +810,7 @@ export default function SeatMapPage({
                 <Icons.info />
                 <AlertTitle>当前没有可提交的时段</AlertTitle>
                 <AlertDescription>
-                  可以保留这个座位并配置自动任务，系统会在开放窗口再次尝试。
+                  可以保留这个座位并加入抢座任务，开放时会再次尝试。
                 </AlertDescription>
               </Alert>
             )}

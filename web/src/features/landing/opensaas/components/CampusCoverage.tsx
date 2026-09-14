@@ -63,10 +63,10 @@ export function CampusCoverage() {
             Campus coverage
           </p>
           <h2 className='text-foreground mt-3 text-3xl leading-tight font-bold tracking-tight sm:text-4xl'>
-            从一所校园开始，连接更多学习空间。
+            常用学习空间，逐校接入。
           </h2>
           <p className='text-muted-foreground mt-5 text-base leading-7'>
-            每所高校都有自己的服务入口、空间结构和预约规则。平台按校园适配，让选择、执行和结果追踪保持同一种清晰体验。
+            每所高校都有自己的空间和预约规则。席定按校园接入，让选座和抢座保持同一种体验。
           </p>
 
           <div className='mt-8 border-t'>

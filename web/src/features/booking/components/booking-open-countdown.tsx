@@ -43,10 +43,10 @@ export function BookingOpenCountdown() {
             />
             <div>
               <p className='text-xs font-semibold uppercase tracking-[0.2em] text-destructive'>
-                Reservation alert
+                OPENING COUNTDOWN
               </p>
-              <h2 className='mt-1 text-lg font-semibold tracking-tight sm:text-xl'>预约窗口锁定</h2>
-              <p className='mt-1 text-xs text-background/60'>系统会在开放时自动预热账号并提交任务</p>
+              <h2 className='mt-1 text-lg font-semibold tracking-tight sm:text-xl'>下一次抢座开放</h2>
+              <p className='mt-1 text-xs text-background/60'>开放后按你的座位和时段自动提交</p>
             </div>
           </div>
           <Badge className='border-destructive/45 bg-destructive/10 text-destructive'>
@@ -61,7 +61,7 @@ export function BookingOpenCountdown() {
             </p>
             <p className='mt-2 font-mono text-4xl font-bold tracking-tight text-destructive'>06:00</p>
             <p className='mt-2 max-w-xs text-xs leading-5 text-background/60'>
-              开放后进入任务执行阶段，所有候选策略按顺序尝试。
+              到点开始尝试，主座位没空时继续尝试备选。
             </p>
           </div>
 
@@ -81,7 +81,7 @@ export function BookingOpenCountdown() {
 
         <div className='flex flex-col gap-3'>
           <div className='flex items-center justify-between gap-3 text-[11px] uppercase tracking-[0.16em] text-background/45'>
-            <span>System standby</span>
+            <span>等待开放</span>
             <span>{countdown.progress.toFixed(0)}%</span>
           </div>
           <Progress
@@ -90,9 +90,9 @@ export function BookingOpenCountdown() {
             className='h-1 [&_[data-slot=progress-track]]:bg-background/15 [&_[data-slot=progress-indicator]]:bg-destructive'
           />
           <div className='flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-background/55'>
-            <span className='flex items-center gap-1.5'><Icons.refresh /> Token 预热</span>
-            <span className='flex items-center gap-1.5'><Icons.target /> 候选座位</span>
-            <span className='flex items-center gap-1.5'><Icons.clock /> 自动提交</span>
+            <span className='flex items-center gap-1.5'><Icons.refresh /> 检查账号</span>
+            <span className='flex items-center gap-1.5'><Icons.target /> 尝试座位</span>
+            <span className='flex items-center gap-1.5'><Icons.clock /> 提交预约</span>
           </div>
         </div>
       </div>

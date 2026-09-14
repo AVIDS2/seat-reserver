@@ -164,7 +164,7 @@ export default function BookingReservationsPage({
             <p className='text-muted-foreground mb-2 text-sm'>学校服务</p>
             <h1 className='text-2xl font-semibold tracking-tight sm:text-3xl'>我的预约</h1>
             <p className='text-muted-foreground mt-2 max-w-2xl text-sm leading-6'>
-              默认展示待使用的预约，可切换到今天和历史记录。数据来自已连接的学校服务。
+              先看待使用的预约，也可以切换到今天和历史记录。
             </p>
           </div>
           <Button
@@ -412,8 +412,8 @@ function todayDate(): string {
 }
 
 function emptyDescription(status: StatusFilter): string {
-  if (status === 'today') return '今天还没有预约记录。可以去座位图查看实时空间。';
+  if (status === 'today') return '今天还没有预约，去座位图选一个位置。';
   if (status === 'upcoming') return '当前没有待使用的预约。';
   if (status === 'history') return '还没有历史预约记录。';
-  return '已连接服务返回的预约记录会显示在这里。';
+  return '预约成功后会显示在这里。';
 }

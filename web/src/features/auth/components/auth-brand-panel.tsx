@@ -54,7 +54,7 @@ export default function AuthBrandPanel({
           </div>
           <div className='border-l border-white/10 pl-4'>
             <p className='font-mono text-lg text-[#f2ad4c]'>自定义</p>
-            <p className='mt-1 text-[11px] text-white/40'>候选策略</p>
+            <p className='mt-1 text-[11px] text-white/40'>备选座位</p>
           </div>
         </div>
       </div>

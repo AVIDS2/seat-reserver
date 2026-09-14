@@ -66,9 +66,9 @@ export function ProfileShowcasePanel({
       });
       setShowcase(next);
       onSelectionSaved(next);
-      toast.success('个人展示已更新');
+      toast.success('装扮已更新');
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : '展示设置保存失败');
+      toast.error(error instanceof Error ? error.message : '装扮保存失败');
     } finally {
       setSaving(false);
     }
@@ -79,10 +79,10 @@ export function ProfileShowcasePanel({
       <CardHeader className='border-b'>
         <div className='flex items-start justify-between gap-3'>
           <div>
-            <CardDescription>个人展示</CardDescription>
+            <CardDescription>个性装扮</CardDescription>
             <CardTitle className='mt-1'>头像框、称号与徽章</CardTitle>
             <p className='text-muted-foreground mt-1 text-sm leading-6'>
-              解锁状态由预约、签到和会员权益决定，选择结果会保存到平台账号。
+              选择头像框、称号和徽章，展示你的学习状态。
             </p>
           </div>
           <ProfileAvatar
@@ -110,7 +110,7 @@ export function ProfileShowcasePanel({
           onValueChange={(values) => setTab((values[0] as ShowcaseTab) || 'frame')}
           variant='outline'
           spacing={0}
-          aria-label='选择个人展示类型'
+          aria-label='选择装扮类型'
         >
           <ToggleGroupItem value='frame'>头像框</ToggleGroupItem>
           <ToggleGroupItem value='title'>称号</ToggleGroupItem>
