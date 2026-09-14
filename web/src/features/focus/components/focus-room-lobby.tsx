@@ -117,7 +117,7 @@ export default function FocusRoomLobbyPage({ initialData }: { initialData: Focus
 
   return (
     <PageContainer
-      pageTitle='番茄自习室'
+      pageTitle='席定自习室'
       pageDescription='和朋友一起开始一段专注时间。没有聊天，只有同屏进度。'
       pageHeaderAction={
         <div className='flex flex-wrap gap-2'>
@@ -145,7 +145,7 @@ export default function FocusRoomLobbyPage({ initialData }: { initialData: Focus
                 一起坐下，专注刚刚好。
               </h2>
               <p className='mt-3 max-w-xl text-sm leading-6 text-background/65 sm:text-base'>
-                创建一个安静的房间，和同学共享一只番茄钟。看见有人在专注，也更容易把这一段时间用好。
+                创建一个安静的房间，和同学共享一段专注时间。看见有人在专注，也更容易把这一段时间用好。
               </p>
             </div>
             <div className='grid grid-cols-3 gap-3 sm:min-w-80'>
@@ -198,7 +198,7 @@ export default function FocusRoomLobbyPage({ initialData }: { initialData: Focus
         <DialogContent className='sm:max-w-md'>
           <DialogHeader>
             <DialogTitle>加入专注房</DialogTitle>
-            <DialogDescription>输入 6 位房间码，和朋友进入同一只番茄钟。</DialogDescription>
+            <DialogDescription>输入 6 位房间码，和朋友进入同一间席定自习室。</DialogDescription>
           </DialogHeader>
           <Field>
             <FieldLabel htmlFor='focus-room-code'>房间码</FieldLabel>
@@ -353,7 +353,7 @@ function CreateRoomDialog({
       <DialogContent className='max-h-[calc(100svh-2rem)] overflow-y-auto sm:max-w-lg'>
         <DialogHeader>
           <DialogTitle>创建专注房</DialogTitle>
-          <DialogDescription>设置一只番茄钟，房间码生成后可以发给同学。</DialogDescription>
+          <DialogDescription>设置专注节奏，房间码生成后可以发给同学。</DialogDescription>
         </DialogHeader>
         <FieldGroup>
           <Field>

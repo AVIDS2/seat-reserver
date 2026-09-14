@@ -22,7 +22,7 @@ export function ThemeSelector() {
   return (
     <div className='flex items-center gap-2'>
       <Label htmlFor='theme-selector' className='sr-only'>
-        Theme
+        主题
       </Label>
       <Select
         items={THEMES.map((theme) => ({ value: theme.value, label: theme.name }))}
@@ -46,7 +46,7 @@ export function ThemeSelector() {
           {THEMES.length > 0 && (
             <>
               <SelectGroup>
-                <SelectLabel>themes</SelectLabel>
+                <SelectLabel>主题配色</SelectLabel>
                 {THEMES.map((theme) => (
                   <SelectItem key={theme.name} value={theme.value}>
                     {theme.name}

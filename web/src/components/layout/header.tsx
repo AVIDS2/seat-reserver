@@ -4,6 +4,7 @@ import { Separator } from '../ui/separator';
 import { Breadcrumbs } from '../breadcrumbs';
 import SearchInput from '../search-input';
 import { ThemeModeToggle } from '../themes/theme-mode-toggle';
+import { ThemeSelector } from '../themes/theme-selector';
 import { NotificationCenter } from '@/features/notifications/components/notification-center';
 import { UserNav } from './user-nav';
 import { OnboardingLauncher } from '@/features/onboarding/components/onboarding-launcher';
@@ -28,6 +29,9 @@ export default function Header() {
           <SearchInput />
         </div>
         <ThemeModeToggle />
+        <div className='hidden sm:flex'>
+          <ThemeSelector />
+        </div>
         <OnboardingLauncher />
         <NotificationCenter />
         <UserNav />

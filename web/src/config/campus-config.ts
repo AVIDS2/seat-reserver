@@ -21,8 +21,8 @@ export const CAMPUS_DEFINITIONS: readonly CampusDefinition[] = [
     name: '常州大学',
     shortName: '常大',
     initials: '常',
-    detail: '西太湖自习室',
-    summary: '自习室已接入，图书馆按服务状态独立维护。',
+    detail: '全校区学习空间',
+    summary: '常州大学自习室与图书馆全校区服务已接入。',
     status: 'connected',
     statusLabel: '已接入',
     services: ['自习室', '图书馆'],
@@ -49,4 +49,3 @@ export function getCampusDefinition(code: string | null | undefined): CampusDefi
 export function isCampusCode(value: unknown): value is CampusCode {
   return value === 'cczu' || value === 'jou';
 }
-

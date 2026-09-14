@@ -144,6 +144,145 @@
   isolation: isolate;
 }
 
+/* Profile decorations use layered CSS shapes so frames remain sharp at every
+   avatar size without shipping a separate raster asset per size. */
+.profile-avatar-shell {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+  isolation: isolate;
+}
+
+.profile-avatar-decor {
+  position: absolute;
+  inset: -0.3rem;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: 9999px;
+}
+
+.profile-frame-plain .profile-avatar-decor {
+  border: 1px solid color-mix(in oklch, var(--border) 80%, transparent);
+}
+
+.profile-frame-starlight .profile-avatar-decor {
+  padding: 2px;
+  background: conic-gradient(from 20deg, #38bdf8, #a78bfa, #f0abfc, #38bdf8);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  animation: profile-frame-orbit 5s linear infinite;
+}
+
+.profile-frame-starlight .profile-avatar-decor::after,
+.profile-frame-aurora .profile-avatar-decor::after,
+.profile-frame-champion .profile-avatar-decor::after,
+.profile-frame-pro .profile-avatar-decor::after {
+  position: absolute;
+  inset: -0.18rem;
+  content: '';
+  border-radius: inherit;
+  background-image: radial-gradient(circle, rgb(255 255 255 / 0.96) 0 1px, transparent 1.5px);
+  background-position: 12% 20%, 76% 14%, 92% 68%, 18% 84%;
+  background-size: 0.42rem 0.42rem;
+  opacity: 0.8;
+}
+
+.profile-frame-aurora .profile-avatar-decor {
+  padding: 3px;
+  background: conic-gradient(from 220deg, #34d399, #22d3ee, #818cf8, #f472b6, #34d399);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  filter: drop-shadow(0 0 0.55rem rgb(45 212 191 / 0.5));
+  animation: profile-frame-orbit 7s linear infinite reverse;
+}
+
+.profile-frame-champion .profile-avatar-decor {
+  inset: -0.4rem;
+  border: 3px solid #fbbf24;
+  box-shadow: 0 0 0 2px rgb(251 113 133 / 0.28), 0 0 1.2rem rgb(251 191 36 / 0.45);
+}
+
+.profile-frame-champion .profile-avatar-decor::before {
+  position: absolute;
+  top: -0.35rem;
+  left: 50%;
+  width: 1.8rem;
+  height: 0.7rem;
+  content: '';
+  transform: translateX(-50%);
+  border: 2px solid #fbbf24;
+  border-bottom: 0;
+  border-radius: 0.8rem 0.8rem 0 0;
+  background: color-mix(in oklch, var(--card) 78%, #fbbf24);
+}
+
+.profile-frame-pro .profile-avatar-decor {
+  inset: -0.35rem;
+  border: 2px solid var(--primary);
+  box-shadow: 0 0 0 2px color-mix(in oklch, var(--primary) 32%, transparent), 0 0 1.1rem color-mix(in oklch, var(--primary) 52%, transparent);
+}
+
+.profile-frame-pro .profile-avatar-decor::before {
+  position: absolute;
+  inset: -2px;
+  content: '';
+  border-radius: inherit;
+  background: linear-gradient(110deg, transparent 30%, rgb(255 255 255 / 0.85) 48%, transparent 58%);
+  transform: translateX(-120%);
+  animation: profile-frame-shine 3.8s ease-in-out infinite;
+}
+
+@keyframes profile-frame-orbit {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes profile-frame-shine {
+  0%, 30% { transform: translateX(-120%); }
+  70%, 100% { transform: translateX(120%); }
+}
+
+.profile-title-plaque {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  overflow: hidden;
+  border: 1px solid color-mix(in oklch, var(--primary) 34%, var(--border));
+  border-radius: 0.45rem;
+  padding: 0.28rem 0.55rem;
+  color: var(--foreground);
+  background: color-mix(in oklch, var(--primary) 10%, var(--card));
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.profile-title-plaque::after {
+  position: absolute;
+  inset: 0;
+  content: '';
+  background: linear-gradient(110deg, transparent 35%, rgb(255 255 255 / 0.5) 50%, transparent 65%);
+  transform: translateX(-120%);
+  animation: profile-frame-shine 4.8s ease-in-out infinite;
+}
+
+.profile-title-early_bird { border-color: color-mix(in oklch, #f59e0b 42%, var(--border)); color: #b45309; }
+.profile-title-steady_learner { border-color: color-mix(in oklch, #10b981 42%, var(--border)); color: #047857; }
+.profile-title-seat_planner { border-color: color-mix(in oklch, #8b5cf6 42%, var(--border)); color: #6d28d9; }
+.profile-title-pro_member { border-color: color-mix(in oklch, var(--primary) 52%, var(--border)); color: var(--primary); }
+
+@media (prefers-reduced-motion: reduce) {
+  .profile-frame-starlight .profile-avatar-decor,
+  .profile-frame-aurora .profile-avatar-decor,
+  .profile-frame-pro .profile-avatar-decor::before,
+  .profile-title-plaque::after {
+    animation: none;
+  }
+}
+
 .store-balance-panel > * {
   position: relative;
   z-index: 2;

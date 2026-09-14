@@ -2,47 +2,51 @@
  * Default theme that loads when no user preference is set
  * Change this value to set a different default theme
  */
-export const DEFAULT_THEME = 'claude';
+export const DEFAULT_THEME = 'seat';
 
 export const THEMES = [
   {
-    name: 'Claude',
+    name: '席定彩色',
+    value: 'seat'
+  },
+  {
+    name: '暖橙',
     value: 'claude'
   },
   {
-    name: 'Discord',
+    name: '蓝紫',
     value: 'discord'
   },
   {
-    name: 'Supabase',
+    name: '青绿',
     value: 'supabase'
   },
   {
-    name: 'Vercel',
+    name: '黑白',
     value: 'vercel'
   },
   {
-    name: 'Mono',
+    name: '纯黑白',
     value: 'mono'
   },
   {
-    name: 'Notebook',
+    name: '笔记本',
     value: 'notebook'
   },
   {
-    name: 'Light Green',
+    name: '荧光绿',
     value: 'light-green'
   },
   {
-    name: 'Zen',
+    name: '禅意',
     value: 'zen'
   },
   {
-    name: 'Astro Vista',
+    name: '星空',
     value: 'astro-vista'
   },
   {
-    name: 'WhatsApp',
+    name: '通讯绿',
     value: 'whatsapp'
   }
 ];

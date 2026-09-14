@@ -3,7 +3,7 @@
 import { motion } from 'motion/react';
 
 import { Icons } from '@/components/icons';
-import { ProfileAvatar } from '@/components/profile/profile-avatar';
+import { ProfileAvatar, ProfileTitlePill } from '@/components/profile/profile-avatar';
 import { Badge } from '@/components/ui/badge';
 import { RankTrend } from '@/components/ui/rank-trend';
 import { cn } from '@/lib/utils';
@@ -123,12 +123,7 @@ export function LeaderboardPodium({
               className='mt-4 ring-2 ring-background'
             />
             <p className='mt-2 max-w-full truncate text-center text-sm font-semibold'>{name}</p>
-            <Badge
-              variant='outline'
-              className={cn('mt-1 max-w-full truncate border-current/25 text-[11px]', theme.text)}
-            >
-              {item.titleLabel ?? '初来乍到'}
-            </Badge>
+            <ProfileTitlePill title={item.titleLabel ?? '初来乍到'} titleId={item.titleId} className={cn('mt-1 max-w-full truncate text-[11px]', theme.text)} />
             <span className='text-muted-foreground mt-1 max-w-full truncate text-[11px]'>
               {item.badgeLabel ?? '席定新星'}
             </span>

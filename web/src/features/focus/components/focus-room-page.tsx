@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 
 import { Icons } from '@/components/icons';
-import { ProfileAvatar } from '@/components/profile/profile-avatar';
+import { ProfileAvatar, ProfileTitlePill } from '@/components/profile/profile-avatar';
 import PageContainer from '@/components/layout/page-container';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
@@ -281,7 +281,7 @@ export default function FocusRoomPage({ initialRoom }: { initialRoom: FocusRoom 
             <Card className='shadow-none'>
               <CardHeader>
                 <CardTitle className='flex items-center gap-2'><Icons.info /> 房间设置</CardTitle>
-                <CardDescription>本房间的番茄钟节奏。</CardDescription>
+              <CardDescription>本房间的专注节奏。</CardDescription>
               </CardHeader>
               <CardContent className='grid grid-cols-2 gap-3 text-sm'>
                 <Setting label='专注' value={`${room.settings.workMinutes} 分钟`} />
@@ -353,7 +353,10 @@ function MemberRow({ member, rank, currentUserId, shareFocusData }: { member: Fo
           {member.isHost && <Badge variant='secondary' className='shrink-0'>房主</Badge>}
           {isCurrent && <Badge variant='default' className='shrink-0'>你</Badge>}
         </div>
-        <p className='text-muted-foreground mt-1 truncate text-xs'>{member.titleLabel} · {member.badgeLabel}</p>
+        <div className='mt-1 flex min-w-0 items-center gap-1.5'>
+          <ProfileTitlePill title={member.titleLabel} className='max-w-[9rem] truncate text-[10px]' />
+          <span className='text-muted-foreground truncate text-xs'>{member.badgeLabel}</span>
+        </div>
       </div>
       <div className='shrink-0 text-right'>
         {member.focusSeconds === null ? <p className='text-muted-foreground text-xs'>不公开</p> : <p className='text-sm font-medium tabular-nums'>{member.focusMinutesLabel}</p>}

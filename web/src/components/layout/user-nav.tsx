@@ -1,6 +1,6 @@
 'use client';
 import { Button } from '@/components/ui/button';
-import { ProfileAvatar } from '@/components/profile/profile-avatar';
+import { ProfileAvatar, ProfileTitlePill } from '@/components/profile/profile-avatar';
 import { Badge } from '@/components/ui/badge';
 import {
   DropdownMenu,
@@ -16,6 +16,7 @@ import { signOutPlatform } from '@/features/booking/api/service';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { ThemeSelector } from '@/components/themes/theme-selector';
 
 export function UserNav() {
   const user = usePlatformSession();
@@ -64,13 +65,20 @@ export function UserNav() {
               </div>
               {user.profileDecoration && (
                 <div className='mt-2 flex flex-wrap gap-1.5'>
-                  <Badge variant='secondary'>{user.profileDecoration.titleLabel}</Badge>
+                  <ProfileTitlePill
+                    title={user.profileDecoration.titleLabel}
+                    titleId={user.profileDecoration.titleId}
+                  />
                   <Badge variant='outline'>{user.profileDecoration.badgeLabel}</Badge>
                 </div>
               )}
             </div>
           </DropdownMenuLabel>
         </DropdownMenuGroup>
+        <DropdownMenuSeparator />
+        <div className='px-2 py-1.5'>
+          <ThemeSelector />
+        </div>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
           <DropdownMenuItem onClick={() => router.push('/dashboard/profile')}>

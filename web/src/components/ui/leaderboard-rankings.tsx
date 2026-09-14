@@ -4,7 +4,7 @@ import * as React from 'react';
 import { motion } from 'motion/react';
 
 import { Icons } from '@/components/icons';
-import { ProfileAvatar } from '@/components/profile/profile-avatar';
+import { ProfileAvatar, ProfileTitlePill } from '@/components/profile/profile-avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -134,9 +134,10 @@ export function LeaderboardRankings({
                     </Badge>
                   )}
                 </div>
-                <p className='text-muted-foreground mt-0.5 truncate text-[11px]'>
-                  {item.titleLabel ?? '初来乍到'} · {item.badgeLabel ?? '席定新星'}
-                </p>
+                <div className='mt-1 flex min-w-0 items-center gap-1.5'>
+                  <ProfileTitlePill title={item.titleLabel ?? '初来乍到'} titleId={item.titleId} className='max-w-[10rem] truncate text-[10px]' />
+                  <span className='text-muted-foreground truncate text-[11px]'>{item.badgeLabel ?? '席定新星'}</span>
+                </div>
                 <p className='text-muted-foreground mt-0.5 truncate text-xs'>{item.byline}</p>
                 <Progress
                   value={percent}

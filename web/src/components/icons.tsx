@@ -220,6 +220,7 @@ export const Icons = {
   creditCard: IconCreditCard,
   product: IconBox,
   pro: IconCrown,
+  crown: IconCrown,
   exclusive: IconStar,
   star: IconStar,
   sparkles: IconSparkles,

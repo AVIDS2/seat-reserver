@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
-import { ProfileAvatar } from '@/components/profile/profile-avatar';
+import { ProfileAvatar, ProfileTitlePill } from '@/components/profile/profile-avatar';
 import { Icons } from '@/components/icons';
 import { AchievementBadge, type UserAchievement } from '@/components/ui/achievement-badge';
 import { Badge } from '@/components/ui/badge';
@@ -155,7 +155,7 @@ export function ProfileShowcasePanel({
                 className='flex min-w-0 items-center justify-between gap-3 rounded-lg border p-3 text-left transition-colors hover:bg-muted/50 disabled:cursor-not-allowed disabled:opacity-45 aria-pressed:border-primary aria-pressed:bg-primary/5'
               >
                 <span className='min-w-0'>
-                  <span className='block truncate text-sm font-medium'>{item.name}</span>
+                  <ProfileTitlePill title={item.name} titleId={item.id} />
                   <span className='text-muted-foreground mt-1 block truncate text-xs'>
                     {item.unlocked ? item.description : item.lockedReason}
                   </span>

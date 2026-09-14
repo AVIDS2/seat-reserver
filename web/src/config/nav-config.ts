@@ -33,7 +33,7 @@ export const navGroups: NavGroup[] = [
         items: []
       },
       {
-        title: '番茄自习室',
+        title: '席定自习室',
         url: '/dashboard/focus',
         icon: 'clock',
         shortcut: ['f', 'r'],
