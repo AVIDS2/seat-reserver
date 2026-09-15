@@ -1,26 +1,125 @@
-# 席定高校座位预约平台
+# 席定
 
-本项目以 MIT License 发布。第三方模板、组件和适配代码的许可证与来源记录见 [`web/THIRD_PARTY_NOTICES.md`](web/THIRD_PARTY_NOTICES.md)；使用时请同时遵守对应依赖和第三方服务的条款。
+> 面向高校学习空间的座位预约自动化平台。
+>
+> 选好空间、座位和时段，剩下的交给席定在开放窗口自动执行。
 
-席定是面向高校场景的座位预约平台；根目录同时保留底层个人预约 CLI，作为现有稳定自动执行链路。
+<p align="center">
+  <a href="https://seat.rglens.com"><img src="https://img.shields.io/badge/在线体验-seat.rglens.com-16a34a?style=flat-square" alt="在线体验"></a>
+  <a href="https://github.com/AVIDS2/seat-reserver/stargazers"><img src="https://img.shields.io/github/stars/AVIDS2/seat-reserver?style=flat-square" alt="GitHub stars"></a>
+  <a href="https://github.com/AVIDS2/seat-reserver/commits/master"><img src="https://img.shields.io/github/last-commit/AVIDS2/seat-reserver?style=flat-square" alt="Last commit"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/AVIDS2/seat-reserver?style=flat-square" alt="MIT License"></a>
+</p>
 
-它的作用是把你自己账号在小程序里可以正常完成的预约请求，放到服务器上按时间自动执行。
+席定把高校里的自习室、图书馆学习空间和个人学习计划放进同一个工作台：账号授权一次，创建可重复执行的预约任务，系统在学校开放窗口自动尝试候选座位，并记录每一次结果。
 
-## 功能
+它不是学校预约系统的替代页面，也不是把座位表重新做一遍。座位图用于浏览、筛选和选择；真正的预约由后端调度器在任务时间执行。
 
-- 支持指定座位和预约时间段。
-- 支持多个候选座位和候选时间段。
-- 成功预约后立即停止，不继续请求。
-- 预约前检查 token 是否有效。
-- token 失效时，可使用账号密码走正常登录接口刷新 token。
-- 支持 Debian 12 / Linux VPS 使用 cron 定时执行。
-- 日志记录预约结果、回执号、时间和座位位置。
+<p align="center">
+  <a href="https://seat.rglens.com">打开席定</a>
+  ·
+  <a href="https://github.com/AVIDS2/seat-reserver/issues">报告问题</a>
+  ·
+  <a href="docs/README.md">查看文档地图</a>
+</p>
 
-## Web 预约控制台
+## 目录
 
-`web/` 是基于 Kiranism Next.js Dashboard Starter 的席定前端控制台，提供总览、预约任务、座位图、我的预约、账号与授权、运行记录、通知中心和管理员工作台。生产构建通过同域 `/api/v1` 调用平台 API；只有显式设置 `NEXT_PUBLIC_DEMO_MODE=true` 时才使用 mock 数据。
+- [产品能力](#产品能力)
+- [工作方式](#工作方式)
+- [项目结构](#项目结构)
+- [快速开始](#快速开始)
+- [配置与部署](#配置与部署)
+- [开发与验证](#开发与验证)
+- [安全边界](#安全边界)
+- [高校适配](#高校适配)
+- [贡献](#贡献)
+- [许可证](#许可证)
 
-本地启动：
+## 产品能力
+
+### 对使用者
+
+- **自动预约任务**：按每天、工作日或自定义星期执行；支持候选座位、候选时间段、错峰和失败重试。
+- **座位图**：按高校、校区、楼栋、空间和日期查看座位状态；主座位和备选座位可以直接生成任务。
+- **自习室与图书馆**：每个服务单独连接、单独保存授权状态；一个服务暂时不可用，不会阻塞任务编辑和其他服务。
+- **预约记录**：查看平台运行结果和学校侧记录；在学校接口允许时在线取消预约。
+- **账号隔离**：普通用户和 Pro 用户按产品规则绑定不同数量的校园账号，账号之间的凭据和任务互不串用。
+- **自动恢复**：短时网络、上游维护或网关失败会进入退避重试，不要求用户反复刷新页面。
+- **席定自习室**：用专注时长、排行榜、徽章和主题把一次预约延伸成持续的学习计划。
+- **席定币与权益**：每日签到、活动奖励、邀请和 Pro 申请由服务端记账，兑换与授予有流水可追溯。
+
+### 对开发者
+
+- Next.js + shadcn/ui 的响应式控制台。
+- NestJS + TypeORM + PostgreSQL 的平台 API。
+- Redis + BullMQ + Nest Schedule 的持久化调度和执行队列。
+- HttpOnly Cookie 会话、租户隔离、加密保存校园凭据和管理员脱敏视图。
+- 高校适配集中在学校目录、认证、座位目录和预约执行边界，便于增加新的学校和校区。
+- 可选的 OpenAI 兼容视觉模型链路，用于需要点选挑战的学校服务；未配置时回退到人工验证，不影响其他功能。
+
+## 界面预览
+
+席定的公开入口是产品介绍页，登录后进入预约控制台。下面的预览来自仓库内的前端资产：
+
+<p align="center">
+  <img src="web/public/landing/seat-overview.svg" width="31%" alt="预约总览预览">
+  <img src="web/public/landing/seat-accounts.svg" width="31%" alt="账号授权预览">
+  <img src="web/public/landing/seat-strategy.svg" width="31%" alt="预约策略预览">
+</p>
+
+## 工作方式
+
+```mermaid
+flowchart LR
+    A[绑定校园账号] --> B[读取学校目录]
+    B --> C[座位图选择空间与候选座位]
+    C --> D[创建预约任务]
+    D --> E[开放窗口前预热凭据]
+    E --> F[开放窗口进入队列]
+    F --> G{学校返回结果}
+    G -->|成功| H[保存回执并通知]
+    G -->|暂时失败| I[退避重试]
+    G -->|业务拒绝| J[记录原因并停止]
+```
+
+座位图是任务配置的入口，不是任务执行的依赖。任务保存、编辑、暂停和重新启用不需要学校实时目录在线；只有到执行窗口，worker 才会验证凭据、读取必要目录并提交请求。
+
+### 两条运行入口
+
+| 入口 | 适合场景 | 位置 |
+| --- | --- | --- |
+| 席定平台 | 多账号、可视化任务、座位图、记录、通知、席定自习室 | `web/` + `api/` |
+| Python CLI | 兼容已有个人脚本和简单 VPS 定时任务 | `seat_reserver.py` |
+
+根目录 CLI 是独立的兼容工具，不会自动读取平台数据库，也不应把它的个人座位偏好、开放时刻或密钥写进产品文档。
+
+## 项目结构
+
+```text
+.
+├── web/                         # Next.js 控制台、移动端页面和设计系统
+├── api/                         # NestJS 平台 API、调度器和 worker
+├── seat_reserver.py             # 独立的 Python 预约 CLI
+├── tests/                       # CLI 与采集工具测试
+├── tools/                       # Reqable/HAR 脱敏与分析工具
+├── deploy/                      # Compose 环境模板和代理配置示例
+├── docs/                        # 产品、架构、部署和协议边界文档
+├── docker-compose.platform.yml  # 平台生产编排
+└── LICENSE
+```
+
+详细文档从 [docs/README.md](docs/README.md) 开始。长期维护的产品行为、架构决策和部署说明不重复堆在根 README 里。
+
+## 快速开始
+
+### 先体验
+
+打开 [seat.rglens.com](https://seat.rglens.com)。生产环境使用同域 API 和 HttpOnly Cookie；不要把校园账号密码、Token 或模型密钥粘贴到浏览器控制台或 issue 中。
+
+### 只启动前端
+
+要求：Node.js 22+、Bun。
 
 ```bash
 cd web
@@ -28,315 +127,168 @@ bun install
 bun run dev
 ```
 
-根目录的 `seat_reserver.py` 和 VPS cron 继续独立运行，平台服务作为新的并行链路部署。
+默认地址：<http://localhost:3000>
 
-## 平台后端
+前端要连接真实平台 API 时，先参考 [`web/env.example.txt`](web/env.example.txt) 配置 `NEXT_PUBLIC_API_URL` 和 `INTERNAL_API_URL`。真实预约只会在 API 的 worker 中执行，前端开发服务器不会直接请求学校预约接口。
 
-`api/` 是基于 [brocoders/nestjs-boilerplate](https://github.com/brocoders/nestjs-boilerplate) 的 NestJS 平台后端，负责用户认证、邀请码、学校账号加密、预约任务、座位图、预约记录、Redis/BullMQ 调度和运行记录。它与 `web/` 放在同一个仓库中，真实座位请求只在 API 的队列执行器中发出。
+### 启动平台后端
 
-后端使用 NestJS、TypeORM、PostgreSQL、JWT/HttpOnly Cookie、角色权限、Swagger、Redis/BullMQ、Nest Schedule 和 Docker。API 容器内包含 scheduler 与 queue worker，当前规模不需要单独拆进程。
-
-本地验证后端：
+平台后端需要 PostgreSQL、Redis 和一组服务端密钥。最小开发流程：
 
 ```bash
 cd api
-npm install
+npm ci
+npm run build
+npm run start:dev
+```
+
+启动前请准备数据库环境；字段和生产默认值见 [`api/env-example-relational`](api/env-example-relational) 与 [`deploy/platform.env.example`](deploy/platform.env.example)。未配置真实学校服务参数时，可以先完成 API/Web 的界面和数据流开发，但不要把示例环境当成可预约配置。
+
+### 运行独立 CLI
+
+```bash
+python3 -m py_compile seat_reserver.py
+python3 seat_reserver.py --help
+```
+
+CLI 的账号、Token、请求签名和候选策略只从本地 `.env` 读取。复制 [`.env.example`](.env.example) 后填写自己的授权信息；真实 `.env` 永远不要提交。
+
+## 配置与部署
+
+### Docker Compose
+
+平台编排包含 Web、API、PostgreSQL 和 Redis。先复制模板并替换所有 `replace-with-...` 占位符：
+
+```bash
+cp deploy/platform.env.example deploy/platform.env
+# 编辑 deploy/platform.env，填写随机密钥、数据库密码和已获授权的服务参数
+docker compose -f docker-compose.platform.yml \
+  --env-file deploy/platform.env up -d --build
+```
+
+部署前建议在本地完成构建：
+
+```bash
+cd web
+bun install
+bun run typecheck
+bun run lint:strict
+bun run build
+bun run prepare:runtime
+
+cd ../api
+npm ci
 npm run build
 npm run lint
 ```
 
-平台 API 主要入口：
+生产环境应让反向代理对外提供 HTTPS；Web、API、数据库和 Redis 只监听内网或本机端口。不要执行 `docker compose down -v`，它会删除数据库卷。
+
+健康检查：
 
 ```text
-POST /api/v1/platform/auth/register
-POST /api/v1/platform/auth/login
-GET  /api/v1/platform/auth/me
-GET  /api/v1/platform/dashboard
-GET  /api/v1/platform/admin/overview
-GET  /api/v1/platform/admin/accounts
-GET  /api/v1/platform/admin/tasks
-GET  /api/v1/platform/admin/runs
-GET  /api/v1/platform/health
+GET /api/v1/platform/health
 ```
 
-首个注册账号自动成为管理员；后续注册需要管理员在 `/dashboard/admin` 创建的邀请码。学校账号绑定时由后端调用学校登录接口和用户校验接口，密码与 Token 加密后保存。
+期望结果类似：
 
-平台以 `user.id` 作为租户根。普通用户的账号、任务、运行记录和通知查询全部按当前用户过滤，数据库还用复合外键阻止任务或运行记录挂到其他用户的学校账号；管理员只能查看脱敏的全局资源。模板自带的通用公开注册、社交登录和 mock API 路由不参与生产平台。
-
-不要把 `api/.env`、学校账号密码、Token 或 Redis/数据库凭据提交到 Git。
-
-## 平台部署
-
-生产编排文件是 `docker-compose.platform.yml`，配置模板是 `deploy/platform.env.example`。它只将 Web/API 绑定到 VPS 本机端口，公网入口由现有 OpenResty 反向代理提供。
-
-## 仓库结构
-
-```text
-web/                  Kiranism Next.js 管理端和移动端路由
-api/                  brocoders NestJS API 基线
-seat_reserver.py      现有稳定抢座 CLI，继续兼容 VPS cron
-tests/                Python CLI 和抓包工具测试
-tools/                登录/绑定流量捕获和分析工具
-docs/                 产品、架构和部署文档
+```json
+{"status":"ok","database":"ok","redis":"ok"}
 ```
 
-## 当前默认策略
+完整的生产更新、迁移、资源限制和回滚说明见 [`docs/deployment/platform.md`](docs/deployment/platform.md)。
 
-默认优先抢 44 号座位，60 号座位作为兜底。
+### 关键环境变量
 
-候选顺序如下：
+| 变量 | 用途 |
+| --- | --- |
+| `PLATFORM_PUBLIC_URL` | 平台对外地址 |
+| `PLATFORM_DB_*` | PostgreSQL 数据库配置 |
+| `PLATFORM_AUTH_*` | JWT、刷新和确认 Token 密钥 |
+| `PLATFORM_CREDENTIAL_ENCRYPTION_KEY` | 加密保存校园凭据 |
+| `QUEUE_REDIS_URL` | BullMQ/队列 Redis 地址 |
+| `SEAT_*` | 已获授权的学校座位服务参数 |
+| `PLATFORM_VLM_*` | 可选的 OpenAI 兼容视觉模型配置 |
+| `PLATFORM_STRIPE_*` | 可选的 Pro 支付配置 |
 
-```text
-1. 44号 14:00-22:00
-2. 44号 13:00-21:00
-3. 44号 15:00-22:00
-4. 60号 14:00-22:00
-5. 60号 13:00-21:00
-6. 60号 15:00-22:00
-```
+生产值只放在部署平台的 secret 或权限为 `600` 的环境文件中。仓库里的 example 文件只允许出现占位符。
 
-对应配置：
+## 开发与验证
 
-```env
-BOOK_PRIMARY_SEAT=197
-BOOK_BACKUP_SEATS=211
-BOOK_TIME_CANDIDATES=840-1320,780-1260,900-1320
-BOOK_MAX_ATTEMPTS=12
-BOOK_ATTEMPT_DELAY_SECONDS=1.2
-```
-
-时间使用“当天 00:00 后的分钟数”表示：
-
-```text
-13:00 = 780
-14:00 = 840
-15:00 = 900
-21:00 = 1260
-22:00 = 1320
-```
-
-## 配置
-
-复制配置模板：
+### Web
 
 ```bash
-cp .env.example .env
-chmod 600 .env
+cd web
+bun run typecheck
+bun run lint:strict
+bun run build
+bun run format:check
 ```
 
-编辑 `.env`：
-
-```env
-BOOK_TOKEN=<小程序后端 token>
-BOOK_USERNAME=<账号>
-BOOK_PASSWORD=<密码>
-
-BOOK_PRIMARY_SEAT=197
-BOOK_BACKUP_SEATS=211
-BOOK_TIME_CANDIDATES=840-1320,780-1260,900-1320
-
-BOOK_MAX_ATTEMPTS=12
-BOOK_ATTEMPT_DELAY_SECONDS=1.2
-BOOK_TIMEOUT_SECONDS=8
-BOOK_NETWORK_RETRY_ATTEMPTS=3
-BOOK_NETWORK_RETRY_DELAY_SECONDS=0.8
-BOOK_TOKEN_REFRESHED_AT=0
-BOOK_ASSUME_FRESH_TOKEN_SECONDS=180
-BOOK_BOOKING_WINDOW_SECONDS=20
-BOOK_BOOKING_REQUEST_TIMEOUT_SECONDS=3
-BOOK_HMAC_REQUEST_KEY=<当前小程序 freeBook 请求中的 X-hmac-request-key>
-```
-
-真实的 `.env` 不要提交到 Git。项目里的 `.gitignore` 已经忽略 `.env`。
-
-## 小程序客户端参数
-
-预约接口除了 token，还会校验当前小程序客户端请求参数。当前已验证可用的客户端版本为：
-
-```text
-Referer 页面版本：59
-UnifiedPCWindowsWechat：0xf2541b37
-XWEB：20089
-```
-
-`BOOK_HMAC_REQUEST_KEY` 必须从当前小程序一次正常的 `freeBook` 请求头中获取。它不是账号密码或 token，不要把真实值提交到 Git。小程序升级后如果 token 刷新成功、但预约接口持续返回业务错误，应先对比当前正常请求中的 `Referer`、`User-Agent` 和 `X-hmac-request-key`。
-
-预约请求体中的 `authid` 当前仍为空，不需要额外配置。
-
-## token 刷新机制
-
-脚本启动后会先请求：
-
-```text
-GET /cczukaoyan/rest/v2/user
-```
-
-如果 token 有效，就直接开始预约。
-
-如果 token 失效，并且配置了：
-
-```env
-BOOK_AUTO_REFRESH_TOKEN=true
-BOOK_USERNAME=<账号>
-BOOK_PASSWORD=<密码>
-```
-
-脚本会通过正常登录接口刷新 token：
-
-```text
-GET /cczukaoyan/rest/auth?username=...&password=...
-```
-
-刷新成功后，会从响应里的 `data.token` 读取新 token。若配置了：
-
-```env
-BOOK_PERSIST_REFRESHED_TOKEN=true
-```
-
-新 token 会自动写回 `.env`。
-
-## 瞬时网络重试
-
-为降低 VPS 在 6 点前后遇到瞬时 DNS 或网络抖动时直接失败的概率，脚本会对底层 `URLError` 做有限次短重试。
-
-默认配置：
-
-```env
-BOOK_NETWORK_RETRY_ATTEMPTS=3
-BOOK_NETWORK_RETRY_DELAY_SECONDS=0.8
-BOOK_TOKEN_REFRESHED_AT=0
-BOOK_ASSUME_FRESH_TOKEN_SECONDS=180
-BOOK_BOOKING_WINDOW_SECONDS=20
-BOOK_BOOKING_REQUEST_TIMEOUT_SECONDS=3
-```
-
-说明：
-
-- `BOOK_NETWORK_RETRY_*` 只针对临时网络错误，不会改变座位候选顺序，也不会增加 `BOOK_MAX_ATTEMPTS` 的业务重试次数。
-- `BOOK_TOKEN_REFRESHED_AT` 由脚本在预热成功后自动写回 `.env`。
-- `BOOK_ASSUME_FRESH_TOKEN_SECONDS` 用来让 6 点的正式预约在 token 刚刚预热成功后，跳过 `/rest/v2/user` 校验，直接进入预约，减少关键窗口里的额外网络请求。
-- `BOOK_BOOKING_WINDOW_SECONDS` 控制 6 点开始后的总抢座窗口，建议设为 `20`。
-- `BOOK_BOOKING_REQUEST_TIMEOUT_SECONDS` 控制单次预约请求超时，避免被单次慢请求拖死整个窗口。
-
-## 手动运行
-
-运行当天预约：
+### API
 
 ```bash
-python3 seat_reserver.py
+cd api
+npm run build
+npm run lint
+npm test -- --runInBand
 ```
 
-指定日期：
-
-```bash
-python3 seat_reserver.py --date 2026-05-18
-```
-
-指定配置文件：
-
-```bash
-python3 seat_reserver.py --env /path/to/.env
-```
-
-只刷新 token，不预约：
-
-```bash
-python3 seat_reserver.py --refresh-token-only
-```
-
-## Debian 12 部署
-
-安装 Python：
-
-```bash
-sudo apt update
-sudo apt install -y python3 git
-```
-
-拉取项目：
-
-```bash
-git clone https://github.com/AVIDS2/seat-reserver.git
-cd seat-reserver
-cp .env.example .env
-chmod 600 .env
-```
-
-编辑配置：
-
-```bash
-nano .env
-```
-
-手动测试：
-
-```bash
-python3 seat_reserver.py --date "$(date +%F)"
-```
-
-## 定时任务
-
-建议使用两段 cron：`05:59:45` 先刷新 token，`06:00:01` 再直接预约。这样可以避免 6 点后再耗时登录。
-
-编辑 crontab：
-
-```bash
-crontab -e
-```
-
-添加：
-
-```cron
-CRON_TZ=Asia/Shanghai
-59 5 * * * sleep 45; cd /home/YOUR_USER/seat-reserver && /usr/bin/python3 seat_reserver.py --refresh-token-only >> seat_reserver.log 2>&1
-0 6 * * * sleep 1; cd /home/YOUR_USER/seat-reserver && /usr/bin/python3 seat_reserver.py >> seat_reserver.log 2>&1
-```
-
-把 `/home/YOUR_USER/seat-reserver` 改成你的实际项目路径。
-
-查看日志：
-
-```bash
-tail -n 100 seat_reserver.log
-```
-
-持续查看日志：
-
-```bash
-tail -f seat_reserver.log
-```
-
-## 运行流程
-
-```text
-1. 05:59:45 预热任务刷新 token，并写回 .env
-2. 06:00:01 预约任务启动
-3. 读取 .env 配置
-4. 检查 token 是否有效
-5. token 有效时直接进入预约
-6. 按候选座位和候选时间段依次预约
-7. 第一个成功后立即停止
-8. 全部失败后退出并写日志
-```
-
-## 注意事项
-
-- 不要把真实 `.env`、token、账号密码提交到公开仓库。
-- 候选数量不要设置过大，避免不必要的高频请求。
-- 如果服务端调整接口、签名或登录规则，需要重新抓取正常请求并更新配置。
-- 如果账号当天已有预约，新的预约请求可能会失败。
-- 如果预约成功后需要取消，请在小程序里手动处理，注意每日取消次数限制。
-
-## 开发验证
-
-语法检查：
+### Python CLI
 
 ```bash
 python3 -m py_compile seat_reserver.py
-```
-
-查看帮助：
-
-```bash
 python3 seat_reserver.py --help
 ```
+
+提交前至少运行与你修改范围对应的检查。涉及页面时请同时检查桌面端和移动端；涉及调度、账号或第三方服务时，补充对应的单元测试和只读健康检查。
+
+## 安全边界
+
+这是一个面向个人授权账号的自动化工具。使用前请确认学校服务、账号和自动化行为符合学校规则及相关服务条款。
+
+- 只使用自己或明确获授权的校园账号。
+- 不提交 `.env`、HAR、Cookie、Token、密码、HMAC key、支付密钥或视觉模型 API key。
+- 不在 README、截图、日志、issue 或 PR 中公开真实身份信息和预约回执。
+- 不通过提高并发、绕过风控或伪造身份扩大请求量；候选和重试应保持在必要范围内。
+- 学校接口、验证码、开放窗口和预约规则发生变化时，应先做小范围只读验证，再更新适配器。
+- 生产部署前轮换所有示例密钥，并限制数据库、Redis、API 管理端口的公网暴露。
+
+平台会把学校侧失败、维护和暂时网络异常与账号凭据错误分开记录；不要因为一次 `5xx` 或维护响应就覆盖有效凭据。
+
+## 高校适配
+
+高校不是一个下拉框里的文案。每个高校/校区应有独立的目录、开放窗口、认证路线、座位状态映射和预约能力说明。新增学校时，优先补齐以下内容：
+
+1. 学校目录和校区/空间的稳定 ID 与人性化名称。
+2. 认证方式、凭据刷新、服务连接状态和失败分类。
+3. 可查询日期、时段限制、取消规则和签到规则。
+4. 座位图状态映射，以及任务执行时的候选策略。
+5. 只读测试、失败回执、日志脱敏和文档更新。
+
+当前仓库以常州大学的座位服务适配为首个生产链路；新的高校应通过独立 adapter 接入，不要把不同学校的字段和规则硬编码在同一套页面里。
+
+## 贡献
+
+欢迎提交 issue、文档改进和适配器改动。提交前请：
+
+1. 说明问题或需求对应的用户场景。
+2. 给出最小复现步骤；截图和日志必须脱敏。
+3. 说明影响的高校、服务和页面范围。
+4. 运行对应的类型检查、lint、构建和测试。
+5. 如果改变了产品行为、接口、架构或部署方式，同步更新 `docs/` 中的权威文档。
+
+涉及学校接口或账号认证的改动，请先在 issue 中描述风险和回滚方式，不要直接上传真实抓包文件。
+
+## 致谢
+
+本项目使用并改造了以下开源基础设施与 UI 体系，具体许可证和来源见 [`web/THIRD_PARTY_NOTICES.md`](web/THIRD_PARTY_NOTICES.md)：
+
+- [Kiranism/next-shadcn-dashboard-starter](https://github.com/Kiranism/next-shadcn-dashboard-starter)
+- [brocoders/nestjs-boilerplate](https://github.com/brocoders/nestjs-boilerplate)
+- [shadcn/ui](https://ui.shadcn.com/)
+- [Trophy Gamification UI](web/THIRD_PARTY_NOTICES.md)
+
+## 许可证
+
+本项目采用 [MIT License](LICENSE) 发布。第三方代码、字体、图标、组件和外部服务仍受其各自许可证与服务条款约束。
