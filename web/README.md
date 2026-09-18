@@ -14,6 +14,7 @@
 - 管理员工作台：用户状态、邀请码和全局运行统计。
 - 管理员全局视图：脱敏查看所有账号、任务和运行记录。
 - 登录/注册：NestJS JWT + HttpOnly Cookie，支持 refresh token 轮换。
+- 席定领航：复用 AI SDK 的流式消息 UI，读取脱敏的平台摘要提供专注计划、节奏洞察和空间建议；未配置模型时显示未启用状态。
 
 本地默认仍可使用 mock 数据。生产环境由 `NEXT_PUBLIC_DEMO_MODE=false` 开启真实 API；真实预约请求只在后端 BullMQ worker 执行。
 
@@ -38,6 +39,8 @@ bun run prepare:runtime
 ```
 
 生产 Compose 使用 `Dockerfile.platform-runtime`，它只打包 `runtime/` 中的 standalone 产物；发布前先执行上面两条命令。
+
+席定领航使用 `PLATFORM_AI_BASE_URL`、`PLATFORM_AI_API_KEY` 和 `PLATFORM_AI_MODEL` 接入 OpenAI-compatible Chat Completions。未设置 `PLATFORM_AI_*` 时可以复用 `PLATFORM_VLM_*`；密钥只存在 Web 服务端环境，不会进入浏览器。产品边界和任务清单见 [`../docs/planning/ai-module.md`](../docs/planning/ai-module.md)。
 
 ## 目录
 

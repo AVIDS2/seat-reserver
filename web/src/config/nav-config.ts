@@ -40,6 +40,13 @@ export const navGroups: NavGroup[] = [
         items: []
       },
       {
+        title: '席定领航',
+        url: '/dashboard/ai-chat',
+        icon: 'sparkles',
+        shortcut: ['a', 'i'],
+        items: []
+      },
+      {
         title: '学习排行',
         url: '/dashboard/leaderboard',
         icon: 'trendingUp',

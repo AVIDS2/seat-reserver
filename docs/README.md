@@ -6,6 +6,7 @@
 | [planning/architecture-proposal.md](planning/architecture-proposal.md) | 平台架构、数据模型、接口和部署取舍 | 多服务连接、实时座位图与 Pro/积分/邀请域已落地 |
 | [planning/account-binding-research.md](planning/account-binding-research.md) | 登录、绑定和授权链路的协议结论与安全边界 | 自习室自动链路投产，图书馆连接与验证码边界已确认 |
 | [deployment/platform.md](deployment/platform.md) | 平台生产部署、使用、自动执行、连接自动恢复和 Reqable 采集 | 当前部署说明 |
+| [planning/ai-module.md](planning/ai-module.md) | 席定领航 AI 模块定位、复用方案、任务和安全边界 | P0 实施中 |
 | [web/THIRD_PARTY_NOTICES.md](../web/THIRD_PARTY_NOTICES.md) | 前端引入的第三方组件与许可证文本 | Trophy Gamification UI（MIT） |
 | [superpowers/specs/2026-06-09-vps-telegram-bot-design.md](superpowers/specs/2026-06-09-vps-telegram-bot-design.md) | VPS Telegram bot V1 设计 | 设计稿 |
 

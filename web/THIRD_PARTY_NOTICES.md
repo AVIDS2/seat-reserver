@@ -34,6 +34,13 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
+## Vercel AI SDK OpenAI-compatible Provider
+
+`@ai-sdk/openai-compatible` is used as an unmodified runtime dependency for
+席定领航's OpenAI-compatible Chat Completions connection. It is distributed
+under the Apache License 2.0 by Vercel. Source and license:
+[vercel/ai](https://github.com/vercel/ai/tree/main/packages/openai-compatible).
+
 ## Collabodoro TimerProgress
 
 The focus-room circular timer is adapted from the MIT-licensed `TimerProgress`

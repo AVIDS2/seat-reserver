@@ -103,6 +103,12 @@ PLATFORM_VLM_MODEL=mimo-v2.5
 
 `PLATFORM_LIBRARY_AUTO_BOOKING=false` 可全局关闭图书馆自动任务入队。
 
+## 席定领航 AI
+
+席定领航是工作台中的学习计划与专注建议模块，使用 Web 端服务端路由 `/api/assistant` 接入 OpenAI-compatible Chat Completions。配置 `PLATFORM_AI_BASE_URL`、`PLATFORM_AI_API_KEY` 和 `PLATFORM_AI_MODEL` 时优先使用该 provider；未配置显式 AI provider 时，只有在 `PLATFORM_VLM_BASE_URL` 与 `PLATFORM_VLM_API_KEY` 同时存在时才复用视觉模型 provider。仅有 Compose 默认视觉地址但没有 key 时，页面保持“AI 尚未配置”。
+
+AI 请求只读取平台已脱敏的预约任务摘要、运行状态、自习室房间摘要、专注状态和席定币活动摘要。校园密码、业务 Token、Cookie、HMAC、验证码图片和支付密钥不会进入模型上下文。P0 没有写操作工具，模型只能生成建议或计划草稿；创建、编辑、启用、暂停和取消预约仍必须由用户在原页面确认。AI provider 不可用不会影响预约 worker、自习室房间或普通控制台。
+
 预解策略：worker 在北京时间 `05:59:50` 的预热阶段为图书馆任务逐个创建挑战并完成识别校验，结果以 15 分钟 TTL 缓存在 Redis；`06:00:00` 开放时优先使用预解结果直接提交，缓存缺失或学校判定失效时在窗口内即时识别。预解数量上限为任务的 `maxAttempts` 与候选数量的较小值，且最多 6 个。
 
 识别采用「直接定位」提问方式：让模型指出目标字的中心坐标，平台再吸附到最近的候选字中心。相比让模型输出边界框数组，这种问法在实测中更稳定，MiMo 单次延迟约 1–3 秒。模型输出偶尔带多余括号，解析器已做容错修补。
