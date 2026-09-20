@@ -105,7 +105,7 @@ PLATFORM_VLM_MODEL=mimo-v2.5
 
 ## 席定领航 AI
 
-席定领航是工作台中的学习计划与专注建议模块，使用 Web 端服务端路由 `/api/assistant` 接入 OpenAI-compatible Chat Completions。配置 `PLATFORM_AI_BASE_URL`、`PLATFORM_AI_API_KEY` 和 `PLATFORM_AI_MODEL` 时优先使用该 provider；未配置显式 AI provider 时，只有在 `PLATFORM_VLM_BASE_URL` 与 `PLATFORM_VLM_API_KEY` 同时存在时才复用视觉模型 provider。仅有 Compose 默认视觉地址但没有 key 时，页面保持“AI 尚未配置”。
+席定领航是工作台中的学习计划与专注建议模块，使用 Web 端服务端路由 `/assistant` 接入 OpenAI-compatible Chat Completions。之所以不使用 `/api/assistant`，是因为公网 OpenResty 已将 `/api/*` 固定代理到 Nest API。配置 `PLATFORM_AI_BASE_URL`、`PLATFORM_AI_API_KEY` 和 `PLATFORM_AI_MODEL` 时优先使用该 provider；未配置显式 AI provider 时，只有在 `PLATFORM_VLM_BASE_URL` 与 `PLATFORM_VLM_API_KEY` 同时存在时才复用视觉模型 provider。仅有 Compose 默认视觉地址但没有 key 时，页面保持“AI 尚未配置”。
 
 AI 请求只读取平台已脱敏的预约任务摘要、运行状态、自习室房间摘要、专注状态和席定币活动摘要。校园密码、业务 Token、Cookie、HMAC、验证码图片和支付密钥不会进入模型上下文。P0 没有写操作工具，模型只能生成建议或计划草稿；创建、编辑、启用、暂停和取消预约仍必须由用户在原页面确认。AI provider 不可用不会影响预约 worker、自习室房间或普通控制台。
 

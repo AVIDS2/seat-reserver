@@ -132,7 +132,7 @@ function NavigatorStat({ label, value }: { label: string; value: number }) {
 }
 
 function NavigatorChat({ aiConfigured }: { aiConfigured: boolean }) {
-  const transport = useMemo(() => new DefaultChatTransport({ api: '/api/assistant' }), []);
+  const transport = useMemo(() => new DefaultChatTransport({ api: '/assistant' }), []);
   const { messages, sendMessage, stop, status, error, clearError } = useChat({ transport });
   const [input, setInput] = useState('');
   const isBusy = status === 'submitted' || status === 'streaming';
