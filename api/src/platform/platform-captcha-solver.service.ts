@@ -303,9 +303,12 @@ export class PlatformCaptchaSolverService {
     }
 
     const payload = (await response.json().catch(() => null)) as {
-      choices?: Array<{ message?: { content?: unknown } }>;
+      choices?: Array<{
+        message?: { content?: unknown; reasoning_content?: unknown };
+      }>;
     } | null;
-    const content = payload?.choices?.[0]?.message?.content;
+    const message = payload?.choices?.[0]?.message;
+    const content = message?.content || message?.reasoning_content;
     if (typeof content === 'string' && content.trim()) return content;
     if (Array.isArray(content)) {
       const text = content
@@ -356,9 +359,12 @@ export class PlatformCaptchaSolverService {
     if (!response.ok)
       throw new ServiceUnavailableException(`服务返回 ${response.status}`);
     const payload = (await response.json().catch(() => null)) as {
-      choices?: Array<{ message?: { content?: unknown } }>;
+      choices?: Array<{
+        message?: { content?: unknown; reasoning_content?: unknown };
+      }>;
     } | null;
-    const content = payload?.choices?.[0]?.message?.content;
+    const message = payload?.choices?.[0]?.message;
+    const content = message?.content || message?.reasoning_content;
     if (typeof content === 'string' && content.trim()) return content;
     if (Array.isArray(content)) {
       const text = content

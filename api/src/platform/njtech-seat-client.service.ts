@@ -51,12 +51,31 @@ const LIST_QUERY = `query list {
 
 const INDEX_QUERY = `query index($pos: String!, $param: [hash]) {
   userAuth {
+    oftenseat {
+      list { id info lib_id seat_key status }
+    }
+    message {
+      new(from: "system") { has from_user title num }
+      indexMsg { message_id title content isread isused from_user create_time }
+    }
     reserve {
-      reserve { token status user_id user_nick sch_name lib_id lib_name lib_floor seat_key seat_name date exp_date exp_date_str validate_date hold_date diff diff_str mark_source isRecordUser isChooseSeat isRecord mistakeNum openTime threshold daynum closeTime timerange forbidQrValid renewTimeNext forbidRenewTime forbidWechatCancle }
+      reserve { token status user_id user_nick sch_name lib_id lib_name lib_floor seat_key seat_name date exp_date exp_date_str validate_date hold_date diff diff_str mark_source isRecordUser isChooseSeat isRecord mistakeNum openTime threshold daynum mistakeNum closeTime timerange forbidQrValid renewTimeNext forbidRenewTime forbidWechatCancle }
       getSToken
     }
-    currentUser { user_id user_nick user_mobile user_sex user_sch_id user_sch user_last_login user_avatar(size: MIDDLE) user_adate user_student_no user_student_name area_name user_deny { deny_deadline } sch { sch_id sch_name activityUrl isShowCommon isBusy } subscribe_remind }
+    currentUser {
+      user_id user_nick user_mobile user_sex user_sch_id user_sch user_last_login
+      user_avatar(size: MIDDLE) user_adate user_student_no user_student_name area_name
+      user_deny { deny_deadline }
+      sch { sch_id sch_name activityUrl isShowCommon isBusy }
+      subscribe_remind
+    }
+    record {
+      recordRegInfo { reg_start reg_end }
+      recordShortlistInfo
+    }
   }
+  ad(pos: $pos, param: $param) { name pic url }
+  homeIconAd: ad(pos: "home-icon", param: $param) { name pic url }
 }
 `;
 
@@ -115,6 +134,8 @@ export class NjtechSeatClientService {
       current = await this.submitCasLogin(client, current, username, password);
     }
 
+    const directTarget =
+      current.url.origin === TARGET_ORIGIN ? current.url : undefined;
     let proxyBase = extractNjtechProxyBase(current.url, this.gateway);
     if (!proxyBase) proxyBase = await this.resolveProxyAfterLogin(client, jar);
     if (!proxyBase) {
@@ -126,12 +147,13 @@ export class NjtechSeatClientService {
       client,
       jar,
       proxyBase,
-      targetOrigin: TARGET_ORIGIN,
-      targetReferer: `${TARGET_ORIGIN}/web/index.html`,
+      targetOrigin: this.gateway.origin,
+      targetReferer: `${proxyBase}/web/index.html`,
       expiresAt: Date.now() + 30 * 60 * 1000,
       seatLibraries: new Map(),
     };
     this.sessions.set(token, session);
+    await this.primeProxySession(session, directTarget);
     const verified = await this.verifyToken(token);
     if (!verified.success) {
       this.sessions.delete(token);
@@ -143,9 +165,10 @@ export class NjtechSeatClientService {
   }
 
   async verifyToken(token: string): Promise<SeatResponse> {
-    const result = await this.graphql(token, 'index', INDEX_QUERY, {
-      pos: 'home',
-    });
+    // The current NJTech GraphQL gateway rejects the legacy home `index`
+    // operation with an EOF parse error. The catalog `list` operation is the
+    // stable authenticated probe and already returns the user's seat scope.
+    const result = await this.graphql(token, 'list', LIST_QUERY);
     if (result.success) {
       const data = record(record(result.payload?.data).userAuth);
       const user = record(data.currentUser);
@@ -156,6 +179,37 @@ export class NjtechSeatClientService {
       }
     }
     return result;
+  }
+
+  private async primeProxySession(
+    session: NjtechSession,
+    directTarget?: URL,
+  ): Promise<void> {
+    const paths = [
+      ...(directTarget
+        ? [`${directTarget.pathname}${directTarget.search}`]
+        : []),
+      '/web/index.html',
+    ];
+    for (const path of paths) {
+      const response = await session.client(
+        new URL(`${session.proxyBase}${path}`),
+        {
+          headers: {
+            Accept: 'text/html,application/xhtml+xml',
+            Referer: session.targetReferer,
+            Origin: session.targetOrigin,
+            'User-Agent':
+              process.env.NJTECH_USER_AGENT ||
+              'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/144.0.0.0 Safari/537.36',
+          },
+          signal: AbortSignal.timeout(this.timeoutMs),
+        },
+      );
+      console.error(
+        `[NjtechSeat] proxy prime status=${response.status} path=${path} cookies=${(await session.jar.getCookies(this.gateway.origin)).map((item) => item.key).join(',')}`,
+      );
+    }
   }
 
   async get(token: string, path: string): Promise<SeatResponse> {
@@ -374,7 +428,7 @@ export class NjtechSeatClientService {
 
   private async getHistory(token: string): Promise<SeatResponse> {
     const result = await this.graphql(token, 'index', INDEX_QUERY, {
-      pos: 'home',
+      pos: 'App-首页',
     });
     if (!result.success) return result;
     const data = record(record(result.payload?.data).userAuth);
@@ -420,20 +474,36 @@ export class NjtechSeatClientService {
     const url = new URL(`${session.proxyBase}/index.php/graphql/`);
     url.search = '?enlink-vpn';
     try {
+      console.error(
+        `[NjtechSeat] GraphQL request ${operationName} path=${url.pathname} query=${query.replace(/\s+/g, ' ').slice(0, 180)} vars=${JSON.stringify(variables)}`,
+      );
       const response = await session.client(url, {
         method: 'POST',
         headers: {
           Accept: 'application/json, text/plain, */*',
           'Content-Type': 'application/json',
+          'App-Version': '2.2.7',
+          'User-Agent':
+            process.env.NJTECH_USER_AGENT ||
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/144.0.0.0 Safari/537.36',
           Referer: session.targetReferer,
           Origin: session.targetOrigin,
         },
-        body: JSON.stringify({ operationName, query, variables }),
+        body: JSON.stringify(
+          Object.keys(variables).length
+            ? { operationName, query, variables }
+            : { operationName, query },
+        ),
         signal: AbortSignal.timeout(this.timeoutMs),
       });
       const raw = await response.text();
       const payload = JSON.parse(raw) as JsonRecord;
       const errors = Array.isArray(payload.errors) ? payload.errors : [];
+      if (errors.length) {
+        console.error(
+          `[NjtechSeat] GraphQL ${operationName} status=${response.status} path=${url.pathname} errors=${raw.slice(0, 500)}`,
+        );
+      }
       return {
         httpStatus: response.status,
         payload,
