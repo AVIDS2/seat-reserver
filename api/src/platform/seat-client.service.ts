@@ -18,9 +18,12 @@ export type SeatResponse = {
 
 export type SeatCandidate = {
   seatId: string;
+  roomId?: string;
   startTime: number;
   endTime: number;
   authId?: string;
+  captchaCode?: string;
+  captcha?: string;
 };
 
 export type SeatServiceType = 'study_room' | 'library';

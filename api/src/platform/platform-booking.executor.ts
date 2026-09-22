@@ -100,7 +100,7 @@ export class PlatformBookingExecutor {
       true,
     );
     let message = '账号检查完成';
-    if (task.venueType === 'library') {
+    if (task.venueType === 'library' && account.schoolCode !== 'njtech') {
       const prepared = await this.prepareLibraryChallenges(run, task, account);
       message = prepared.captchaCount
         ? `预约准备完成；已准备 ${prepared.captchaCount} 个验证`
@@ -130,7 +130,7 @@ export class PlatformBookingExecutor {
     task: BookingTaskEntity,
     account: SchoolAccountEntity,
   ): Promise<{ captchaCount: number; detail: string }> {
-    if (!this.captchaSolver.isConfigured()) {
+    if (account.schoolCode !== 'njtech' && !this.captchaSolver.isConfigured()) {
       return { captchaCount: 0, detail: '未配置识别服务' };
     }
     const service = await this.serviceConnections.ensureReady(
@@ -152,6 +152,7 @@ export class PlatformBookingExecutor {
       try {
         const challenge = await this.schoolAuth.createBookingCaptcha(
           service.token,
+          account.schoolCode,
         );
         const solved = await this.captchaSolver.solve({
           image: challenge.image,
@@ -162,6 +163,7 @@ export class PlatformBookingExecutor {
           service.token,
           challenge.token,
           solved.points,
+          account.schoolCode,
         );
         if (!verified.success) continue;
         prepared.push({
@@ -195,7 +197,7 @@ export class PlatformBookingExecutor {
     task: BookingTaskEntity,
     account: SchoolAccountEntity,
   ): Promise<void> {
-    if (!this.captchaSolver.isConfigured()) {
+    if (account.schoolCode !== 'njtech' && !this.captchaSolver.isConfigured()) {
       throw new UnprocessableEntityException(
         '图书馆自动抢座需要配置验证码识别服务',
       );
@@ -225,8 +227,11 @@ export class PlatformBookingExecutor {
       const remainingMs = deadline - Date.now();
       if (remainingMs < 500) break;
 
-      let authId = prepared[index]?.challengeToken;
-      if (!authId) {
+      let authId =
+        account.schoolCode === 'njtech'
+          ? undefined
+          : prepared[index]?.challengeToken;
+      if (account.schoolCode !== 'njtech' && !authId) {
         try {
           const challenge = await this.schoolAuth.createBookingCaptcha(token);
           const solved = await this.captchaSolver.solve({
@@ -238,6 +243,7 @@ export class PlatformBookingExecutor {
             token,
             challenge.token,
             solved.points,
+            account.schoolCode,
           );
           if (!verified.success) {
             lastMessage = verified.message || '验证码自动识别未通过';
@@ -252,16 +258,28 @@ export class PlatformBookingExecutor {
         }
       }
 
-      const candidate = candidates[index];
+      const candidate = task.roomId
+        ? { ...candidates[index], roomId: task.roomId }
+        : candidates[index];
       const timeoutMs = Math.min(5000, Math.max(500, deadline - Date.now()));
-      const response = await this.schoolAuth.book(
-        token,
-        service.mode,
-        run.targetDate,
-        { ...candidate, authId },
-        timeoutMs,
-        'library',
-      );
+      const response = account.schoolCode
+        ? await this.schoolAuth.book(
+            token,
+            service.mode,
+            run.targetDate,
+            { ...candidate, authId },
+            timeoutMs,
+            'library',
+            account.schoolCode,
+          )
+        : await this.schoolAuth.book(
+            token,
+            service.mode,
+            run.targetDate,
+            { ...candidate, authId },
+            timeoutMs,
+            'library',
+          );
       run.attemptsUsed = index + 1;
       run.httpStatus = response.httpStatus;
       run.responseCode = response.code || null;
@@ -348,6 +366,12 @@ export class PlatformBookingExecutor {
       await this.runs.save(run);
       return;
     }
+    if (
+      account.schoolCode === 'njtech' &&
+      run.targetDate !== getShanghaiDate()
+    ) {
+      throw new UnprocessableEntityException('南京工业大学目前只支持当天预约');
+    }
     if (task.venueType === 'library') {
       await this.executeLibraryBooking(run, task, account);
       return;
@@ -374,16 +398,28 @@ export class PlatformBookingExecutor {
       const remainingMs = deadline - Date.now();
       if (remainingMs < 500) break;
 
-      const candidate = candidates[index];
+      const candidate = task.roomId
+        ? { ...candidates[index], roomId: task.roomId }
+        : candidates[index];
       const timeoutMs = Math.min(3000, remainingMs);
-      const response = await this.schoolAuth.book(
-        token,
-        service.mode,
-        run.targetDate,
-        candidate,
-        timeoutMs,
-        'study_room',
-      );
+      const response = account.schoolCode
+        ? await this.schoolAuth.book(
+            token,
+            service.mode,
+            run.targetDate,
+            candidate,
+            timeoutMs,
+            'study_room',
+            account.schoolCode,
+          )
+        : await this.schoolAuth.book(
+            token,
+            service.mode,
+            run.targetDate,
+            candidate,
+            timeoutMs,
+            'study_room',
+          );
       run.attemptsUsed = index + 1;
       run.httpStatus = response.httpStatus;
       run.responseCode = response.code || null;
@@ -529,4 +565,17 @@ function durationBetween(start: string | null, end: string | null): number {
     endMinutes > startMinutes
     ? endMinutes - startMinutes
     : 0;
+}
+
+function getShanghaiDate(): string {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Shanghai',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(new Date());
+  const values = Object.fromEntries(
+    parts.map((part) => [part.type, part.value]),
+  );
+  return `${values.year}-${values.month}-${values.day}`;
 }

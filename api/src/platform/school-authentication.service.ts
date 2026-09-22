@@ -1,4 +1,8 @@
-import { Injectable, UnprocessableEntityException } from '@nestjs/common';
+import {
+  Injectable,
+  Optional,
+  UnprocessableEntityException,
+} from '@nestjs/common';
 import { SeatClientService } from './seat-client.service';
 import {
   type BookingCaptchaChallenge,
@@ -6,6 +10,8 @@ import {
   WebVpnSeatClientService,
   type WebVpnSessionState,
 } from './webvpn-seat-client.service';
+import { NjtechSeatClientService } from './njtech-seat-client.service';
+import type { SchoolCode } from './school-catalog';
 import type { SeatCandidate, SeatResponse } from './seat-client.service';
 import type { SeatServiceType } from './entities/school-service-connection.entity';
 
@@ -27,6 +33,7 @@ export class SchoolAuthenticationService {
   constructor(
     private readonly seatClient: SeatClientService,
     private readonly webVpnSeatClient: WebVpnSeatClientService,
+    @Optional() private readonly njtechSeatClient?: NjtechSeatClientService,
   ) {}
 
   async authenticate(
@@ -34,12 +41,19 @@ export class SchoolAuthenticationService {
     password: string,
     mode?: SchoolAuthMode,
     serviceType: SeatServiceType = 'study_room',
+    schoolCode: SchoolCode = 'cczu',
   ): Promise<SchoolAuthenticationResult> {
-    const key = `${serviceType}:${mode || 'auto'}:${username}`;
+    const key = `${schoolCode}:${serviceType}:${mode || 'auto'}:${username}`;
     const current = this.authenticationFlights.get(key);
     if (current) return current;
 
-    const flight = this.authenticateOnce(username, password, mode, serviceType);
+    const flight = this.authenticateOnce(
+      username,
+      password,
+      mode,
+      serviceType,
+      schoolCode,
+    );
     this.authenticationFlights.set(key, flight);
     try {
       return await flight;
@@ -55,7 +69,21 @@ export class SchoolAuthenticationService {
     password: string,
     mode?: SchoolAuthMode,
     serviceType: SeatServiceType = 'study_room',
+    schoolCode: SchoolCode = 'cczu',
   ): Promise<SchoolAuthenticationResult> {
+    if (schoolCode === 'njtech') {
+      if (!this.njtechSeatClient)
+        throw new UnprocessableEntityException('南京工业大学适配器未启用');
+      const result = await this.njtechSeatClient.authenticate(
+        username,
+        password,
+      );
+      return {
+        token: result.token,
+        mode: 'webvpn',
+        webVpnSession: result.session,
+      };
+    }
     if (serviceType === 'library') {
       const result = await this.webVpnSeatClient.authenticate(
         username,
@@ -107,7 +135,13 @@ export class SchoolAuthenticationService {
     token: string,
     mode: SchoolAuthMode,
     serviceType: SeatServiceType = 'study_room',
+    schoolCode: SchoolCode = 'cczu',
   ): Promise<SeatResponse> {
+    if (schoolCode === 'njtech') {
+      if (!this.njtechSeatClient)
+        throw new UnprocessableEntityException('南京工业大学适配器未启用');
+      return this.njtechSeatClient.verifyToken(token);
+    }
     return mode === 'webvpn' || serviceType === 'library'
       ? this.webVpnSeatClient.verifyToken(token)
       : this.seatClient.verifyToken(token);
@@ -120,7 +154,13 @@ export class SchoolAuthenticationService {
     candidate: SeatCandidate,
     timeoutMs: number,
     serviceType: SeatServiceType = 'study_room',
+    schoolCode: SchoolCode = 'cczu',
   ): Promise<SeatResponse> {
+    if (schoolCode === 'njtech') {
+      if (!this.njtechSeatClient)
+        throw new UnprocessableEntityException('南京工业大学适配器未启用');
+      return this.njtechSeatClient.book(token, date, candidate);
+    }
     return mode === 'webvpn' || serviceType === 'library'
       ? this.webVpnSeatClient.book(token, date, candidate, timeoutMs)
       : this.seatClient.book(token, date, candidate, timeoutMs);
@@ -131,13 +171,27 @@ export class SchoolAuthenticationService {
     mode: SchoolAuthMode,
     path: string,
     serviceType: SeatServiceType = 'study_room',
+    schoolCode: SchoolCode = 'cczu',
   ): Promise<SeatResponse> {
+    if (schoolCode === 'njtech') {
+      if (!this.njtechSeatClient)
+        throw new UnprocessableEntityException('南京工业大学适配器未启用');
+      return this.njtechSeatClient.get(token, path);
+    }
     return mode === 'webvpn' || serviceType === 'library'
       ? this.webVpnSeatClient.get(token, path)
       : this.seatClient.get(token, path);
   }
 
-  createBookingCaptcha(token: string): Promise<BookingCaptchaChallenge> {
+  createBookingCaptcha(
+    token: string,
+    schoolCode: SchoolCode = 'cczu',
+  ): Promise<BookingCaptchaChallenge> {
+    if (schoolCode === 'njtech') {
+      throw new UnprocessableEntityException(
+        '南京工业大学预约验证码使用登录认证，不需要座位点选验证',
+      );
+    }
     return this.webVpnSeatClient.createBookingCaptcha(token);
   }
 
@@ -145,7 +199,13 @@ export class SchoolAuthenticationService {
     token: string,
     challengeToken: string,
     points: BookingCaptchaPoint[],
+    schoolCode: SchoolCode = 'cczu',
   ): Promise<SeatResponse> {
+    if (schoolCode === 'njtech') {
+      throw new UnprocessableEntityException(
+        '南京工业大学预约验证码使用登录认证，不需要座位点选验证',
+      );
+    }
     return this.webVpnSeatClient.verifyBookingCaptcha(
       token,
       challengeToken,
@@ -153,11 +213,25 @@ export class SchoolAuthenticationService {
     );
   }
 
-  restoreWebVpnSession(token: string, state: WebVpnSessionState): boolean {
+  restoreWebVpnSession(
+    token: string,
+    state: WebVpnSessionState,
+    schoolCode: SchoolCode = 'cczu',
+  ): boolean {
+    if (schoolCode === 'njtech') {
+      if (!this.njtechSeatClient) return false;
+      return this.njtechSeatClient.restoreSession(token, state);
+    }
     return this.webVpnSeatClient.restoreSession(token, state);
   }
 
-  getWebVpnSession(token: string): WebVpnSessionState | null {
+  getWebVpnSession(
+    token: string,
+    schoolCode: SchoolCode = 'cczu',
+  ): WebVpnSessionState | null {
+    if (schoolCode === 'njtech') {
+      return this.njtechSeatClient?.getSessionState(token) || null;
+    }
     return this.webVpnSeatClient.getSessionState(token);
   }
 }

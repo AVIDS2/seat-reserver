@@ -7,6 +7,7 @@ import {
   IsIn,
   IsInt,
   IsNotEmpty,
+  IsOptional,
   IsString,
   Max,
   MaxLength,
@@ -29,6 +30,10 @@ export class ReservationAccountDto {
 }
 
 export class ImmediateReservationDto extends ReservationAccountDto {
+  @IsOptional()
+  @IsString()
+  roomId?: string;
+
   @IsString()
   @IsNotEmpty()
   @MaxLength(30)

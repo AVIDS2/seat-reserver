@@ -14,10 +14,12 @@ import {
 import { PlatformCryptoService } from './platform-crypto.service';
 import { SchoolAuthenticationService } from './school-authentication.service';
 import type { WebVpnSessionState } from './webvpn-seat-client.service';
+import type { SchoolCode } from './school-catalog';
 
 export type ReadySeatConnection = {
   token: string;
   mode: 'direct' | 'webvpn';
+  schoolCode: SchoolCode;
   serviceType: SeatServiceType;
   connection: SchoolServiceConnectionEntity;
 };
@@ -57,8 +59,9 @@ export class PlatformServiceConnectionsService {
       schoolAccount: account,
       user: { id: ownerId } as UserEntity,
       serviceType,
-      identifier: serviceType === 'library' ? 'cczu' : 'cczukaoyan',
+      identifier: account.schoolCode,
     });
+    connection.identifier = account.schoolCode;
     connection.encryptedToken = this.crypto.encrypt(token);
     connection.encryptedWebVpnSession =
       mode === 'webvpn' && webVpnSession
@@ -168,7 +171,11 @@ export class PlatformServiceConnectionsService {
             const state = JSON.parse(
               this.crypto.decrypt(connection.encryptedWebVpnSession),
             ) as WebVpnSessionState;
-            this.schoolAuth.restoreWebVpnSession(token, state);
+            this.schoolAuth.restoreWebVpnSession(
+              token,
+              state,
+              account.schoolCode,
+            );
           } catch {
             // Re-authenticate below when the persisted WebVPN session is invalid.
           }
@@ -185,6 +192,7 @@ export class PlatformServiceConnectionsService {
           return {
             token,
             mode: connection.authMode,
+            schoolCode: account.schoolCode,
             serviceType,
             connection,
           };
@@ -193,17 +201,24 @@ export class PlatformServiceConnectionsService {
           token,
           connection.authMode,
           serviceType,
+          account.schoolCode,
         );
         if (verified.success) {
           connection.retryCount = 0;
           connection.nextRetryAt = null;
           connection.lastVerifiedAt = new Date();
           connection.status = 'active';
-          this.captureWebVpnSession(connection, token, connection.authMode);
+          this.captureWebVpnSession(
+            connection,
+            token,
+            connection.authMode,
+            account.schoolCode,
+          );
           await this.connections.save(connection);
           return {
             token,
             mode: connection.authMode,
+            schoolCode: account.schoolCode,
             serviceType,
             connection,
           };
@@ -220,11 +235,13 @@ export class PlatformServiceConnectionsService {
         password,
         preferredMode,
         serviceType,
+        account.schoolCode,
       );
       const verified = await this.schoolAuth.verifyToken(
         authenticated.token,
         authenticated.mode,
         serviceType,
+        account.schoolCode,
       );
       if (!verified.success) {
         throw new UnprocessableEntityException(
@@ -249,13 +266,14 @@ export class PlatformServiceConnectionsService {
       return {
         token: authenticated.token,
         mode: authenticated.mode,
+        schoolCode: account.schoolCode,
         serviceType,
         connection,
       };
     } catch (error: unknown) {
       connection ??= this.connections.create({
         serviceType,
-        identifier: serviceType === 'library' ? 'cczu' : 'cczukaoyan',
+        identifier: account.schoolCode,
         encryptedToken: null,
         encryptedWebVpnSession: null,
         authMode: preferredMode ?? 'webvpn',
@@ -292,6 +310,7 @@ export class PlatformServiceConnectionsService {
     connection: SchoolServiceConnectionEntity,
     token: string,
     mode: 'direct' | 'webvpn',
+    schoolCode: SchoolCode,
   ): void {
     if (mode !== 'webvpn') {
       connection.encryptedWebVpnSession = null;
@@ -299,7 +318,7 @@ export class PlatformServiceConnectionsService {
       return;
     }
 
-    const session = this.schoolAuth.getWebVpnSession(token);
+    const session = this.schoolAuth.getWebVpnSession(token, schoolCode);
     if (!session) return;
     connection.encryptedWebVpnSession = this.crypto.encrypt(
       JSON.stringify(session),

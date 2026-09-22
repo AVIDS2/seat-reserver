@@ -230,6 +230,30 @@ export class PlatformCaptchaSolverService {
     throw new ServiceUnavailableException(`自动识别失败：${lastDetail}`);
   }
 
+  async recognizeText(image: string): Promise<string> {
+    const usable = this.profiles.filter((profile) => profile.configured);
+    if (!usable.length) {
+      throw new ServiceUnavailableException('自动识别服务未配置');
+    }
+
+    for (const profile of usable) {
+      try {
+        const raw = await this.requestTextModel(profile, image);
+        const cleaned = raw
+          .replace(/```[\s\S]*?```/g, '')
+          .replace(/[^0-9a-zA-Z]/g, '')
+          .trim();
+        if (cleaned.length >= 3 && cleaned.length <= 12) return cleaned;
+      } catch (error: unknown) {
+        this.logger.warn(
+          `验证码文字识别失败（${profile.name}）：${safeMessage(error)}`,
+        );
+      }
+    }
+
+    throw new ServiceUnavailableException('验证码文字识别失败');
+  }
+
   private async requestModel(
     profile: CaptchaProviderProfile,
     input: CaptchaChallengeInput,
@@ -278,6 +302,59 @@ export class PlatformCaptchaSolverService {
       throw new ServiceUnavailableException(`服务返回 ${response.status}`);
     }
 
+    const payload = (await response.json().catch(() => null)) as {
+      choices?: Array<{ message?: { content?: unknown } }>;
+    } | null;
+    const content = payload?.choices?.[0]?.message?.content;
+    if (typeof content === 'string' && content.trim()) return content;
+    if (Array.isArray(content)) {
+      const text = content
+        .map((part) =>
+          part && typeof part === 'object' && 'text' in part
+            ? String((part as { text?: unknown }).text ?? '')
+            : '',
+        )
+        .join('');
+      if (text.trim()) return text;
+    }
+    throw new ServiceUnavailableException('服务未返回内容');
+  }
+
+  private async requestTextModel(
+    profile: CaptchaProviderProfile,
+    image: string,
+  ): Promise<string> {
+    const body: Record<string, unknown> = {
+      model: profile.model,
+      temperature: 0,
+      messages: [
+        {
+          role: 'system',
+          content:
+            '你是验证码文字识别助手。只读取图片中的字母和数字，按从左到右输出，不要解释，不要空格，不要 Markdown。',
+        },
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: '读取这张图片中的验证码。' },
+            { type: 'image_url', image_url: { url: image } },
+          ],
+        },
+      ],
+      ...profile.extraBody,
+    };
+    const response = await fetch(`${profile.baseUrl}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        authorization: `Bearer ${profile.apiKey}`,
+        ...profile.extraHeaders,
+      },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(profile.timeoutMs),
+    });
+    if (!response.ok)
+      throw new ServiceUnavailableException(`服务返回 ${response.status}`);
     const payload = (await response.json().catch(() => null)) as {
       choices?: Array<{ message?: { content?: unknown } }>;
     } | null;

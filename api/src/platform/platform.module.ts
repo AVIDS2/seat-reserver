@@ -70,6 +70,7 @@ import { PlatformSeatCatalogService } from './platform-seat-catalog.service';
 import { SeatClientService } from './seat-client.service';
 import { SchoolAuthenticationService } from './school-authentication.service';
 import { WebVpnSeatClientService } from './webvpn-seat-client.service';
+import { NjtechSeatClientService } from './njtech-seat-client.service';
 
 @Module({
   imports: [
@@ -147,6 +148,7 @@ import { WebVpnSeatClientService } from './webvpn-seat-client.service';
     SchoolAuthenticationService,
     SeatClientService,
     WebVpnSeatClientService,
+    NjtechSeatClientService,
   ],
   exports: [PlatformDashboardService],
 })

@@ -75,5 +75,11 @@ Thumbs.db
 .claude
 AGENTS.md
 
+# The standalone runtime is the complete production artifact. Keep its
+# dependencies and nested build directories even when the source tree rules
+# above exclude directories with the same names.
+!runtime/
+!runtime/**
+
 # Cleanup guide
 __CLEANUP__/

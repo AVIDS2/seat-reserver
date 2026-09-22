@@ -1,4 +1,4 @@
-export type CampusCode = 'cczu' | 'jou';
+export type CampusCode = 'cczu' | 'njtech' | 'jou';
 
 export type CampusStatus = 'connected' | 'preview';
 
@@ -27,6 +27,18 @@ export const CAMPUS_DEFINITIONS: readonly CampusDefinition[] = [
     statusLabel: '已接入',
     services: ['自习室', '图书馆'],
     aliases: ['常州大学', '常大', '西太湖']
+  },
+  {
+    code: 'njtech',
+    name: '南京工业大学',
+    shortName: '南工',
+    initials: '南',
+    detail: '逸夫图书馆 · 浦江图书馆',
+    summary: '当天座位预约已接入，支持江浦校区逸夫图书馆与浦江图书馆。',
+    status: 'connected',
+    statusLabel: '已接入',
+    services: ['图书馆', '当天抢座'],
+    aliases: ['南京工业大学', '南工大', '南工', 'NJTech', '江浦', '逸夫', '浦江图书馆']
   },
   {
     code: 'jou',

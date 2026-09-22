@@ -66,6 +66,7 @@ import { getSchoolAvailabilityNotice } from './school-status';
 type InstantBookingInput = {
   accountId: string;
   serviceType: VenueType;
+  roomId: string;
   seatId: string;
   date: string;
   startTime: number;
@@ -363,6 +364,7 @@ export default function SeatMapPage({
     const input: InstantBookingInput = {
       accountId,
       serviceType: venueType,
+      roomId,
       seatId: instantSeatId,
       date,
       startTime: Number(instantStartTime),
@@ -402,6 +404,7 @@ export default function SeatMapPage({
     const input: InstantBookingInput = {
       accountId,
       serviceType: venueType,
+      roomId,
       seatId: instantSeatId,
       date,
       startTime: Number(instantStartTime),

@@ -41,6 +41,14 @@ SOFTWARE.
 under the Apache License 2.0 by Vercel. Source and license:
 [vercel/ai](https://github.com/vercel/ai/tree/main/packages/openai-compatible).
 
+## assistant-ui
+
+The AI chat thread, composer, markdown, reasoning and message primitives under
+`src/components/assistant-ui/` are generated from the MIT-licensed
+[assistant-ui](https://github.com/assistant-ui/assistant-ui) registry. Runtime
+packages used by the application include `@assistant-ui/react`,
+`@assistant-ui/react-ai-sdk` and `@assistant-ui/react-markdown`.
+
 ## Collabodoro TimerProgress
 
 The focus-room circular timer is adapted from the MIT-licensed `TimerProgress`

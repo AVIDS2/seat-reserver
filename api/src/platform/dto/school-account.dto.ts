@@ -9,11 +9,11 @@ import {
 } from 'class-validator';
 
 export class CreateSchoolAccountDto {
-  @ApiProperty({ enum: ['cczu', 'jou'], default: 'cczu' })
+  @ApiProperty({ enum: ['cczu', 'njtech', 'jou'], default: 'cczu' })
   @IsOptional()
   @IsString()
-  @IsIn(['cczu', 'jou'])
-  schoolCode?: 'cczu' | 'jou';
+  @IsIn(['cczu', 'njtech', 'jou'])
+  schoolCode?: 'cczu' | 'njtech' | 'jou';
 
   @ApiProperty({ example: '我的账号' })
   @IsString()

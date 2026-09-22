@@ -95,7 +95,6 @@ export class PlatformTasksService {
     dto: CreateBookingTaskDto,
   ): Promise<BookingTaskView> {
     const venueType = dto.venueType ?? 'study_room';
-    validateTimeCandidates(dto.timeCandidates, venueType);
     const scheduleMode = dto.scheduleMode ?? 'daily';
     const scheduleWeekdays = normalizeWeekdays(dto.scheduleWeekdays);
     const scheduleDates = normalizeDates(dto.scheduleDates);
@@ -106,6 +105,7 @@ export class PlatformTasksService {
       scheduleDates,
     );
     const account = await this.accounts.findOwned(userId, dto.accountId);
+    validateTimeCandidates(dto.timeCandidates, venueType, account.schoolCode);
     const task = this.tasks.create({
       name: requireText(dto.name, '任务名称'),
       venueType,
@@ -128,7 +128,9 @@ export class PlatformTasksService {
       prewarmOffsetSeconds: dto.prewarmOffsetSeconds ?? 0,
       runOffsetSeconds: dto.runOffsetSeconds ?? 1,
       enabled:
-        venueType === 'library' && !this.captchaSolver.isConfigured()
+        venueType === 'library' &&
+        account.schoolCode !== 'njtech' &&
+        !this.captchaSolver.isConfigured()
           ? false
           : (dto.enabled ?? true),
       user: { id: userId } as UserEntity,
@@ -145,8 +147,6 @@ export class PlatformTasksService {
   ): Promise<BookingTaskView> {
     const task = await this.findOwned(userId, id);
     const targetVenueType = dto.venueType ?? task.venueType;
-    if (dto.timeCandidates)
-      validateTimeCandidates(dto.timeCandidates, targetVenueType);
     const scheduleMode = dto.scheduleMode ?? task.scheduleMode;
     const scheduleWeekdays = normalizeWeekdays(
       dto.scheduleWeekdays === undefined
@@ -166,8 +166,16 @@ export class PlatformTasksService {
       dto.accountId === undefined
         ? task.schoolAccount
         : await this.accounts.findOwned(userId, dto.accountId);
+    if (dto.timeCandidates)
+      validateTimeCandidates(
+        dto.timeCandidates,
+        targetVenueType,
+        account.schoolCode,
+      );
     const enabled =
-      targetVenueType === 'library' && !this.captchaSolver.isConfigured()
+      targetVenueType === 'library' &&
+      account.schoolCode !== 'njtech' &&
+      !this.captchaSolver.isConfigured()
         ? false
         : (dto.enabled ?? task.enabled);
     task.schoolAccount = account;
@@ -235,6 +243,7 @@ export class PlatformTasksService {
     if (
       enabled &&
       task.venueType === 'library' &&
+      task.schoolAccount.schoolCode !== 'njtech' &&
       !this.captchaSolver.isConfigured()
     ) {
       throw new UnprocessableEntityException(
@@ -306,6 +315,7 @@ export class PlatformTasksService {
     if (
       runType === 'booking' &&
       task.venueType === 'library' &&
+      task.schoolAccount.schoolCode !== 'njtech' &&
       !this.captchaSolver.isConfigured()
     ) {
       throw new UnprocessableEntityException(
@@ -354,9 +364,13 @@ export class PlatformTasksService {
       .join(' / ');
     const requiresLibraryVerification = task.venueType === 'library';
     const libraryBlocked =
-      requiresLibraryVerification && !this.captchaSolver.isConfigured();
+      requiresLibraryVerification &&
+      account?.schoolCode !== 'njtech' &&
+      !this.captchaSolver.isConfigured();
     const libraryReady =
-      requiresLibraryVerification && this.captchaSolver.isConfigured();
+      requiresLibraryVerification &&
+      account?.schoolCode !== 'njtech' &&
+      this.captchaSolver.isConfigured();
 
     return {
       id: String(task.id),
@@ -400,9 +414,11 @@ export class PlatformTasksService {
           ? '学校暂时不可访问，闹钟会在开放窗口自动重试'
           : libraryBlocked
             ? '图书馆自动抢座需要配置验证码识别服务'
-            : libraryReady
-              ? '将在开放窗口前预解验证码，开放时自动提交'
-              : '等待下一次自动执行'),
+            : account?.schoolCode === 'njtech'
+              ? '将在南工大开放窗口自动抢当天座位'
+              : libraryReady
+                ? '将在开放窗口前预解验证码，开放时自动提交'
+                : '等待下一次自动执行'),
     };
   }
 }
@@ -455,8 +471,9 @@ function scheduleLabel(task: BookingTaskEntity): string {
 function validateTimeCandidates(
   candidates: Array<{ start: number; end: number }>,
   venueType: string,
+  schoolCode = 'cczu',
 ) {
-  const window = bookingWindow(venueType);
+  const window = bookingWindow(venueType, schoolCode);
   if (!candidates.length)
     throw new UnprocessableEntityException('至少配置一个时间段');
   if (
@@ -474,7 +491,8 @@ function validateTimeCandidates(
     );
   if (
     candidates.some(
-      ({ start, end }) => end - start > maxBookingMinutes(venueType),
+      ({ start, end }) =>
+        end - start > maxBookingMinutes(venueType, schoolCode),
     )
   )
     throw new UnprocessableEntityException(

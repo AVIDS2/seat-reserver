@@ -108,6 +108,9 @@ services:
       SEAT_WEBVPN_USER_AGENT: ${SEAT_WEBVPN_USER_AGENT:-Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/132.0.0.0 Safari/537.36}
       SEAT_REFERER: ${SEAT_REFERER:-https://servicewechat.com/wxd0a21b477b3ac4f2/59/page-frame.html}
       SEAT_USER_AGENT: ${SEAT_USER_AGENT:-Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36 MicroMessenger/7.0.20.1781(0x6700143B) NetType/WIFI MiniProgramEnv/Windows WindowsWechat/WMPF WindowsWechat(0x63090a13) UnifiedPCWindowsWechat(0xf2541b37) XWEB/20089}
+      NJTECH_WEBVPN_URL: ${NJTECH_WEBVPN_URL:-https://vpnlib.njtech.edu.cn}
+      NJTECH_WEBVPN_ENTRY_URL: ${NJTECH_WEBVPN_ENTRY_URL:-}
+      NJTECH_WEBVPN_TIMEOUT_MS: ${NJTECH_WEBVPN_TIMEOUT_MS:-20000}
       PLATFORM_VLM_BASE_URL: ${PLATFORM_VLM_BASE_URL:-https://api.xiaomimimo.com/v1}
       PLATFORM_VLM_API_KEY: ${PLATFORM_VLM_API_KEY:-}
       PLATFORM_VLM_MODEL: ${PLATFORM_VLM_MODEL:-mimo-v2.5}

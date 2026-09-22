@@ -646,6 +646,7 @@ export async function getBookingReservations(
 export async function bookBookingReservation(input: {
   accountId: string;
   serviceType: VenueType;
+  roomId?: string;
   seatId: string;
   date: string;
   startTime: number;
@@ -665,6 +666,7 @@ export async function bookBookingReservation(input: {
 export async function createBookingCaptchaChallenge(input: {
   accountId: string;
   serviceType: VenueType;
+  roomId?: string;
   seatId: string;
   date: string;
   startTime: number;
@@ -701,6 +703,7 @@ export async function verifyBookingCaptchaChallenge(
 export async function autoSolveBookingCaptcha(input: {
   accountId: string;
   serviceType: VenueType;
+  roomId?: string;
   seatId: string;
   date: string;
   startTime: number;

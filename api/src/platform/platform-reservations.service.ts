@@ -155,8 +155,8 @@ export class PlatformReservationsService {
     userId: number,
     dto: ImmediateReservationDto,
   ): Promise<ReservationView> {
-    this.validateBooking(dto);
     const context = await this.context(userId, dto.accountId, dto.serviceType);
+    this.validateBooking(dto, context.account.schoolCode);
     return this.submitBooking(context, dto);
   }
 
@@ -164,12 +164,17 @@ export class PlatformReservationsService {
     userId: number,
     dto: ImmediateReservationDto,
   ): Promise<BookingCaptchaView> {
-    this.validateBooking(dto);
     if (dto.serviceType !== 'library') {
       throw new UnprocessableEntityException('自习室预约不需要图书馆验证');
     }
     const context = await this.context(userId, dto.accountId, 'library');
-    const challenge = await this.schoolAuth.createBookingCaptcha(context.token);
+    this.validateBooking(dto, context.account.schoolCode);
+    const challenge = context.account.schoolCode
+      ? await this.schoolAuth.createBookingCaptcha(
+          context.token,
+          context.account.schoolCode,
+        )
+      : await this.schoolAuth.createBookingCaptcha(context.token);
     const id = randomUUID();
     await this.redis.setJson(
       captchaKey(id),
@@ -201,7 +206,6 @@ export class PlatformReservationsService {
     userId: number,
     dto: ImmediateReservationDto,
   ): Promise<AutoSolvedBooking> {
-    this.validateBooking(dto);
     if (dto.serviceType !== 'library') {
       throw new UnprocessableEntityException('自习室预约不需要图书馆验证');
     }
@@ -210,17 +214,30 @@ export class PlatformReservationsService {
     }
 
     const context = await this.context(userId, dto.accountId, 'library');
-    const challenge = await this.schoolAuth.createBookingCaptcha(context.token);
+    this.validateBooking(dto, context.account.schoolCode);
+    const challenge = context.account.schoolCode
+      ? await this.schoolAuth.createBookingCaptcha(
+          context.token,
+          context.account.schoolCode,
+        )
+      : await this.schoolAuth.createBookingCaptcha(context.token);
     const solved = await this.solver.solve({
       image: challenge.image,
       wordImage: challenge.wordImage,
       requiredClicks: challenge.requiredClicks,
     });
-    const verified = await this.schoolAuth.verifyBookingCaptcha(
-      context.token,
-      challenge.token,
-      solved.points,
-    );
+    const verified = context.account.schoolCode
+      ? await this.schoolAuth.verifyBookingCaptcha(
+          context.token,
+          challenge.token,
+          solved.points,
+          context.account.schoolCode,
+        )
+      : await this.schoolAuth.verifyBookingCaptcha(
+          context.token,
+          challenge.token,
+          solved.points,
+        );
     assertSuccess(verified, '自动识别结果未通过学校校验');
 
     const reservation = await this.submitBooking(context, dto, challenge.token);
@@ -254,11 +271,18 @@ export class PlatformReservationsService {
       pending.booking.accountId,
       'library',
     );
-    const verified = await this.schoolAuth.verifyBookingCaptcha(
-      context.token,
-      pending.challengeToken,
-      points,
-    );
+    const verified = context.account.schoolCode
+      ? await this.schoolAuth.verifyBookingCaptcha(
+          context.token,
+          pending.challengeToken,
+          points,
+          context.account.schoolCode,
+        )
+      : await this.schoolAuth.verifyBookingCaptcha(
+          context.token,
+          pending.challengeToken,
+          points,
+        );
     assertSuccess(verified, '验证码错误，请重新验证');
     return this.submitBooking(context, pending.booking, pending.challengeToken);
   }
@@ -279,7 +303,6 @@ export class PlatformReservationsService {
     serviceType: SeatServiceType,
   ): Promise<ReservationView[]> {
     if (!this.runs) return [];
-    const today = getShanghaiDate();
     const runs = await this.runs.find({
       where: {
         user: { id: userId },
@@ -303,15 +326,21 @@ export class PlatformReservationsService {
       startTime: run.reservedBegin ?? '',
       endTime: run.reservedEnd ?? '',
       location: run.location ?? run.task?.primarySeatLabel ?? '学校座位',
-      status: run.targetDate >= today ? 'upcoming' : 'completed',
+      status: 'upcoming',
       statusLabel: '平台记录，学校状态待同步',
       checkedIn: false,
       canCancel: false,
     }));
   }
 
-  private validateBooking(dto: ImmediateReservationDto): void {
-    const window = bookingWindow(dto.serviceType);
+  private validateBooking(
+    dto: ImmediateReservationDto,
+    schoolCode = 'cczu',
+  ): void {
+    if (schoolCode === 'njtech' && dto.date !== getShanghaiDate()) {
+      throw new UnprocessableEntityException('南京工业大学目前只支持当天预约');
+    }
+    const window = bookingWindow(dto.serviceType, schoolCode);
     if (
       !Number.isInteger(dto.startTime) ||
       !Number.isInteger(dto.endTime) ||
@@ -323,7 +352,10 @@ export class PlatformReservationsService {
         `可预约时间为 ${formatTime(window.start)}–${formatTime(window.end)}，且结束时间必须晚于开始时间`,
       );
     }
-    if (dto.endTime - dto.startTime > maxBookingMinutes(dto.serviceType)) {
+    if (
+      dto.endTime - dto.startTime >
+      maxBookingMinutes(dto.serviceType, schoolCode)
+    ) {
       throw new UnprocessableEntityException(
         dto.serviceType === 'library'
           ? '图书馆单次预约最长 4 小时'
@@ -337,19 +369,31 @@ export class PlatformReservationsService {
     dto: ImmediateReservationDto,
     authId?: string,
   ): Promise<ReservationView> {
-    const response = await this.schoolAuth.book(
-      context.token,
-      context.mode,
-      dto.date,
-      {
-        seatId: dto.seatId.trim(),
-        startTime: dto.startTime,
-        endTime: dto.endTime,
-        authId,
-      },
-      10_000,
-      dto.serviceType,
-    );
+    const candidate = {
+      seatId: dto.seatId.trim(),
+      ...(dto.roomId ? { roomId: dto.roomId } : {}),
+      startTime: dto.startTime,
+      endTime: dto.endTime,
+      authId,
+    };
+    const response = context.schoolCode
+      ? await this.schoolAuth.book(
+          context.token,
+          context.mode,
+          dto.date,
+          candidate,
+          10_000,
+          dto.serviceType,
+          context.schoolCode,
+        )
+      : await this.schoolAuth.book(
+          context.token,
+          context.mode,
+          dto.date,
+          candidate,
+          10_000,
+          dto.serviceType,
+        );
     assertSuccess(response);
     this.catalog.invalidateAccount(
       context.account.userId,
@@ -404,12 +448,20 @@ export class PlatformReservationsService {
     context: Awaited<ReturnType<PlatformReservationsService['context']>>,
     path: string,
   ) {
-    const response = await this.schoolAuth.get(
-      context.token,
-      context.mode,
-      path,
-      context.serviceType,
-    );
+    const response = context.schoolCode
+      ? await this.schoolAuth.get(
+          context.token,
+          context.mode,
+          path,
+          context.serviceType,
+          context.schoolCode,
+        )
+      : await this.schoolAuth.get(
+          context.token,
+          context.mode,
+          path,
+          context.serviceType,
+        );
     assertSuccess(response);
     return response;
   }
@@ -454,6 +506,7 @@ function assertSuccess(
   },
   fallback = '学校预约服务暂时不可用',
 ): void {
+  if (response.success === true) return;
   if (
     response.success === false ||
     response.httpStatus !== 200 ||

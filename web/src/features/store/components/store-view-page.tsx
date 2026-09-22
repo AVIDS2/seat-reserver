@@ -7,14 +7,34 @@ import { toast } from 'sonner';
 import { Icons } from '@/components/icons';
 import PageContainer from '@/components/layout/page-container';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger
+} from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle
+} from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from '@/components/ui/dialog';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import { ShineBorder } from '@/components/ui/shine-border';
+import { StarryPanel } from '@/components/ui/starry-panel';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   createProCheckout,
@@ -58,7 +78,7 @@ const products: ShopProduct[] = [
     kind: 'invite',
     title: '好友邀请码',
     subtitle: '一次性 · 可转赠 · 30 天有效',
-  description: '给认识的同学一个席定入口。生成后只展示一次，请及时转交。',
+    description: '给认识的同学一个席定入口。生成后只展示一次，请及时转交。',
     badge: '600 席定币',
     icon: 'gift',
     accent: 'bg-emerald-600'
@@ -69,7 +89,7 @@ const products: ShopProduct[] = [
     kind: 'coming',
     title: '高校扩展位',
     subtitle: '更多学校、更多校区',
-  description: '江苏海洋大学和更多高校正在接入，新的服务会先在这里出现。',
+    description: '江苏海洋大学和更多高校正在接入，新的服务会先在这里出现。',
     badge: '筹备中',
     icon: 'building',
     accent: 'bg-sky-700'
@@ -80,7 +100,7 @@ const products: ShopProduct[] = [
     kind: 'coming',
     title: '专注时段包',
     subtitle: '让学习计划更有秩序',
-  description: '固定时段和连续学习计划，正在准备中。',
+    description: '固定时段和连续学习计划，正在准备中。',
     badge: '即将上架',
     icon: 'clock',
     accent: 'bg-slate-700'
@@ -91,7 +111,7 @@ const products: ShopProduct[] = [
     kind: 'coming',
     title: '连续签到徽章',
     subtitle: '把坚持留下来',
-  description: '连续签到可解锁个人徽章和展示标识，正在准备中。',
+    description: '连续签到可解锁个人徽章和展示标识，正在准备中。',
     badge: '成长中',
     icon: 'badgeCheck',
     accent: 'bg-amber-600'
@@ -102,7 +122,7 @@ const products: ShopProduct[] = [
     kind: 'coming',
     title: '专注计划模板',
     subtitle: '一键安排学习节奏',
-  description: '把固定时段、工作日和备选座位保存成计划，正在准备中。',
+    description: '把固定时段、工作日和备选座位保存成计划，正在准备中。',
     badge: '规划中',
     icon: 'calendar',
     accent: 'bg-rose-700'
@@ -129,7 +149,8 @@ export default function StoreViewPage({
   const activeDaysNeeded = Math.ceil(pointsMissing / Math.max(1, data.dailyActivityPoints));
 
   const visibleProducts = useMemo(
-    () => (category === '全部' ? products : products.filter((product) => product.category === category)),
+    () =>
+      category === '全部' ? products : products.filter((product) => product.category === category),
     [category]
   );
 
@@ -242,8 +263,8 @@ export default function StoreViewPage({
           </Alert>
         )}
 
-        <section className='overflow-hidden rounded-xl border bg-foreground text-background'>
-          <div className='grid gap-6 px-5 py-6 sm:px-8 sm:py-8 lg:grid-cols-[1.25fr_0.75fr] lg:items-end'>
+        <StarryPanel contentClassName='p-5 sm:p-8'>
+          <div className='grid gap-6 lg:grid-cols-[1.25fr_0.75fr] lg:items-end'>
             <div>
               <div className='flex flex-wrap items-center gap-2 text-xs font-medium uppercase tracking-[0.18em] text-background/60'>
                 <span className='bg-primary size-2 rounded-full' aria-hidden='true' />
@@ -281,16 +302,31 @@ export default function StoreViewPage({
                 <Icons.gift className='text-primary' />
               </div>
               <div className='mt-4 flex items-end justify-between gap-3'>
-                <p className='font-mono text-3xl font-semibold tabular-nums'>{data.pointsBalance}<span className='text-base text-background/45'> / {inviteCost}</span></p>
-                <p className='text-right text-xs text-background/55'>{pointsMissing ? `还差 ${pointsMissing} 席定币` : '现在可以兑换'}</p>
+                <p className='font-mono text-3xl font-semibold tabular-nums'>
+                  {data.pointsBalance}
+                  <span className='text-base text-background/45'> / {inviteCost}</span>
+                </p>
+                <p className='text-right text-xs text-background/55'>
+                  {pointsMissing ? `还差 ${pointsMissing} 席定币` : '现在可以兑换'}
+                </p>
               </div>
-              <Progress value={progress} aria-label='兑换进度' className='mt-3 [&_[data-slot=progress-track]]:bg-background/15 [&_[data-slot=progress-indicator]]:bg-primary' />
-              <p className='mt-2 text-xs text-background/50'>每日签到 +{data.dailyActivityPoints} 席定币，约 {activeDaysNeeded} 天可兑换</p>
+              <Progress
+                value={progress}
+                aria-label='兑换进度'
+                className='mt-3 [&_[data-slot=progress-track]]:bg-background/15 [&_[data-slot=progress-indicator]]:bg-primary'
+              />
+              <p className='mt-2 text-xs text-background/50'>
+                每日签到 +{data.dailyActivityPoints} 席定币，约 {activeDaysNeeded} 天可兑换
+              </p>
             </div>
           </div>
-        </section>
+        </StarryPanel>
 
-        <Tabs value={category} onValueChange={(value) => setCategory(value as ShopCategory)} className='flex flex-col gap-4'>
+        <Tabs
+          value={category}
+          onValueChange={(value) => setCategory(value as ShopCategory)}
+          className='flex flex-col gap-4'
+        >
           <div className='flex flex-col justify-between gap-3 sm:flex-row sm:items-center'>
             <TabsList className='w-full overflow-x-auto sm:w-fit'>
               <TabsTrigger value='全部'>全部商品</TabsTrigger>
@@ -299,7 +335,10 @@ export default function StoreViewPage({
               <TabsTrigger value='成长'>成长奖励</TabsTrigger>
               <TabsTrigger value='即将上架'>即将上架</TabsTrigger>
             </TabsList>
-            <Link href='/dashboard/membership#invite' className={cn(buttonVariants({ variant: 'outline', size: 'sm' }))}>
+            <Link
+              href='/dashboard/membership#invite'
+              className={cn(buttonVariants({ variant: 'outline', size: 'sm' }))}
+            >
               <Icons.history data-icon='inline-start' />
               兑换记录
             </Link>
@@ -325,21 +364,41 @@ export default function StoreViewPage({
             <CardHeader>
               <div className='flex items-start justify-between gap-3'>
                 <div>
-                  <CardTitle className='flex items-center gap-2'><Icons.gift />我的权益</CardTitle>
+                  <CardTitle className='flex items-center gap-2'>
+                    <Icons.gift />
+                    我的权益
+                  </CardTitle>
                   <CardDescription className='mt-1'>已兑换的商品和当前权益。</CardDescription>
                 </div>
-                <Badge variant='outline'>{data.invitations.length + (membership.isPro ? 1 : 0)} 件</Badge>
+                <Badge variant='outline'>
+                  {data.invitations.length + (membership.isPro ? 1 : 0)} 件
+                </Badge>
               </div>
             </CardHeader>
             <CardContent className='flex flex-col gap-2'>
-              {membership.isPro && <ShelfRow icon={<Icons.pro />} title='Pro 永久通行证' meta='已激活 · 3 个校园账号额度' status='已拥有' />}
+              {membership.isPro && (
+                <ShelfRow
+                  icon={<Icons.pro />}
+                  title='Pro 永久通行证'
+                  meta='已激活 · 3 个校园账号额度'
+                  status='已拥有'
+                />
+              )}
               {data.invitations.map((invitation) => (
                 <ShelfRow
                   key={invitation.id}
                   icon={<Icons.gift />}
                   title='好友邀请码'
-                  meta={invitation.expiresAt ? `有效至 ${formatDate(invitation.expiresAt)}` : '长期有效'}
-                  status={invitation.status === 'active' ? '待赠出' : invitation.status === 'exhausted' ? '已使用' : '已失效'}
+                  meta={
+                    invitation.expiresAt ? `有效至 ${formatDate(invitation.expiresAt)}` : '长期有效'
+                  }
+                  status={
+                    invitation.status === 'active'
+                      ? '待赠出'
+                      : invitation.status === 'exhausted'
+                        ? '已使用'
+                        : '已失效'
+                  }
                 />
               ))}
               {!membership.isPro && data.invitations.length === 0 && (
@@ -361,15 +420,23 @@ export default function StoreViewPage({
               <Accordion>
                 <AccordionItem value='earn'>
                   <AccordionTrigger>席定币从哪里来？</AccordionTrigger>
-                  <AccordionContent className='text-muted-foreground'>每日签到获得 {data.dailyActivityPoints} 席定币；好友完成首次验证后，邀请人获得 {data.referralRewardPoints} 席定币。</AccordionContent>
+                  <AccordionContent className='text-muted-foreground'>
+                    每日签到获得 {data.dailyActivityPoints} 席定币；好友完成首次验证后，邀请人获得{' '}
+                    {data.referralRewardPoints} 席定币。
+                  </AccordionContent>
                 </AccordionItem>
                 <AccordionItem value='redeem'>
                   <AccordionTrigger>兑换邀请码需要多少席定币？</AccordionTrigger>
-                  <AccordionContent className='text-muted-foreground'>需要 {data.invitePointsCost} 席定币，按每日签到计算约需 {Math.ceil(data.invitePointsCost / Math.max(1, data.dailyActivityPoints))} 天。</AccordionContent>
+                  <AccordionContent className='text-muted-foreground'>
+                    需要 {data.invitePointsCost} 席定币，按每日签到计算约需{' '}
+                    {Math.ceil(data.invitePointsCost / Math.max(1, data.dailyActivityPoints))} 天。
+                  </AccordionContent>
                 </AccordionItem>
                 <AccordionItem value='source'>
                   <AccordionTrigger>邀请码怎么使用？</AccordionTrigger>
-                  <AccordionContent className='text-muted-foreground'>平台不提供公开售卖入口。邀请码只建议转赠给认识的同学，生成记录和使用状态都会保存。</AccordionContent>
+                  <AccordionContent className='text-muted-foreground'>
+                    平台不提供公开售卖入口。邀请码只建议转赠给认识的同学，生成记录和使用状态都会保存。
+                  </AccordionContent>
                 </AccordionItem>
               </Accordion>
             </CardContent>
@@ -377,7 +444,10 @@ export default function StoreViewPage({
         </section>
       </div>
 
-      <Dialog open={Boolean(selectedProduct)} onOpenChange={(open) => !open && setSelectedProduct(null)}>
+      <Dialog
+        open={Boolean(selectedProduct)}
+        onOpenChange={(open) => !open && setSelectedProduct(null)}
+      >
         <DialogContent className='sm:max-w-lg'>
           <DialogHeader>
             <DialogTitle>{selectedProduct?.title}</DialogTitle>
@@ -385,31 +455,81 @@ export default function StoreViewPage({
           </DialogHeader>
           {selectedProduct?.kind === 'invite' && (
             <div className='rounded-lg border bg-muted/30 p-4 text-sm'>
-              <div className='flex items-center justify-between gap-4'><span>兑换门槛</span><strong>{inviteCost} 席定币</strong></div>
+              <div className='flex items-center justify-between gap-4'>
+                <span>兑换门槛</span>
+                <strong>{inviteCost} 席定币</strong>
+              </div>
               <Separator className='my-3' />
-              <div className='flex items-center justify-between gap-4'><span>当前余额</span><strong>{data.pointsBalance} 席定币</strong></div>
-              <p className='text-muted-foreground mt-3 text-xs'>生成后只显示一次，请确认转赠对象。</p>
+              <div className='flex items-center justify-between gap-4'>
+                <span>当前余额</span>
+                <strong>{data.pointsBalance} 席定币</strong>
+              </div>
+              <p className='text-muted-foreground mt-3 text-xs'>
+                生成后只显示一次，请确认转赠对象。
+              </p>
             </div>
           )}
           {selectedProduct?.kind === 'pro' && (
-            <div className='rounded-lg border bg-muted/30 p-4 text-sm'>¥20，一次支付，永久有效。支付成功后由 webhook 自动授予 Pro。</div>
+            <div className='rounded-lg border bg-muted/30 p-4 text-sm'>
+              ¥20，一次支付，永久有效。支付成功后由 webhook 自动授予 Pro。
+            </div>
           )}
-          {selectedProduct?.kind === 'coming' && <div className='rounded-lg border bg-muted/30 p-4 text-sm'>该权益还在准备中，当前不会扣除席定币。</div>}
+          {selectedProduct?.kind === 'coming' && (
+            <div className='rounded-lg border bg-muted/30 p-4 text-sm'>
+              该权益还在准备中，当前不会扣除席定币。
+            </div>
+          )}
           <DialogFooter>
-            <Button variant='outline' onClick={() => setSelectedProduct(null)}>返回货架</Button>
-            {selectedProduct?.kind === 'pro' && <Button onClick={() => void openProCheckout()} disabled={busy === 'pro' || !canRequest}>{busy === 'pro' ? '处理中' : membership.paymentAvailable ? '前往支付' : '申请开通'}</Button>}
-            {selectedProduct?.kind === 'invite' && <Button onClick={() => void handleProductAction(selectedProduct)} disabled={busy === 'invite' || data.pointsBalance < inviteCost}>{busy === 'invite' ? '兑换中' : '确认兑换'}</Button>}
+            <Button variant='outline' onClick={() => setSelectedProduct(null)}>
+              返回货架
+            </Button>
+            {selectedProduct?.kind === 'pro' && (
+              <Button
+                onClick={() => void openProCheckout()}
+                disabled={busy === 'pro' || !canRequest}
+              >
+                {busy === 'pro' ? '处理中' : membership.paymentAvailable ? '前往支付' : '申请开通'}
+              </Button>
+            )}
+            {selectedProduct?.kind === 'invite' && (
+              <Button
+                onClick={() => void handleProductAction(selectedProduct)}
+                disabled={busy === 'invite' || data.pointsBalance < inviteCost}
+              >
+                {busy === 'invite' ? '兑换中' : '确认兑换'}
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      <Dialog open={Boolean(generatedCode)} onOpenChange={(open) => !open && setGeneratedCode(null)}>
+      <Dialog
+        open={Boolean(generatedCode)}
+        onOpenChange={(open) => !open && setGeneratedCode(null)}
+      >
         <DialogContent className='sm:max-w-md'>
-          <DialogHeader><DialogTitle>邀请码已生成</DialogTitle><DialogDescription>只显示一次，请复制后转赠给认识的同学。</DialogDescription></DialogHeader>
-          <div className='rounded-lg border bg-muted px-4 py-5 text-center font-mono text-lg tracking-[0.16em]'>{generatedCode}</div>
+          <DialogHeader>
+            <DialogTitle>邀请码已生成</DialogTitle>
+            <DialogDescription>只显示一次，请复制后转赠给认识的同学。</DialogDescription>
+          </DialogHeader>
+          <div className='rounded-lg border bg-muted px-4 py-5 text-center font-mono text-lg tracking-[0.16em]'>
+            {generatedCode}
+          </div>
           <DialogFooter>
-            <Button variant='outline' onClick={() => setGeneratedCode(null)}>关闭</Button>
-            <Button onClick={() => { if (generatedCode) void navigator.clipboard.writeText(generatedCode).then(() => toast.success('邀请码已复制')); }}><Icons.copy data-icon='inline-start' />复制邀请码</Button>
+            <Button variant='outline' onClick={() => setGeneratedCode(null)}>
+              关闭
+            </Button>
+            <Button
+              onClick={() => {
+                if (generatedCode)
+                  void navigator.clipboard
+                    .writeText(generatedCode)
+                    .then(() => toast.success('邀请码已复制'));
+              }}
+            >
+              <Icons.copy data-icon='inline-start' />
+              复制邀请码
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -417,7 +537,17 @@ export default function StoreViewPage({
   );
 }
 
-function ProductCard({ product, data, busy, onAction }: { product: ShopProduct; data: RewardsSnapshot; busy: 'pro' | 'invite' | null; onAction: () => void }) {
+function ProductCard({
+  product,
+  data,
+  busy,
+  onAction
+}: {
+  product: ShopProduct;
+  data: RewardsSnapshot;
+  busy: 'pro' | 'invite' | null;
+  onAction: () => void;
+}) {
   const owned = product.kind === 'pro' && data.membership.isPro;
   const affordable = product.kind !== 'invite' || data.pointsBalance >= data.invitePointsCost;
   return (
@@ -429,12 +559,31 @@ function ProductCard({ product, data, busy, onAction }: { product: ShopProduct; 
       </CardHeader>
       <CardContent className='flex flex-1 flex-col gap-3'>
         <p className='text-muted-foreground text-sm leading-6'>{product.description}</p>
-        {product.kind === 'invite' && <p className='font-mono text-sm tabular-nums'>{data.invitePointsCost} 席定币</p>}
-        {product.kind === 'pro' && <p className='text-lg font-semibold tabular-nums'>¥20 <span className='text-muted-foreground text-xs font-normal'>永久</span></p>}
+        {product.kind === 'invite' && (
+          <p className='font-mono text-sm tabular-nums'>{data.invitePointsCost} 席定币</p>
+        )}
+        {product.kind === 'pro' && (
+          <p className='text-lg font-semibold tabular-nums'>
+            ¥20 <span className='text-muted-foreground text-xs font-normal'>永久</span>
+          </p>
+        )}
       </CardContent>
       <CardFooter>
-        <Button className='w-full' variant={product.kind === 'coming' ? 'outline' : 'default'} onClick={onAction} disabled={owned || busy !== null}>
-          {owned ? '已拥有' : product.kind === 'coming' ? '查看详情' : product.kind === 'invite' ? affordable ? '兑换商品' : '查看门槛' : '查看商品'}
+        <Button
+          className='w-full'
+          variant={product.kind === 'coming' ? 'outline' : 'default'}
+          onClick={onAction}
+          disabled={owned || busy !== null}
+        >
+          {owned
+            ? '已拥有'
+            : product.kind === 'coming'
+              ? '查看详情'
+              : product.kind === 'invite'
+                ? affordable
+                  ? '兑换商品'
+                  : '查看门槛'
+                : '查看商品'}
           {product.kind !== 'coming' && <Icons.arrowRight data-icon='inline-end' />}
         </Button>
       </CardFooter>
@@ -446,15 +595,14 @@ function ProductArt({ product }: { product: ShopProduct }) {
   const Icon = Icons[product.icon];
   return (
     <div
-      className={cn('store-product-art relative flex h-32 items-end justify-between overflow-hidden p-4 text-white', product.accent)}
+      className={cn(
+        'store-product-art relative flex h-32 items-end justify-between overflow-hidden p-4 text-white',
+        product.accent
+      )}
       data-product-kind={product.kind}
       data-product-id={product.id}
     >
-      <ShineBorder
-        duration={16}
-        shineColor={shineColors(product)}
-        className='opacity-90'
-      />
+      <ShineBorder duration={16} shineColor={shineColors(product)} className='opacity-90' />
       <div className='store-art-visual' aria-hidden='true'>
         <span className='store-art-card store-art-card-back' />
         <span className='store-art-card store-art-card-front'>
@@ -466,7 +614,9 @@ function ProductArt({ product }: { product: ShopProduct }) {
       <span className='store-art-icon relative z-10 flex size-11 items-center justify-center rounded-lg border border-white/20 bg-black/10 backdrop-blur-sm'>
         <Icon className='size-6 opacity-95' aria-hidden='true' />
       </span>
-      <Badge className='relative z-10 border-white/20 bg-white/90 text-slate-900'>{product.badge}</Badge>
+      <Badge className='relative z-10 border-white/20 bg-white/90 text-slate-900'>
+        {product.badge}
+      </Badge>
     </div>
   );
 }
@@ -478,10 +628,33 @@ function shineColors(product: ShopProduct): string[] {
   return ['#cbd5e1', '#e2e8f0', '#fef3c7'];
 }
 
-function ShelfRow({ icon, title, meta, status }: { icon: React.ReactNode; title: string; meta: string; status: string }) {
-  return <div className='flex items-center gap-3 rounded-lg border p-3'><div className='text-primary'>{icon}</div><div className='min-w-0 flex-1'><p className='truncate text-sm font-medium'>{title}</p><p className='text-muted-foreground mt-1 truncate text-xs'>{meta}</p></div><Badge variant='outline'>{status}</Badge></div>;
+function ShelfRow({
+  icon,
+  title,
+  meta,
+  status
+}: {
+  icon: React.ReactNode;
+  title: string;
+  meta: string;
+  status: string;
+}) {
+  return (
+    <div className='flex items-center gap-3 rounded-lg border p-3'>
+      <div className='text-primary'>{icon}</div>
+      <div className='min-w-0 flex-1'>
+        <p className='truncate text-sm font-medium'>{title}</p>
+        <p className='text-muted-foreground mt-1 truncate text-xs'>{meta}</p>
+      </div>
+      <Badge variant='outline'>{status}</Badge>
+    </div>
+  );
 }
 
 function formatDate(value: string): string {
-  return new Date(value).toLocaleDateString('zh-CN', { timeZone: 'Asia/Shanghai', month: 'numeric', day: 'numeric' });
+  return new Date(value).toLocaleDateString('zh-CN', {
+    timeZone: 'Asia/Shanghai',
+    month: 'numeric',
+    day: 'numeric'
+  });
 }

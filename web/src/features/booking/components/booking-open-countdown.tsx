@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Icons } from '@/components/icons';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { StarryPanel } from '@/components/ui/starry-panel';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const SHANGHAI_OFFSET_MS = 8 * 60 * 60 * 1000;
@@ -23,29 +24,33 @@ export function BookingOpenCountdown() {
   }, []);
 
   return (
-    <section
+    <StarryPanel
       aria-label='预约开放警报倒计时'
-      className='relative min-w-0 flex-1 overflow-hidden rounded-lg border border-destructive/35 bg-foreground p-5 text-background sm:p-7'
+      className='min-w-0 flex-1 border-destructive/35'
+      contentClassName='p-5 sm:p-7'
     >
       <div
+        className='pointer-events-none absolute top-0 right-0 left-0 h-px bg-destructive/70'
         aria-hidden='true'
-        className='pointer-events-none absolute inset-0 opacity-15 [background-image:repeating-linear-gradient(0deg,transparent_0,transparent_3px,rgba(255,255,255,0.11)_4px),repeating-linear-gradient(90deg,transparent_0,transparent_18px,rgba(255,255,255,0.04)_19px)]'
       />
-      <div className='pointer-events-none absolute top-0 right-0 left-0 h-px bg-destructive/70' aria-hidden='true' />
       <div className='relative flex flex-col gap-6'>
         <div className='flex flex-wrap items-start justify-between gap-4'>
           <div className='flex items-start gap-3'>
             <motion.span
               aria-hidden='true'
               animate={reduceMotion ? undefined : { opacity: [0.45, 1, 0.45] }}
-              transition={reduceMotion ? undefined : { duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
+              transition={
+                reduceMotion ? undefined : { duration: 1.6, repeat: Infinity, ease: 'easeInOut' }
+              }
               className='mt-1 flex size-3 rounded-full bg-destructive shadow-[0_0_18px] shadow-destructive'
             />
             <div>
               <p className='text-xs font-semibold uppercase tracking-[0.2em] text-destructive'>
                 OPENING COUNTDOWN
               </p>
-              <h2 className='mt-1 text-lg font-semibold tracking-tight sm:text-xl'>下一次抢座开放</h2>
+              <h2 className='mt-1 text-lg font-semibold tracking-tight sm:text-xl'>
+                下一次抢座开放
+              </h2>
               <p className='mt-1 text-xs text-background/60'>开放后按你的座位和时段自动提交</p>
             </div>
           </div>
@@ -59,7 +64,9 @@ export function BookingOpenCountdown() {
             <p className='text-[11px] font-medium uppercase tracking-[0.22em] text-background/45'>
               Open window
             </p>
-            <p className='mt-2 font-mono text-4xl font-bold tracking-tight text-destructive'>06:00</p>
+            <p className='mt-2 font-mono text-4xl font-bold tracking-tight text-destructive'>
+              06:00
+            </p>
             <p className='mt-2 max-w-xs text-xs leading-5 text-background/60'>
               到点开始尝试，主座位没空时继续尝试备选。
             </p>
@@ -90,13 +97,19 @@ export function BookingOpenCountdown() {
             className='h-1 [&_[data-slot=progress-track]]:bg-background/15 [&_[data-slot=progress-indicator]]:bg-destructive'
           />
           <div className='flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-background/55'>
-            <span className='flex items-center gap-1.5'><Icons.refresh /> 检查账号</span>
-            <span className='flex items-center gap-1.5'><Icons.target /> 尝试座位</span>
-            <span className='flex items-center gap-1.5'><Icons.clock /> 提交预约</span>
+            <span className='flex items-center gap-1.5'>
+              <Icons.refresh /> 检查账号
+            </span>
+            <span className='flex items-center gap-1.5'>
+              <Icons.target /> 尝试座位
+            </span>
+            <span className='flex items-center gap-1.5'>
+              <Icons.clock /> 提交预约
+            </span>
           </div>
         </div>
       </div>
-    </section>
+    </StarryPanel>
   );
 }
 
@@ -112,7 +125,10 @@ function TimeBlock({
   return (
     <div className='flex min-w-0 flex-col items-center gap-1'>
       <div className='relative min-w-[4.25rem] overflow-hidden rounded-md border border-background/15 bg-background/10 px-2 py-3 text-center sm:min-w-[6.2rem] sm:px-3 sm:py-4'>
-        <span className='pointer-events-none absolute top-1/2 right-0 left-0 h-px bg-destructive/30' aria-hidden='true' />
+        <span
+          className='pointer-events-none absolute top-1/2 right-0 left-0 h-px bg-destructive/30'
+          aria-hidden='true'
+        />
         <motion.span
           key={value}
           initial={reduceMotion ? false : { opacity: 0.3, y: 6, filter: 'blur(3px)' }}

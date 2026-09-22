@@ -23,6 +23,7 @@ import {
 import { LeaderboardPodium } from '@/components/ui/leaderboard-podium';
 import { LeaderboardRankings } from '@/components/ui/leaderboard-rankings';
 import { StarryGradientRail } from '@/components/ui/starry-gradient-rail';
+import { StarryPanel } from '@/components/ui/starry-panel';
 import PageContainer from '@/components/layout/page-container';
 import { useCampusWorkspace } from '@/features/campus/campus-workspace';
 import { cn } from '@/lib/utils';
@@ -97,49 +98,47 @@ export default function LeaderboardViewPage({ initialData }: { initialData: Lead
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.35, ease: 'easeOut' }}
         >
-          <Card className='relative isolate overflow-hidden border-white/10 bg-[linear-gradient(110deg,#08131f_0%,#17294a_38%,#39205b_69%,#541d49_100%)] text-white shadow-none'>
-            <CardContent className='relative z-10 flex flex-col gap-5 p-5 sm:p-7'>
-              <div className='flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between'>
-                <div className='min-w-0'>
-                  <Badge variant='outline' className='border-white/20 bg-white/10 text-white'>
-                    <Icons.trophy className='text-amber-300' data-icon='inline-start' /> 自习时长榜
-                  </Badge>
-                  <h2 className='mt-4 text-2xl font-semibold tracking-tight text-white sm:text-3xl'>
-                    今天坐哪里，看榜单就知道
-                  </h2>
-                  <p className='mt-2 max-w-xl text-sm leading-6 text-white/65'>
-                    {data.fromDate} 至 {data.toDate} · {campusLabel}公开昵称展示
+          <StarryPanel contentClassName='flex flex-col gap-5 p-5 sm:p-7'>
+            <div className='flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between'>
+              <div className='min-w-0'>
+                <Badge variant='outline' className='border-white/20 bg-white/10 text-white'>
+                  <Icons.trophy className='text-amber-300' data-icon='inline-start' /> 自习时长榜
+                </Badge>
+                <h2 className='mt-4 text-2xl font-semibold tracking-tight text-white sm:text-3xl'>
+                  今天坐哪里，看榜单就知道
+                </h2>
+                <p className='mt-2 max-w-xl text-sm leading-6 text-white/65'>
+                  {data.fromDate} 至 {data.toDate} · {campusLabel}公开昵称展示
+                </p>
+              </div>
+              <div className='flex shrink-0 items-center gap-4 self-start sm:self-auto'>
+                <motion.div
+                  className='flex size-16 items-center justify-center rounded-2xl bg-white/10 text-amber-300 shadow-sm ring-1 ring-white/15'
+                  animate={{ rotate: [0, 5, -5, 0], y: [0, -3, 0] }}
+                  transition={{
+                    duration: 3.2,
+                    repeat: Infinity,
+                    ease: 'easeInOut'
+                  }}
+                  aria-hidden='true'
+                >
+                  <Icons.trophy className='size-8' />
+                </motion.div>
+                <div>
+                  <p className='text-xs text-white/55'>上榜同学</p>
+                  <p className='mt-1 text-3xl font-semibold tabular-nums text-white'>
+                    {data.participantCount}
                   </p>
-                </div>
-                <div className='flex shrink-0 items-center gap-4 self-start sm:self-auto'>
-                  <motion.div
-                    className='flex size-16 items-center justify-center rounded-2xl bg-white/10 text-amber-300 shadow-sm ring-1 ring-white/15'
-                    animate={{ rotate: [0, 5, -5, 0], y: [0, -3, 0] }}
-                    transition={{
-                      duration: 3.2,
-                      repeat: Infinity,
-                      ease: 'easeInOut'
-                    }}
-                    aria-hidden='true'
-                  >
-                    <Icons.trophy className='size-8' />
-                  </motion.div>
-                  <div>
-                    <p className='text-xs text-white/55'>上榜同学</p>
-                    <p className='mt-1 text-3xl font-semibold tabular-nums text-white'>
-                      {data.participantCount}
-                    </p>
-                    <p className='text-xs text-white/55'>位同学正在学习</p>
-                  </div>
+                  <p className='text-xs text-white/55'>位同学正在学习</p>
                 </div>
               </div>
-              <StarryGradientRail
-                value={effortValue}
-                label='我的自习时长'
-                status={data.currentUser ? `榜首时长的 ${effortValue}%` : '完成一次预约后点亮'}
-              />
-            </CardContent>
-          </Card>
+            </div>
+            <StarryGradientRail
+              value={effortValue}
+              label='我的自习时长'
+              status={data.currentUser ? `榜首时长的 ${effortValue}%` : '完成一次预约后点亮'}
+            />
+          </StarryPanel>
         </motion.div>
 
         {data.currentUser ? (

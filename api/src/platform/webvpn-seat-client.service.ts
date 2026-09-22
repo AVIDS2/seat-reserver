@@ -60,6 +60,7 @@ type WebVpnSession = {
 };
 
 export type WebVpnSessionState = {
+  provider?: 'cczu' | 'njtech';
   proxyBase: string;
   targetOrigin: string;
   targetReferer: string;

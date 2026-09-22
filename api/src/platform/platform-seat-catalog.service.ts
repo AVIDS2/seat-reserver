@@ -45,7 +45,7 @@ export class PlatformSeatCatalogService {
         const settingsData = record(settings.payload?.data);
         const window = parseBookingWindow(
           settingsData.buildingOpenClose,
-          bookingWindow(serviceType),
+          bookingWindow(serviceType, account.schoolCode),
         );
         return {
           serviceType,
@@ -225,6 +225,7 @@ export class PlatformSeatCatalogService {
       context.mode,
       path,
       context.serviceType,
+      context.schoolCode,
     );
     if (!response.success) {
       throw new UnprocessableEntityException(

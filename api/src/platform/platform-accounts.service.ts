@@ -81,16 +81,35 @@ export class PlatformAccountsService {
     const label = requireText(dto.label, '账号名称');
     const username = requireText(dto.schoolUsername, '学校账号');
     await this.membership?.assertCanCreateSchoolAccount(userId);
-    const authenticated = await this.schoolAuth.authenticate(
-      username,
-      dto.schoolPassword,
-      undefined,
-      'study_room',
-    );
-    const verified = await this.schoolAuth.verifyToken(
-      authenticated.token,
-      authenticated.mode,
-    );
+    const initialServiceType: SeatServiceType =
+      schoolCode === 'njtech' ? 'library' : 'study_room';
+    const authenticated =
+      schoolCode === 'cczu'
+        ? await this.schoolAuth.authenticate(
+            username,
+            dto.schoolPassword,
+            undefined,
+            initialServiceType,
+          )
+        : await this.schoolAuth.authenticate(
+            username,
+            dto.schoolPassword,
+            undefined,
+            initialServiceType,
+            schoolCode,
+          );
+    const verified =
+      schoolCode === 'cczu'
+        ? await this.schoolAuth.verifyToken(
+            authenticated.token,
+            authenticated.mode,
+          )
+        : await this.schoolAuth.verifyToken(
+            authenticated.token,
+            authenticated.mode,
+            initialServiceType,
+            schoolCode,
+          );
 
     if (!verified.success) {
       throw new UnprocessableEntityException('学校账号验证失败');
@@ -118,7 +137,7 @@ export class PlatformAccountsService {
       : await this.accounts.save(this.accounts.create(accountData));
     await this.serviceConnections.saveAuthenticated(
       saved,
-      'study_room',
+      initialServiceType,
       authenticated.token,
       authenticated.mode,
       authenticated.webVpnSession,
@@ -131,14 +150,36 @@ export class PlatformAccountsService {
     const account = await this.findOwned(userId, id);
     try {
       const password = this.crypto.decrypt(account.encryptedSchoolPassword);
-      const authenticated = await this.schoolAuth.authenticate(
-        account.schoolUsername,
-        password,
-      );
-      const verified = await this.schoolAuth.verifyToken(
-        authenticated.token,
-        authenticated.mode,
-      );
+      const serviceType: SeatServiceType =
+        account.schoolCode === 'njtech' ? 'library' : 'study_room';
+      const authenticated =
+        account.schoolCode === 'njtech'
+          ? await this.schoolAuth.authenticate(
+              account.schoolUsername,
+              password,
+              undefined,
+              serviceType,
+              account.schoolCode,
+            )
+          : await this.schoolAuth.authenticate(
+              account.schoolUsername,
+              password,
+              undefined,
+              serviceType,
+            );
+      const verified =
+        account.schoolCode === 'njtech'
+          ? await this.schoolAuth.verifyToken(
+              authenticated.token,
+              authenticated.mode,
+              serviceType,
+              account.schoolCode,
+            )
+          : await this.schoolAuth.verifyToken(
+              authenticated.token,
+              authenticated.mode,
+              serviceType,
+            );
       if (!verified.success)
         throw new UnprocessableEntityException(
           '学校登录状态已过期，请重新输入密码',
@@ -152,7 +193,7 @@ export class PlatformAccountsService {
       const saved = await this.accounts.save(account);
       await this.serviceConnections.saveAuthenticated(
         saved,
-        'study_room',
+        serviceType,
         authenticated.token,
         authenticated.mode,
         authenticated.webVpnSession,
@@ -206,14 +247,36 @@ export class PlatformAccountsService {
       username !== account.schoolUsername || Boolean(dto.schoolPassword);
 
     if (credentialsChanged) {
-      const authenticated = await this.schoolAuth.authenticate(
-        username,
-        password,
-      );
-      const verified = await this.schoolAuth.verifyToken(
-        authenticated.token,
-        authenticated.mode,
-      );
+      const serviceType: SeatServiceType =
+        account.schoolCode === 'njtech' ? 'library' : 'study_room';
+      const authenticated =
+        account.schoolCode === 'njtech'
+          ? await this.schoolAuth.authenticate(
+              username,
+              password,
+              undefined,
+              serviceType,
+              account.schoolCode,
+            )
+          : await this.schoolAuth.authenticate(
+              username,
+              password,
+              undefined,
+              serviceType,
+            );
+      const verified =
+        account.schoolCode === 'njtech'
+          ? await this.schoolAuth.verifyToken(
+              authenticated.token,
+              authenticated.mode,
+              serviceType,
+              account.schoolCode,
+            )
+          : await this.schoolAuth.verifyToken(
+              authenticated.token,
+              authenticated.mode,
+              serviceType,
+            );
       if (!verified.success)
         throw new UnprocessableEntityException('学校账号验证失败');
       account.schoolUsername = username;
@@ -225,7 +288,7 @@ export class PlatformAccountsService {
       account.status = 'active';
       await this.serviceConnections.saveAuthenticated(
         account,
-        'study_room',
+        serviceType,
         authenticated.token,
         authenticated.mode,
         authenticated.webVpnSession,

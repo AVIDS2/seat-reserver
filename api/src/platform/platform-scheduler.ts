@@ -34,17 +34,30 @@ export class PlatformScheduler {
 
   @Cron('50 59 5 * * *', { timeZone: 'Asia/Shanghai' })
   async schedulePrewarm(): Promise<void> {
-    await this.schedule('prewarm');
+    await this.schedule('prewarm', 'default');
   }
 
   @Cron('0 0 6 * * *', { timeZone: 'Asia/Shanghai' })
   async scheduleBooking(): Promise<void> {
-    await this.schedule('booking');
+    await this.schedule('booking', 'default');
   }
 
-  private async schedule(runType: 'prewarm' | 'booking'): Promise<void> {
+  @Cron('50 59 6 * * *', { timeZone: 'Asia/Shanghai' })
+  async scheduleNjtechPrewarm(): Promise<void> {
+    await this.schedule('prewarm', 'njtech');
+  }
+
+  @Cron('0 0 7 * * *', { timeZone: 'Asia/Shanghai' })
+  async scheduleNjtechBooking(): Promise<void> {
+    await this.schedule('booking', 'njtech');
+  }
+
+  private async schedule(
+    runType: 'prewarm' | 'booking',
+    schoolScope: 'default' | 'njtech',
+  ): Promise<void> {
     const date = getShanghaiDate();
-    const lockKey = `platform:scheduler:${runType}:${date}`;
+    const lockKey = `platform:scheduler:${schoolScope}:${runType}:${date}`;
     const lock = await this.redis.tryLock(lockKey, 120);
     if (!lock) return;
 
@@ -56,6 +69,9 @@ export class PlatformScheduler {
       // Library tasks keep their own opt-in switch; everything else is due-based.
       const runnableTasks = tasks.filter(
         (task) =>
+          (schoolScope === 'njtech'
+            ? task.schoolAccount?.schoolCode === 'njtech'
+            : task.schoolAccount?.schoolCode !== 'njtech') &&
           isTaskDue(task, date) &&
           (task.venueType !== 'library' ||
             process.env.PLATFORM_LIBRARY_AUTO_BOOKING !== 'false'),
