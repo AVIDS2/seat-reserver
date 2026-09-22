@@ -623,6 +623,12 @@ export class NjtechSeatClientService {
       const location = response.headers.get('location');
       if (!location) return { response, url };
       const next = new URL(location, url);
+      // CAS may redirect to the school's private seat origin after OAuth.
+      // Keep the authenticated WebVPN cookies and resolve the proxied service
+      // from the gateway instead of attempting a direct campus connection.
+      if (next.origin === TARGET_ORIGIN && url.origin !== TARGET_ORIGIN) {
+        return { response, url: next };
+      }
       if (
         response.status === 303 ||
         ((response.status === 301 || response.status === 302) &&
