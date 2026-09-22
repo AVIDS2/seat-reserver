@@ -4,7 +4,6 @@ import { FieldGroup } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { signInPlatform, signUpPlatform } from '@/features/booking/api/service';
-import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import * as z from 'zod';
@@ -23,7 +22,6 @@ const signUpSchema = signInSchema.extend({
 export default function UserAuthForm({ mode = 'sign-in' }: { mode?: 'sign-in' | 'sign-up' }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const router = useRouter();
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -59,7 +57,9 @@ export default function UserAuthForm({ mode = 'sign-in' }: { mode?: 'sign-in' | 
         await signInPlatform(parsed.data.email, parsed.data.password);
       }
       toast.success(mode === 'sign-in' ? '登录成功' : '账号创建成功');
-      router.replace('/dashboard/overview');
+      // The dashboard is server-authenticated. A hard navigation makes the
+      // freshly written HttpOnly cookie available to the Next server tree.
+      window.location.assign('/dashboard/overview');
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : '操作失败，请稍后再试');
     } finally {

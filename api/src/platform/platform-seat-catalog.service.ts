@@ -95,12 +95,20 @@ export class PlatformSeatCatalogService {
           const node = record(value);
           const numericPosition = Number(position);
           const type = string(node.type) || 'empty';
+          const hasCoordinates =
+            Number.isFinite(Number(node.x)) && Number.isFinite(Number(node.y));
           return {
             key: position,
-            row: Number.isFinite(numericPosition)
-              ? Math.floor(numericPosition / 1000)
-              : 0,
-            col: Number.isFinite(numericPosition) ? numericPosition % 1000 : 0,
+            row: hasCoordinates
+              ? Number(node.y)
+              : Number.isFinite(numericPosition)
+                ? Math.floor(numericPosition / 1000)
+                : 0,
+            col: hasCoordinates
+              ? Number(node.x)
+              : Number.isFinite(numericPosition)
+                ? numericPosition % 1000
+                : 0,
             kind: type === 'seat' ? 'seat' : type,
             id: node.id === undefined ? null : String(node.id),
             label: string(node.name),

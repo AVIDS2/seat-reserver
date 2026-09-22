@@ -28,6 +28,7 @@ import {
   DialogTitle
 } from '@/components/ui/dialog';
 import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field';
+import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
@@ -91,8 +92,16 @@ export default function SeatMapPage({
   const initialAccountId = accounts.some((account) => account.id === initialDraft?.accountId)
     ? initialDraft?.accountId || ''
     : accounts[0]?.id || '';
+  const initialAccount = accounts.find((account) => account.id === initialAccountId);
+  const defaultVenueType: VenueType =
+    initialAccount?.schoolCode === 'njtech' ? 'library' : initialDraft?.venueType || 'study_room';
   const [accountId, setAccountId] = useState(initialAccountId);
-  const [venueType, setVenueType] = useState<VenueType>(initialDraft?.venueType || 'study_room');
+  const [venueType, setVenueType] = useState<VenueType>(defaultVenueType);
+  const activeAccount = accounts.find((account) => account.id === accountId);
+  const allowedVenueTypes = useMemo<VenueType[]>(
+    () => (activeAccount?.schoolCode === 'njtech' ? ['library'] : ['study_room', 'library']),
+    [activeAccount]
+  );
   const [buildingId, setBuildingId] = useState('');
   const [roomId, setRoomId] = useState('');
   const [date, setDate] = useState('');
@@ -120,11 +129,19 @@ export default function SeatMapPage({
   const [captchaLoading, setCaptchaLoading] = useState(false);
   const [captchaError, setCaptchaError] = useState('');
   const [draftApplied, setDraftApplied] = useState(false);
+  const [manualSeatValue, setManualSeatValue] = useState('');
 
   useEffect(() => {
     if (accounts.some((account) => account.id === accountId)) return;
     setAccountId(accounts[0]?.id || '');
   }, [accountId, accounts]);
+
+  useEffect(() => {
+    const account = accounts.find((item) => item.id === accountId);
+    if (account?.schoolCode === 'njtech' && venueType !== 'library') {
+      setVenueType('library');
+    }
+  }, [accountId, accounts, venueType]);
 
   useEffect(() => {
     if (!accountId) {
@@ -225,6 +242,28 @@ export default function SeatMapPage({
     setRoomId(nextRoomId);
     setLayout(null);
     setSelectedIds([]);
+  };
+
+  const addManualSeat = () => {
+    const value = manualSeatValue.trim();
+    if (!value || !layout) return;
+    const seat = layout.nodes.find(
+      (node) =>
+        node.kind === 'seat' &&
+        node.id &&
+        (node.id === value || node.label?.trim() === value)
+    );
+    if (!seat?.id) {
+      toast.error('没有找到这个座位', { description: '请输入座位号或座位坐标。' });
+      return;
+    }
+    if (selectedIds.includes(seat.id)) {
+      toast.info('这个座位已经在选择中');
+      return;
+    }
+    setSelectedIds((current) => [...current, seat.id as string].slice(0, 8));
+    setManualSeatValue('');
+    toast.success(`已加入 ${seat.label || seat.id} 号座位`);
   };
 
   const refreshLayout = () => {
@@ -534,22 +573,28 @@ export default function SeatMapPage({
                   </Field>
                   <Field>
                     <FieldLabel>预约系统</FieldLabel>
-                    <ToggleGroup
-                      value={[venueType]}
-                      onValueChange={(values) => {
-                        if (values[0]) setVenueType(values[0] as VenueType);
-                      }}
-                      variant='outline'
-                      spacing={0}
-                      className='grid w-full grid-cols-2'
-                    >
-                      <ToggleGroupItem value='study_room' className='w-full'>
-                        自习室
-                      </ToggleGroupItem>
-                      <ToggleGroupItem value='library' className='w-full'>
+                    {allowedVenueTypes.length > 1 ? (
+                      <ToggleGroup
+                        value={[venueType]}
+                        onValueChange={(values) => {
+                          if (values[0]) setVenueType(values[0] as VenueType);
+                        }}
+                        variant='outline'
+                        spacing={0}
+                        className='grid w-full grid-cols-2'
+                      >
+                        <ToggleGroupItem value='study_room' className='w-full'>
+                          自习室
+                        </ToggleGroupItem>
+                        <ToggleGroupItem value='library' className='w-full'>
+                          图书馆
+                        </ToggleGroupItem>
+                      </ToggleGroup>
+                    ) : (
+                      <div className='flex h-9 items-center rounded-md border bg-muted/30 px-3 text-sm font-medium'>
                         图书馆
-                      </ToggleGroupItem>
-                    </ToggleGroup>
+                      </div>
+                    )}
                   </Field>
                   <Field>
                     <FieldLabel htmlFor='seat-map-building'>
@@ -691,6 +736,30 @@ export default function SeatMapPage({
                 onRefresh={refreshLayout}
                 className='w-full'
               />
+              <div className='flex flex-col gap-3 rounded-lg border bg-card p-4 sm:flex-row sm:items-end sm:justify-between'>
+                <div className='min-w-0'>
+                  <p className='text-sm font-medium'>按座位号选择</p>
+                  <p className='text-muted-foreground mt-1 text-xs'>支持座位号，也支持座位坐标，例如 168 或 1,5。</p>
+                </div>
+                <form
+                  className='flex w-full gap-2 sm:max-w-xs'
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    addManualSeat();
+                  }}
+                >
+                  <Input
+                    value={manualSeatValue}
+                    onChange={(event) => setManualSeatValue(event.target.value)}
+                    placeholder='座位号'
+                    aria-label='输入座位号'
+                    disabled={!layout || layoutLoading}
+                  />
+                  <Button type='submit' variant='outline' disabled={!layout || !manualSeatValue.trim()}>
+                    加入
+                  </Button>
+                </form>
+              </div>
               <div className='flex flex-col gap-3 rounded-lg border bg-card p-4 sm:flex-row sm:items-center sm:justify-between'>
                 <div className='min-w-0'>
                   <p className='text-sm font-medium'>已选 {selectedIds.length} 个座位</p>

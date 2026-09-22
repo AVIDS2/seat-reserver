@@ -29,7 +29,9 @@ type NjtechSession = {
 const TARGET_ORIGIN = 'https://seat.njtech.edu.cn';
 const DEFAULT_ENTRY_URL =
   'https://vpnlib.njtech.edu.cn/enlink/sso/login?redirectUrl=' +
-  encodeURIComponent(`${TARGET_ORIGIN}/index.php/reserve/index.html`);
+  encodeURIComponent(
+    `${TARGET_ORIGIN}/index.php/reserve/index.html?f=h5&from_code=WwsCBVIIAQs=`,
+  );
 
 const LIST_QUERY = `query list {
   userAuth {
@@ -205,9 +207,6 @@ export class NjtechSeatClientService {
           },
           signal: AbortSignal.timeout(this.timeoutMs),
         },
-      );
-      console.error(
-        `[NjtechSeat] proxy prime status=${response.status} path=${path} cookies=${(await session.jar.getCookies(this.gateway.origin)).map((item) => item.key).join(',')}`,
       );
     }
   }
@@ -474,9 +473,6 @@ export class NjtechSeatClientService {
     const url = new URL(`${session.proxyBase}/index.php/graphql/`);
     url.search = '?enlink-vpn';
     try {
-      console.error(
-        `[NjtechSeat] GraphQL request ${operationName} path=${url.pathname} query=${query.replace(/\s+/g, ' ').slice(0, 180)} vars=${JSON.stringify(variables)}`,
-      );
       const response = await session.client(url, {
         method: 'POST',
         headers: {
@@ -499,11 +495,6 @@ export class NjtechSeatClientService {
       const raw = await response.text();
       const payload = JSON.parse(raw) as JsonRecord;
       const errors = Array.isArray(payload.errors) ? payload.errors : [];
-      if (errors.length) {
-        console.error(
-          `[NjtechSeat] GraphQL ${operationName} status=${response.status} path=${url.pathname} errors=${raw.slice(0, 500)}`,
-        );
-      }
       return {
         httpStatus: response.status,
         payload,
