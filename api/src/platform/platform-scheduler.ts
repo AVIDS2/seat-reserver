@@ -9,6 +9,12 @@ import { StatusEnum } from '../statuses/statuses.enum';
 import { PlatformServiceConnectionsService } from './platform-service-connections.service';
 import { PlatformAttendanceService } from './platform-attendance.service';
 
+type NjtechScheduleSlot =
+  | 'default'
+  | 'reading_morning'
+  | 'reading_afternoon'
+  | 'reading_evening';
+
 @Injectable()
 export class PlatformScheduler {
   private readonly logger = new Logger(PlatformScheduler.name);
@@ -52,12 +58,43 @@ export class PlatformScheduler {
     await this.schedule('booking', 'njtech');
   }
 
+  @Cron('50 29 7 * * *', { timeZone: 'Asia/Shanghai' })
+  async scheduleNjtechMorningReadingPrewarm(): Promise<void> {
+    await this.schedule('prewarm', 'njtech', 'reading_morning');
+  }
+
+  @Cron('0 30 7 * * *', { timeZone: 'Asia/Shanghai' })
+  async scheduleNjtechMorningReadingBooking(): Promise<void> {
+    await this.schedule('booking', 'njtech', 'reading_morning');
+  }
+
+  @Cron('50 29 12 * * *', { timeZone: 'Asia/Shanghai' })
+  async scheduleNjtechAfternoonReadingPrewarm(): Promise<void> {
+    await this.schedule('prewarm', 'njtech', 'reading_afternoon');
+  }
+
+  @Cron('0 30 12 * * *', { timeZone: 'Asia/Shanghai' })
+  async scheduleNjtechAfternoonReadingBooking(): Promise<void> {
+    await this.schedule('booking', 'njtech', 'reading_afternoon');
+  }
+
+  @Cron('50 29 17 * * *', { timeZone: 'Asia/Shanghai' })
+  async scheduleNjtechEveningReadingPrewarm(): Promise<void> {
+    await this.schedule('prewarm', 'njtech', 'reading_evening');
+  }
+
+  @Cron('0 30 17 * * *', { timeZone: 'Asia/Shanghai' })
+  async scheduleNjtechEveningReadingBooking(): Promise<void> {
+    await this.schedule('booking', 'njtech', 'reading_evening');
+  }
+
   private async schedule(
     runType: 'prewarm' | 'booking',
     schoolScope: 'default' | 'njtech',
+    slot: NjtechScheduleSlot = 'default',
   ): Promise<void> {
     const date = getShanghaiDate();
-    const lockKey = `platform:scheduler:${schoolScope}:${runType}:${date}`;
+    const lockKey = `platform:scheduler:${schoolScope}:${slot}:${runType}:${date}`;
     const lock = await this.redis.tryLock(lockKey, 120);
     if (!lock) return;
 
@@ -69,9 +106,7 @@ export class PlatformScheduler {
       // Library tasks keep their own opt-in switch; everything else is due-based.
       const runnableTasks = tasks.filter(
         (task) =>
-          (schoolScope === 'njtech'
-            ? task.schoolAccount?.schoolCode === 'njtech'
-            : task.schoolAccount?.schoolCode !== 'njtech') &&
+          matchesScheduleScope(task, schoolScope, slot) &&
           isTaskDue(task, date) &&
           (task.venueType !== 'library' ||
             process.env.PLATFORM_LIBRARY_AUTO_BOOKING !== 'false'),
@@ -101,6 +136,24 @@ export class PlatformScheduler {
       await this.redis.unlock(lockKey, lock);
     }
   }
+}
+
+function matchesScheduleScope(
+  task: BookingTaskEntity,
+  schoolScope: 'default' | 'njtech',
+  slot: NjtechScheduleSlot,
+): boolean {
+  const isNjtech = task.schoolAccount?.schoolCode === 'njtech';
+  if (schoolScope === 'default') return !isNjtech;
+  return readingBoothSlot(task) === slot;
+}
+
+function readingBoothSlot(task: BookingTaskEntity): NjtechScheduleSlot {
+  const identity = `${task.roomId ?? ''} ${task.roomName ?? ''}`;
+  if (identity.includes('125555') || identity.includes('上午')) return 'reading_morning';
+  if (identity.includes('125562') || identity.includes('下午')) return 'reading_afternoon';
+  if (identity.includes('125569') || identity.includes('晚上')) return 'reading_evening';
+  return 'default';
 }
 
 export function isTaskDue(task: BookingTaskEntity, date: string): boolean {
