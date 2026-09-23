@@ -129,9 +129,13 @@ function AccountEditorDialog({
                 disabled={Boolean(account)}
               />
               {account ? (
-                <p className='text-muted-foreground text-xs'>高校归属固定，避免账号、任务和授权数据串校。</p>
+                <p className='text-muted-foreground text-xs'>
+                  高校归属固定，避免账号、任务和授权数据串校。
+                </p>
               ) : (
-                <p className='text-muted-foreground text-xs'>每所高校使用独立的授权链路和场馆目录。</p>
+                <p className='text-muted-foreground text-xs'>
+                  每所高校使用独立的授权链路和场馆目录。
+                </p>
               )}
             </div>
             <div className='flex flex-col gap-2'>
@@ -290,8 +294,6 @@ export default function BookingAccountsPage({
               setEditorAccount(undefined);
               setEditorOpen(true);
             }}
-            disabled={activeCampus === 'jou'}
-            title={activeCampus === 'jou' ? '江苏海洋大学等待授权链路验证' : undefined}
           >
             <Icons.add data-icon='inline-start' />
             添加账号
@@ -314,9 +316,7 @@ export default function BookingAccountsPage({
                   : `${getCampusDefinition(activeCampus).name}还没有学校账号`}
               </p>
               <p className='text-muted-foreground text-xs'>
-                {activeCampus === 'jou'
-                  ? '该高校正在接入，授权链路验证完成后即可绑定。'
-                  : '添加并验证账号后，才能创建自动预约任务。'}
+                添加并验证账号后，才能创建自动预约任务。
               </p>
             </CardContent>
           </Card>
@@ -410,7 +410,7 @@ export default function BookingAccountsPage({
                                     : serviceRecovering
                                       ? '立即重试'
                                       : serviceAttention
-                                      ? '验证账号'
+                                        ? '验证账号'
                                         : `连接${service.label}`}
                                 </Button>
                               )}

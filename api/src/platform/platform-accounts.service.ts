@@ -73,11 +73,6 @@ export class PlatformAccountsService {
     dto: CreateSchoolAccountDto,
   ): Promise<SchoolAccountView> {
     const schoolCode = normalizeSchoolCode(dto.schoolCode);
-    if (schoolCode === 'jou') {
-      throw new UnprocessableEntityException(
-        '江苏海洋大学正在接入，等待授权链路验证后开放绑定',
-      );
-    }
     const label = requireText(dto.label, '账号名称');
     const username = requireText(dto.schoolUsername, '学校账号');
     await this.membership?.assertCanCreateSchoolAccount(userId);

@@ -86,6 +86,30 @@ export const examples = [
     description: '每次尝试都留下清楚结果',
     imageSrc: '/landing/seat-runs.svg',
     href: '#runs-feature'
+  },
+  {
+    name: '座位图',
+    description: '按馆区、空间和日期找座位',
+    imageSrc: '/landing/campus-seat-system-1600.webp',
+    href: '/auth/sign-up'
+  },
+  {
+    name: '学习空间',
+    description: '图书馆与自习室分开管理',
+    imageSrc: '/landing/campus-study-hall-1600.webp',
+    href: '#account-feature'
+  },
+  {
+    name: '预约状态',
+    description: '成功、失败和原因集中查看',
+    imageSrc: '/landing/reserved-study-seat-1600.webp',
+    href: '#runs-feature'
+  },
+  {
+    name: '高校工作区',
+    description: '不同学校使用不同规则和目录',
+    imageSrc: '/landing/campus-library-hero-1600.webp',
+    href: '#campuses'
   }
 ];
 
@@ -117,26 +141,22 @@ export const faqs = [
   {
     id: 1,
     question: '需要准备什么？',
-    answer:
-      '注册后绑定学校账号，选好座位和时段，再创建预约任务。账号验证通过后，任务就能自动执行。'
+    answer: '注册后绑定学校账号，选好座位和时段，再创建预约任务。账号验证通过后，任务就能自动执行。'
   },
   {
     id: 2,
     question: '学校账号密码会展示在浏览器或日志里吗？',
-    answer:
-      '不会。学校密码和授权凭证会加密保存，页面和执行记录只显示脱敏后的状态。'
+    answer: '不会。学校密码和授权凭证会加密保存，页面和执行记录只显示脱敏后的状态。'
   },
   {
     id: 3,
     question: '连接失效后需要每天重新登录吗？',
-    answer:
-      '通常不需要。预约前会自动检查连接；学校要求重新验证时，工作台会提示你处理。'
+    answer: '通常不需要。预约前会自动检查连接；学校要求重新验证时，工作台会提示你处理。'
   },
   {
     id: 4,
     question: '可以设置多个座位和时间吗？',
-    answer:
-      '可以。每个任务都能设置主座位、备选座位、多个时段和重复日期，平台按你设置的顺序尝试。'
+    answer: '可以。每个任务都能设置主座位、备选座位、多个时段和重复日期，平台按你设置的顺序尝试。'
   },
   {
     id: 5,

@@ -14,10 +14,10 @@ const campuses = [
     tone: 'success' as const
   },
   {
-    name: '江苏海洋大学',
-    detail: '下一站 · 适配中',
-    status: '规划中',
-    tone: 'secondary' as const
+    name: '南京工业大学',
+    detail: '当天座位 · 图书馆预约',
+    status: '已接入',
+    tone: 'success' as const
   },
   {
     name: '更多高校',

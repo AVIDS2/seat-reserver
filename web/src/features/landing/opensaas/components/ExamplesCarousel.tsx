@@ -4,6 +4,7 @@ import { type Ref, useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { useReducedMotion } from 'motion/react';
 import { Card, CardContent } from './opensaas-card';
+import { cn } from '@/lib/utils';
 
 const EXAMPLES_CAROUSEL_INTERVAL = 3000;
 const EXAMPLES_CAROUSEL_SCROLL_TIMEOUT = 200;
@@ -17,7 +18,8 @@ interface ExampleApp {
 
 export function ExamplesCarousel({ examples }: { examples: ExampleApp[] }) {
   const [currentExample, setCurrentExample] = useState(0);
-  const [isInView, setIsInView] = useState(false);
+  const [isInView, setIsInView] = useState(true);
+  const [isPaused, setIsPaused] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -27,8 +29,8 @@ export function ExamplesCarousel({ examples }: { examples: ExampleApp[] }) {
 
   useEffect(() => {
     observerRef.current = new IntersectionObserver(([entry]) => setIsInView(entry.isIntersecting), {
-      threshold: 0.5,
-      rootMargin: '-200px 0px -100px 0px'
+      threshold: 0.25,
+      rootMargin: '0px'
     });
 
     if (containerRef.current) {
@@ -47,7 +49,7 @@ export function ExamplesCarousel({ examples }: { examples: ExampleApp[] }) {
       clearInterval(intervalRef.current);
     }
 
-    if (!reduceMotion && isInView && examples.length > 1) {
+    if (!reduceMotion && isInView && !isPaused && examples.length > 1) {
       intervalRef.current = setInterval(() => {
         setCurrentExample((prev) => (prev + 1) % examples.length);
       }, EXAMPLES_CAROUSEL_INTERVAL);
@@ -87,26 +89,20 @@ export function ExamplesCarousel({ examples }: { examples: ExampleApp[] }) {
         clearTimeout(scrollTimeoutRef.current);
       }
     };
-  }, [isInView, examples.length, currentExample, reduceMotion]);
+  }, [isInView, isPaused, examples.length, currentExample, reduceMotion]);
 
   const handleMouseEnter = (index: number) => {
     setCurrentExample(index);
-
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-    }
-
-    if (!reduceMotion && isInView && examples.length > 1) {
-      intervalRef.current = setInterval(() => {
-        setCurrentExample((prev) => (prev + 1) % examples.length);
-      }, EXAMPLES_CAROUSEL_INTERVAL);
-    }
   };
 
   return (
     <div
       ref={containerRef}
       className='relative my-16 flex w-full max-w-full flex-col items-center overflow-hidden'
+      onMouseEnter={() => setIsPaused(true)}
+      onMouseLeave={() => setIsPaused(false)}
+      onFocus={() => setIsPaused(true)}
+      onBlur={() => setIsPaused(false)}
     >
       <h2 className='text-muted-foreground mb-6 text-center text-lg font-semibold tracking-wide'>
         一套工作台，覆盖每一次预约
@@ -115,6 +111,7 @@ export function ExamplesCarousel({ examples }: { examples: ExampleApp[] }) {
         <div
           className='no-scrollbar flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth px-4 pb-10 pt-4'
           ref={scrollContainerRef}
+          aria-label='席定工作台功能展示'
         >
           {examples.map((example, index) => (
             <ExampleCard
@@ -147,11 +144,15 @@ function ExampleCard({ example, index, isCurrent, onMouseEnter, ref }: ExampleCa
       rel={example.href.startsWith('http') ? 'noopener noreferrer' : undefined}
       className='shrink-0 snap-center'
       onMouseEnter={() => onMouseEnter(index)}
+      onFocus={() => onMouseEnter(index)}
       aria-label={example.name}
     >
       <Card
         ref={ref}
-        className='w-[280px] overflow-hidden transition-all duration-200 hover:scale-105 sm:w-[320px] md:w-[350px]'
+        className={cn(
+          'w-[280px] overflow-hidden transition-all duration-300 hover:scale-[1.02] sm:w-[320px] md:w-[350px]',
+          isCurrent && 'ring-primary/40 ring-2 ring-offset-2 ring-offset-background'
+        )}
         variant={isCurrent ? 'default' : 'faded'}
       >
         <CardContent className='h-full p-0'>

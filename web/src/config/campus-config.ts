@@ -1,4 +1,4 @@
-export type CampusCode = 'cczu' | 'njtech' | 'jou';
+export type CampusCode = 'cczu' | 'njtech';
 
 export type CampusStatus = 'connected' | 'preview';
 
@@ -42,19 +42,6 @@ export const CAMPUS_DEFINITIONS: readonly CampusDefinition[] = [
     statusLabel: '已接入',
     services: ['图书馆', '当天抢座'],
     aliases: ['南京工业大学', '南工大', '南工', 'NJTech', '江浦', '逸夫', '浦江图书馆']
-  },
-  {
-    code: 'jou',
-    name: '江苏海洋大学',
-    shortName: '海大',
-    initials: '海',
-    detail: '苍梧校区图书馆',
-    summary: '正在接入官方座位系统，等待授权链路验证。',
-    bookingOpenTime: '06:00',
-    status: 'preview',
-    statusLabel: '接入准备中',
-    services: ['图书馆', '苍梧校区'],
-    aliases: ['江苏海洋大学', '海大', 'JOU', '苍梧']
   }
 ];
 
@@ -63,5 +50,5 @@ export function getCampusDefinition(code: string | null | undefined): CampusDefi
 }
 
 export function isCampusCode(value: unknown): value is CampusCode {
-  return value === 'cczu' || value === 'njtech' || value === 'jou';
+  return value === 'cczu' || value === 'njtech';
 }

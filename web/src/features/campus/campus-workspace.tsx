@@ -32,30 +32,28 @@ export function CampusWorkspaceProvider({
 
   useEffect(() => {
     const saved = window.localStorage.getItem(storageKey);
-    if (saved === 'all' || saved === 'cczu' || saved === 'njtech' || saved === 'jou') {
+    if (saved === 'all' || saved === 'cczu' || saved === 'njtech') {
       setActiveCampusState(saved);
     } else {
       setActiveCampusState(initialCampus);
     }
   }, [initialCampus, storageKey]);
 
-  const setActiveCampus = useCallback((campus: CampusScope) => {
-    setActiveCampusState(campus);
-    clearBookingDataCache();
-    window.localStorage.setItem(storageKey, campus);
-    document.cookie = `${CAMPUS_COOKIE}=${campus}; path=/; max-age=31536000; SameSite=Lax`;
-    router.refresh();
-  }, [router, storageKey]);
-
-  const value = useMemo(
-    () => ({ activeCampus, setActiveCampus }),
-    [activeCampus, setActiveCampus]
+  const setActiveCampus = useCallback(
+    (campus: CampusScope) => {
+      setActiveCampusState(campus);
+      clearBookingDataCache();
+      window.localStorage.setItem(storageKey, campus);
+      document.cookie = `${CAMPUS_COOKIE}=${campus}; path=/; max-age=31536000; SameSite=Lax`;
+      router.refresh();
+    },
+    [router, storageKey]
   );
 
+  const value = useMemo(() => ({ activeCampus, setActiveCampus }), [activeCampus, setActiveCampus]);
+
   return (
-    <CampusWorkspaceContext.Provider value={value}>
-      {children}
-    </CampusWorkspaceContext.Provider>
+    <CampusWorkspaceContext.Provider value={value}>{children}</CampusWorkspaceContext.Provider>
   );
 }
 

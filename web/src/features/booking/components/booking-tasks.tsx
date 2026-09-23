@@ -109,7 +109,7 @@ async function prewarmTask(task: BookingTask) {
     await prewarmBookingTask(task.id);
     toast.success(`${task.name} 正在检查账号`);
   } catch (error) {
-      toast.error(error instanceof Error ? error.message : '账号检查失败');
+    toast.error(error instanceof Error ? error.message : '账号检查失败');
   }
 }
 
@@ -336,14 +336,23 @@ function TaskEditorDialog({
   };
 
   const manualBackupIds = parseSeatIds(manualBackupSeatIds);
-  const effectiveSeatIds = layout && selectedSeatIds.length
-    ? selectedSeatIds
-    : [manualPrimarySeatId.trim(), ...manualBackupIds].filter(Boolean);
-  const selectedBuildingName = selectedBuilding?.name || manualBuildingName.trim() || task?.building || '未指定';
-  const selectedRoomName = selectedRoom?.name || manualRoomName.trim() || task?.roomName || '未指定';
+  const effectiveSeatIds =
+    layout && selectedSeatIds.length
+      ? selectedSeatIds
+      : [manualPrimarySeatId.trim(), ...manualBackupIds].filter(Boolean);
+  const selectedBuildingName =
+    selectedBuilding?.name || manualBuildingName.trim() || task?.building || '未指定';
+  const selectedRoomName =
+    selectedRoom?.name || manualRoomName.trim() || task?.roomName || '未指定';
   const canContinue = Boolean(
-    name.trim() && accountId && !catalogLoading &&
-    (selectedBuilding && selectedRoom || catalogError || !catalog || manualBuildingName.trim() || manualRoomName.trim())
+    name.trim() &&
+    accountId &&
+    !catalogLoading &&
+    ((selectedBuilding && selectedRoom) ||
+      catalogError ||
+      !catalog ||
+      manualBuildingName.trim() ||
+      manualRoomName.trim())
   );
 
   const handleContinue = () => {
@@ -398,10 +407,11 @@ function TaskEditorDialog({
           backupSeatIds: effectiveSeatIds.slice(1),
           backupSeatLabels: layout
             ? selectedNodes
-            .slice(1)
-            .map(
-              (node, index) => node?.label || task?.backupSeatLabels[index] || `备选 ${index + 1}`
-            )
+                .slice(1)
+                .map(
+                  (node, index) =>
+                    node?.label || task?.backupSeatLabels[index] || `备选 ${index + 1}`
+                )
             : effectiveSeatIds.slice(1).map((_, index) => `备选 ${index + 1}`),
           timeCandidates,
           maxAttempts: clampNumber(maxAttempts, 1, 100, 12),
@@ -541,10 +551,7 @@ function TaskEditorDialog({
                       >
                         自习室
                       </ToggleGroupItem>
-                      <ToggleGroupItem
-                        value='library'
-                        className='w-full'
-                      >
+                      <ToggleGroupItem value='library' className='w-full'>
                         图书馆
                       </ToggleGroupItem>
                     </ToggleGroup>
@@ -558,7 +565,10 @@ function TaskEditorDialog({
                           <AlertTitle>自动识别验证码</AlertTitle>
                           <AlertDescription>
                             前提是服务端已配置验证码识别；未配置时任务会保持暂停。前往
-                            <Link href='/dashboard/accounts' className='text-primary underline underline-offset-4'>
+                            <Link
+                              href='/dashboard/accounts'
+                              className='text-primary underline underline-offset-4'
+                            >
                               账号与授权
                             </Link>{' '}
                             完成图书馆连接。
@@ -648,7 +658,7 @@ function TaskEditorDialog({
                 {(!catalog || catalogError || !selectedBuilding || !selectedRoom) && (
                   <div className='flex flex-col gap-3 rounded-lg border border-dashed bg-muted/20 p-3'>
                     <div>
-                        <p className='text-sm font-medium'>目录暂时不可用，仍可设置抢座任务</p>
+                      <p className='text-sm font-medium'>目录暂时不可用，仍可设置抢座任务</p>
                       <p className='text-muted-foreground mt-1 text-xs leading-5'>
                         座位图用于选座，不影响任务保存。填写已知座位 ID 后，开放时仍会按规则尝试。
                       </p>
@@ -660,7 +670,7 @@ function TaskEditorDialog({
                           id='task-manual-building'
                           value={manualBuildingName}
                           onChange={(event) => setManualBuildingName(event.target.value)}
-                          placeholder='例如：5号楼或苍梧校区馆'
+                          placeholder='例如：5号楼或逸夫图书馆'
                         />
                       </Field>
                       <Field>
@@ -734,7 +744,9 @@ function TaskEditorDialog({
                         />
                       </Field>
                       <Field>
-                        <FieldLabel htmlFor='task-manual-seat-label'>座位显示名称（可选）</FieldLabel>
+                        <FieldLabel htmlFor='task-manual-seat-label'>
+                          座位显示名称（可选）
+                        </FieldLabel>
                         <Input
                           id='task-manual-seat-label'
                           value={manualPrimarySeatLabel}
@@ -743,7 +755,9 @@ function TaskEditorDialog({
                         />
                       </Field>
                       <Field className='sm:col-span-2'>
-                        <FieldLabel htmlFor='task-manual-backup-ids'>备选座位 ID（可选）</FieldLabel>
+                        <FieldLabel htmlFor='task-manual-backup-ids'>
+                          备选座位 ID（可选）
+                        </FieldLabel>
                         <Input
                           id='task-manual-backup-ids'
                           value={manualBackupSeatIds}
@@ -801,7 +815,7 @@ function TaskEditorDialog({
                   <section className='min-w-0 rounded-xl border bg-card p-4'>
                     <FieldGroup>
                       <Field>
-                    <FieldLabel>重复周期</FieldLabel>
+                        <FieldLabel>重复周期</FieldLabel>
                         <ToggleGroup
                           value={[scheduleMode]}
                           onValueChange={(value) =>
@@ -828,7 +842,7 @@ function TaskEditorDialog({
                       {scheduleMode === 'weekly' && (
                         <Field>
                           <div className='flex items-center justify-between gap-3'>
-                          <FieldLabel>重复星期</FieldLabel>
+                            <FieldLabel>重复星期</FieldLabel>
                             <span className='text-muted-foreground text-xs'>至少一天</span>
                           </div>
                           <ToggleGroup
@@ -1350,9 +1364,9 @@ function clampNumber(value: string, min: number, max: number, fallback: number):
 
 function taskBookingHref(task: BookingTask): string {
   const maximumMinutes = task.venueType === 'library' ? 4 * 60 : 8 * 60;
-  const firstTime =
-    task.timeCandidates.find((candidate) => candidate.end - candidate.start <= maximumMinutes) ||
-    { start: 480, end: 480 + maximumMinutes };
+  const firstTime = task.timeCandidates.find(
+    (candidate) => candidate.end - candidate.start <= maximumMinutes
+  ) || { start: 480, end: 480 + maximumMinutes };
   const query = new URLSearchParams({
     accountId: task.accountId,
     serviceType: task.venueType,

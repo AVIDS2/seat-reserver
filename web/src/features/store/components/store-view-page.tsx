@@ -89,7 +89,7 @@ const products: ShopProduct[] = [
     kind: 'coming',
     title: '高校扩展位',
     subtitle: '更多学校、更多校区',
-    description: '江苏海洋大学和更多高校正在接入，新的服务会先在这里出现。',
+    description: '更多高校正在接入，新的服务会先在这里出现。',
     badge: '筹备中',
     icon: 'building',
     accent: 'bg-sky-700'

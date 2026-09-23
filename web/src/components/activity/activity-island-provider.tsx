@@ -1,6 +1,6 @@
 'use client';
 
-import LiveIsland from 'react-live-island';
+import { AnimatePresence, motion } from 'motion/react';
 import { useEffect, useRef, useState } from 'react';
 
 import { Icons } from '@/components/icons';
@@ -10,6 +10,7 @@ type ActiveActivity = ActivityEvent & { visible: boolean };
 
 export function ActivityIslandProvider({ children }: { children: React.ReactNode }) {
   const [activity, setActivity] = useState<ActiveActivity | null>(null);
+  const [expanded, setExpanded] = useState(false);
   const hideTimer = useRef<number | null>(null);
 
   useEffect(() => {
@@ -19,19 +20,23 @@ export function ActivityIslandProvider({ children }: { children: React.ReactNode
       if (hideTimer.current !== null) window.clearTimeout(hideTimer.current);
 
       if (detail.phase === 'start') {
+        setExpanded(false);
         setActivity({ ...detail, visible: true });
         return;
       }
 
       setActivity({ ...detail, visible: true });
-      hideTimer.current = window.setTimeout(() => {
-        setActivity((current) =>
-          current?.id === detail.id ? { ...current, visible: false } : current
-        );
-        hideTimer.current = window.setTimeout(() => {
-          setActivity((current) => (current?.id === detail.id ? null : current));
-        }, 420);
-      }, detail.phase === 'error' ? 3600 : 1800);
+      hideTimer.current = window.setTimeout(
+        () => {
+          setActivity((current) =>
+            current?.id === detail.id ? { ...current, visible: false } : current
+          );
+          hideTimer.current = window.setTimeout(() => {
+            setActivity((current) => (current?.id === detail.id ? null : current));
+          }, 420);
+        },
+        detail.phase === 'error' ? 3600 : 1800
+      );
     };
 
     window.addEventListener(activityEventName(), onActivity);
@@ -44,26 +49,26 @@ export function ActivityIslandProvider({ children }: { children: React.ReactNode
   return (
     <>
       {children}
-      {activity?.visible && (
-        <LiveIsland
-          top='calc(var(--header-height) + 12px)'
-          smallWidth={236}
-          smallHeight={38}
-          largeWidth={390}
-          largeHeight={154}
-          largeRadius={22}
-          initialAnimation
-          className='activity-island-shell'
-          smallClassName='activity-island-small'
-          largeClassName='activity-island-large max-w-[calc(100vw-24px)]'
-        >
-          {(isSmall) => (
-            <div className={isSmall ? 'flex h-full items-center gap-2 px-3' : 'flex h-full flex-col justify-between p-4'}>
-              {isSmall ? <SmallActivity activity={activity} /> : <LargeActivity activity={activity} />}
-            </div>
-          )}
-        </LiveIsland>
-      )}
+      <AnimatePresence>
+        {activity?.visible && (
+          <motion.div
+            initial={{ opacity: 0, y: -10, scale: 0.92 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -8, scale: 0.94 }}
+            transition={{ type: 'spring', stiffness: 420, damping: 30, mass: 0.6 }}
+            className='activity-island fixed top-[calc(var(--header-height)+0.75rem)] left-1/2 z-40 -translate-x-1/2'
+            role='status'
+            aria-live='polite'
+            onClick={() => setExpanded((current) => !current)}
+          >
+            {expanded ? (
+              <LargeActivity activity={activity} />
+            ) : (
+              <SmallActivity activity={activity} />
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </>
   );
 }
@@ -102,7 +107,9 @@ function LargeActivity({ activity }: { activity: ActiveActivity }) {
           </span>
         </div>
         <div className='h-1 overflow-hidden rounded-full bg-white/10'>
-          <div className={`activity-island-progress ${isWorking ? 'is-working' : activity.phase}`} />
+          <div
+            className={`activity-island-progress ${isWorking ? 'is-working' : activity.phase}`}
+          />
         </div>
       </div>
     </div>
@@ -110,7 +117,8 @@ function LargeActivity({ activity }: { activity: ActiveActivity }) {
 }
 
 function ActivityIcon({ activity }: { activity: ActiveActivity }) {
-  if (activity.phase === 'success') return <Icons.circleCheck className='size-4 text-emerald-300' />;
+  if (activity.phase === 'success')
+    return <Icons.circleCheck className='size-4 text-emerald-300' />;
   if (activity.phase === 'error') return <Icons.warning className='size-4 text-amber-300' />;
   return <Icons.refresh className='size-4 animate-spin text-cyan-300' />;
 }
