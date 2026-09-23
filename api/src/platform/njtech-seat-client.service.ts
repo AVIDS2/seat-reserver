@@ -361,6 +361,8 @@ export class NjtechSeatClientService {
       rooms,
       dates: [shanghaiDate()],
       hours,
+      openTime: normalizeClock(record(libs[0]?.lib_rt).open_time_str, '08:00'),
+      closeTime: normalizeClock(record(libs[0]?.lib_rt).close_time_str, '22:00'),
       isCaptchaOpen: false,
       groups,
       signRule: String(
@@ -372,9 +374,10 @@ export class NjtechSeatClientService {
 
   private async getSettings(token: string): Promise<SeatResponse> {
     const result = await this.getFilters(token);
+    if (!result.success) return result;
     const data = record(result.payload?.data);
     return success({
-      buildingOpenClose: [[1, '08:00', '22:00']],
+      buildingOpenClose: [[1, stringValue(data.openTime) || '08:00', stringValue(data.closeTime) || '22:00']],
       isCaptchaOpen: false,
       source: data,
     });
@@ -824,6 +827,11 @@ function stringValue(value: unknown): string {
     : value === null || value === undefined
       ? ''
       : String(value);
+}
+function normalizeClock(value: unknown, fallback: string): string {
+  const match = stringValue(value).match(/(\d{1,2}):(\d{2})/);
+  if (!match) return fallback;
+  return `${match[1].padStart(2, '0')}:${match[2]}`;
 }
 function floorNumber(value: unknown): number {
   const match = stringValue(value).match(/\d+/);

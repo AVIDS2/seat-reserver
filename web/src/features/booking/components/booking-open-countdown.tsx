@@ -7,14 +7,18 @@ import { Icons } from '@/components/icons';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { StarryPanel } from '@/components/ui/starry-panel';
+import { getCampusDefinition } from '@/config/campus-config';
+import { useCampusWorkspace } from '@/features/campus/campus-workspace';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const SHANGHAI_OFFSET_MS = 8 * 60 * 60 * 1000;
 
 export function BookingOpenCountdown() {
   const [now, setNow] = useState<number | null>(null);
+  const { activeCampus } = useCampusWorkspace();
   const reduceMotion = useReducedMotion();
-  const countdown = useMemo(() => getCountdown(now), [now]);
+  const campus = activeCampus === 'all' ? getCampusDefinition('cczu') : getCampusDefinition(activeCampus);
+  const countdown = useMemo(() => getCountdown(now, campus.bookingOpenTime), [campus.bookingOpenTime, now]);
 
   useEffect(() => {
     const update = () => setNow(Date.now());
@@ -55,7 +59,7 @@ export function BookingOpenCountdown() {
             </div>
           </div>
           <Badge className='border-destructive/45 bg-destructive/10 text-destructive'>
-            每天 06:00 开放
+            每天 {campus.bookingOpenTime} 开放
           </Badge>
         </div>
 
@@ -65,7 +69,7 @@ export function BookingOpenCountdown() {
               Open window
             </p>
             <p className='mt-2 font-mono text-4xl font-bold tracking-tight text-destructive'>
-              06:00
+              {campus.bookingOpenTime}
             </p>
             <p className='mt-2 max-w-xs text-xs leading-5 text-background/60'>
               到点开始尝试，主座位没空时继续尝试备选。
@@ -156,15 +160,21 @@ type Countdown = {
   progress: number;
 };
 
-function getCountdown(now: number | null): Countdown {
+function getCountdown(now: number | null, openingTime: string): Countdown {
   if (now === null) {
     return { hours: '--', minutes: '--', seconds: '--', text: '--:--:--', progress: 0 };
   }
 
   const shanghai = new Date(now + SHANGHAI_OFFSET_MS);
+  const [openingHour, openingMinute] = openingTime.split(':').map(Number);
   let target =
-    Date.UTC(shanghai.getUTCFullYear(), shanghai.getUTCMonth(), shanghai.getUTCDate(), 6) -
-    SHANGHAI_OFFSET_MS;
+    Date.UTC(
+      shanghai.getUTCFullYear(),
+      shanghai.getUTCMonth(),
+      shanghai.getUTCDate(),
+      openingHour,
+      openingMinute,
+    ) - SHANGHAI_OFFSET_MS;
   if (target <= now) target += DAY_MS;
 
   const remaining = Math.max(0, target - now);

@@ -15,7 +15,7 @@ export function bookingWindow(
   end: number;
 } {
   return serviceType === 'library' && schoolCode === 'njtech'
-    ? { start: 8 * 60, end: 22 * 60 }
+    ? { start: 7 * 60 + 30, end: 22 * 60 }
     : serviceType === 'library'
       ? {
           start: LIBRARY_BOOKABLE_START_MINUTES,

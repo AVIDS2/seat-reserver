@@ -21,7 +21,7 @@ export function CampusWorkspaceProvider({ children }: { children: React.ReactNod
 
   useEffect(() => {
     const saved = window.localStorage.getItem(storageKey);
-    if (saved === 'all' || saved === 'cczu' || saved === 'jou') {
+    if (saved === 'all' || saved === 'cczu' || saved === 'njtech' || saved === 'jou') {
       setActiveCampusState(saved);
     } else {
       setActiveCampusState('cczu');
