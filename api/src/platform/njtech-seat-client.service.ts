@@ -23,6 +23,7 @@ type NjtechSession = {
   expiresAt: number;
   userId?: string;
   username?: string;
+  cancelToken?: string;
   seatLibraries: Map<string, number>;
 };
 
@@ -431,7 +432,11 @@ export class NjtechSeatClientService {
     });
     if (!result.success) return result;
     const data = record(record(result.payload?.data).userAuth);
-    const reserve = record(record(data.reserve).reserve);
+    const reserveState = record(data.reserve);
+    const session = this.requireSession(token);
+    const cancelToken = stringValue(reserveState.getSToken);
+    session.cancelToken = cancelToken || undefined;
+    const reserve = record(reserveState.reserve);
     const reservations = reserve.token
       ? [
           {
@@ -449,9 +454,17 @@ export class NjtechSeatClientService {
     return success({ reservations });
   }
 
-  private async cancel(token: string, tokenId: string): Promise<SeatResponse> {
+  private async cancel(token: string, _tokenId: string): Promise<SeatResponse> {
+    // NJTech exposes a short-lived退座 token from the home query. The
+    // reservation token is only an identifier and is rejected by reserveCancle.
+    const history = await this.getHistory(token);
+    if (!history.success) return history;
+    const session = this.requireSession(token);
+    const cancelToken = session.cancelToken;
+    session.cancelToken = undefined;
+    if (!cancelToken) return failure(422, '南工大当前没有可取消的退座令牌');
     const result = await this.graphql(token, 'reserveCancle', CANCEL_MUTATION, {
-      sToken: tokenId,
+      sToken: cancelToken,
     });
     if (result.success) {
       const data = record(

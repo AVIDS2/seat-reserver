@@ -85,7 +85,7 @@ WebVPN 代理 API 必须保留裸查询标志 `enlink-vpn`；平台在追加业�
 
 ### 南京工业大学图书馆
 
-南京工业大学使用独立的 `njtech` 适配器：WebVPN/CAS 登录后进入 `seat.njtech.edu.cn` 的 GraphQL 座位服务。`NJTECH_WEBVPN_ENTRY_URL` 留空时，服务端从 WebVPN 统一入口解析 OAuth、CAS 和座位服务；只有学校调整入口时才需要覆盖该变量。当前支持逸夫图书馆、浦江图书馆的当天座位抢座，预约窗口为 7:00，考研季窗口由学校返回的开放配置决定。南工大这一租户只有“图书馆”预约模式，馆区和朗读亭属于同一图书馆目录，不套用常州大学的“自习室/图书馆”双模式。座位查询使用 `list`/`libLayout`，座位图将学校返回的 `x/y` 坐标映射到统一网格，预约使用 `reserueSeat`，取消使用 `reserveCancle`。南工大登录验证码由已配置的 MIMO 文字识别 provider 读取，座位提交本身不复用常州大学点选验证码。
+南京工业大学使用独立的 `njtech` 适配器：WebVPN/CAS 登录后进入 `seat.njtech.edu.cn` 的 GraphQL 座位服务。`NJTECH_WEBVPN_ENTRY_URL` 留空时，服务端从 WebVPN 统一入口解析 OAuth、CAS 和座位服务；只有学校调整入口时才需要覆盖该变量。当前支持逸夫图书馆、浦江图书馆的当天座位抢座，预约窗口为 7:00，考研季窗口由学校返回的开放配置决定。南工大这一租户只有“图书馆”预约模式，馆区和朗读亭属于同一图书馆目录，不套用常州大学的“自习室/图书馆”双模式。座位查询使用 `list`/`libLayout`，座位图将学校返回的 `x/y` 坐标映射到统一网格，预约使用 `reserueSeat`，取消使用 `reserveCancle`。南工大取消接口要求首页 `index` 查询返回的短时 `getSToken`，不能使用预约记录里的 `reserve.token`；平台取消前会重新读取首页令牌再提交，避免使用过期退座令牌。南工大登录验证码由已配置的 MIMO 文字识别 provider 读取，座位提交本身不复用常州大学点选验证码。
 
 ## 验证码自动识别
 
