@@ -50,7 +50,7 @@ export function BookingOpenCountdown() {
             />
             <div>
               <p className='text-primary text-xs font-semibold uppercase tracking-[0.2em]'>
-                OPENING COUNTDOWN
+                开放倒计时
               </p>
               <h2 className='mt-1 text-lg font-semibold tracking-tight sm:text-xl'>
                 下一次抢座开放
@@ -66,7 +66,7 @@ export function BookingOpenCountdown() {
         <div className='grid gap-6 lg:grid-cols-[0.7fr_1.3fr] lg:items-end'>
           <div className='border-primary/70 border-l-2 pl-4'>
             <p className='text-[11px] font-medium uppercase tracking-[0.22em] text-background/45'>
-              Open window
+              开放时刻
             </p>
             <p className='text-primary mt-2 font-mono text-4xl font-bold tracking-tight'>
               {campus.bookingOpenTime}

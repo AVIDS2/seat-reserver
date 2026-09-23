@@ -358,21 +358,29 @@ export default function BookingDashboard({
               </CardAction>
             </CardHeader>
             <CardContent>
-              <ItemGroup className='gap-2'>
-                {scopedSnapshot.runs.slice(0, 3).map((run) => (
-                  <Item key={run.id} variant='outline' size='sm'>
-                    <ItemContent className='min-w-0'>
-                      <ItemTitle>{run.account}</ItemTitle>
-                      <ItemDescription>
-                        {run.targetDate} · 已尝试 {run.attempts} 次
-                      </ItemDescription>
-                    </ItemContent>
-                    <ItemActions>
-                      <RunStatusBadge status={run.status} />
-                    </ItemActions>
-                  </Item>
-                ))}
-              </ItemGroup>
+              {scopedSnapshot.runs.length ? (
+                <ItemGroup className='gap-2'>
+                  {scopedSnapshot.runs.slice(0, 3).map((run) => (
+                    <Item key={run.id} variant='outline' size='sm'>
+                      <ItemContent className='min-w-0'>
+                        <ItemTitle>{run.account}</ItemTitle>
+                        <ItemDescription>
+                          {run.targetDate} · 已尝试 {run.attempts} 次
+                        </ItemDescription>
+                      </ItemContent>
+                      <ItemActions>
+                        <RunStatusBadge status={run.status} />
+                      </ItemActions>
+                    </Item>
+                  ))}
+                </ItemGroup>
+              ) : (
+                <div className='flex min-h-32 flex-col items-center justify-center gap-2 text-center'>
+                  <Icons.history className='text-muted-foreground/45 size-7' aria-hidden='true' />
+                  <p className='text-sm font-medium'>这个高校还没有运行记录</p>
+                  <p className='text-muted-foreground text-xs'>创建任务后，预约结果会显示在这里。</p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
