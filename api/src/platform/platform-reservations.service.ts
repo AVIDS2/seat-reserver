@@ -414,7 +414,14 @@ export class PlatformReservationsService {
       accountLabel,
       dto.accountId,
       dto.serviceType,
-    );
+    ) ??
+      (Array.isArray(data.reservations)
+        ? data.reservations
+            .map((item) =>
+              this.normalize(item, accountLabel, dto.accountId, dto.serviceType),
+            )
+            .find((item): item is ReservationView => item !== null) ?? null
+        : null);
     return reservation
       ? {
           ...reservation,

@@ -264,6 +264,16 @@ export class NjtechSeatClientService {
       record(record(result.payload?.data).userAuth).reserve,
     ).reserueSeat;
     if (booked === false) return failure(200, '南工大预约失败');
+    // The mutation only returns `true`; the real reservation token and time
+    // range are published by the home query immediately afterwards.
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const history = await this.getHistory(token);
+      const reservations = record(history.payload?.data).reservations;
+      if (history.success && Array.isArray(reservations) && reservations.length)
+        return history;
+      if (attempt < 2)
+        await new Promise((resolve) => setTimeout(resolve, 250));
+    }
     return result;
   }
 
