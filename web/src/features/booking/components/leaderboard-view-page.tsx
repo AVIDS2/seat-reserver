@@ -26,6 +26,7 @@ import { StarryGradientRail } from '@/components/ui/starry-gradient-rail';
 import { StarryPanel } from '@/components/ui/starry-panel';
 import PageContainer from '@/components/layout/page-container';
 import { useCampusWorkspace } from '@/features/campus/campus-workspace';
+import { getCampusDefinition } from '@/config/campus-config';
 import { cn } from '@/lib/utils';
 
 export default function LeaderboardViewPage({ initialData }: { initialData: LeaderboardSnapshot }) {
@@ -50,8 +51,7 @@ export default function LeaderboardViewPage({ initialData }: { initialData: Lead
     }
   };
 
-  const campusLabel =
-    activeCampus === 'all' ? '全部高校' : activeCampus === 'jou' ? '江苏海洋大学' : '常州大学';
+  const campusLabel = activeCampus === 'all' ? '全部高校' : getCampusDefinition(activeCampus).name;
   const leaderValue = data.rankings[0]?.value ?? 0;
   const effortValue =
     data.currentUser && leaderValue > 0

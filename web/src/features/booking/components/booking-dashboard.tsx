@@ -216,7 +216,7 @@ export default function BookingDashboard({
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.35, ease: 'easeOut' }}
-          className='flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between'
+          className='order-1 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between'
         >
           <div>
             <p className='text-muted-foreground mb-2 text-sm'>
@@ -252,7 +252,7 @@ export default function BookingDashboard({
           </div>
         </motion.div>
 
-        <div className='grid gap-3 sm:grid-cols-2 xl:grid-cols-4'>
+        <div className='order-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4'>
           <MetricCard
             label='已启用任务'
             value={String(summary.enabledTasks)}
@@ -282,9 +282,11 @@ export default function BookingDashboard({
           />
         </div>
 
-        <RewardsQuickCard initialData={initialRewards} />
+        <div className='order-4'>
+          <RewardsQuickCard initialData={initialRewards} />
+        </div>
 
-        <div className='grid gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]'>
+        <div className='order-2 grid gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]'>
           <Card className='shadow-none'>
             <CardHeader className='border-b'>
               <CardDescription>下一次执行</CardDescription>
@@ -375,7 +377,7 @@ export default function BookingDashboard({
           </Card>
         </div>
 
-        <Card className='overflow-hidden border-primary/20 bg-primary/[0.03] shadow-none'>
+        <Card className='order-5 overflow-hidden border-primary/20 bg-primary/[0.03] shadow-none'>
           <CardContent className='flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5'>
             <div className='flex min-w-0 items-start gap-3'>
               <div className='bg-primary/10 text-primary flex size-10 shrink-0 items-center justify-center rounded-lg'>
@@ -407,7 +409,7 @@ export default function BookingDashboard({
           </CardContent>
         </Card>
 
-        <Card className='shadow-none'>
+        <Card className='order-6 shadow-none'>
           <CardHeader className='border-b'>
             <CardDescription>任务概览</CardDescription>
             <CardTitle className='text-xl'>预约任务</CardTitle>

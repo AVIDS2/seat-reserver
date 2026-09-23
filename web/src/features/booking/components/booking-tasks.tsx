@@ -161,12 +161,18 @@ function TaskEditorDialog({
   const [step, setStep] = useState<1 | 2>(1);
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const selectedAccount = accounts.find((account) => account.id === accountId);
 
   useEffect(() => {
     if (!open) return;
+    const nextAccountId = task?.accountId || draft?.accountId || accounts[0]?.id || '';
+    const nextAccount = accounts.find((account) => account.id === nextAccountId);
+    const requestedVenue = task?.venueType || draft?.venueType;
+    const nextVenueType: VenueType =
+      nextAccount?.schoolCode === 'njtech' ? 'library' : requestedVenue || 'study_room';
     setName(task?.name || '');
-    setAccountId(task?.accountId || draft?.accountId || accounts[0]?.id || '');
-    setVenueType(task?.venueType || draft?.venueType || 'study_room');
+    setAccountId(nextAccountId);
+    setVenueType(nextVenueType);
     setBuildingId(task?.buildingId || draft?.buildingId || '');
     setRoomId(task?.roomId || draft?.roomId || '');
     setManualBuildingName(task?.building && task.building !== '未指定' ? task.building : '');
@@ -193,7 +199,7 @@ function TaskEditorDialog({
     setLayout(null);
     setAvailableStartTimes([]);
     setCatalogError('');
-    const taskVenue = task?.venueType || draft?.venueType || 'study_room';
+    const taskVenue = nextVenueType;
     setTimeCandidates(
       normalizeTimeCandidates(
         task?.timeCandidates?.length ? task.timeCandidates : defaultTimeCandidates(taskVenue),
@@ -484,7 +490,12 @@ function TaskEditorDialog({
                       }))}
                       onValueChange={(value) => {
                         if (!value || value === accountId) return;
+                        const nextAccount = accounts.find((account) => account.id === value);
+                        const nextVenue =
+                          nextAccount?.schoolCode === 'njtech' ? 'library' : venueType;
                         setAccountId(value);
+                        setVenueType(nextVenue);
+                        setTimeCandidates(defaultTimeCandidates(nextVenue));
                         resetLocationSelection();
                       }}
                       disabled={accounts.length === 0}
@@ -523,7 +534,11 @@ function TaskEditorDialog({
                       spacing={0}
                       className='grid w-full grid-cols-2'
                     >
-                      <ToggleGroupItem value='study_room' className='w-full'>
+                      <ToggleGroupItem
+                        value='study_room'
+                        className='w-full'
+                        disabled={selectedAccount?.schoolCode === 'njtech'}
+                      >
                         自习室
                       </ToggleGroupItem>
                       <ToggleGroupItem

@@ -12,6 +12,8 @@ import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 
+const CAMPUS_CODES = new Set(['all', 'cczu', 'njtech', 'jou']);
+
 export const metadata: Metadata = {
   title: '预约控制台',
   description: '席定高校座位预约平台',
@@ -28,9 +30,13 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   // Persisting the sidebar state in the cookie.
   const defaultOpen = cookieStore.get('sidebar_state')?.value === 'true';
+  const savedCampus = cookieStore.get('active_campus')?.value;
+  const initialCampus = CAMPUS_CODES.has(savedCampus || '')
+    ? (savedCampus as 'all' | 'cczu' | 'njtech' | 'jou')
+    : 'cczu';
   return (
     <PlatformSessionProvider initialUser={user}>
-      <CampusWorkspaceProvider>
+      <CampusWorkspaceProvider initialCampus={initialCampus}>
         <PlatformOnboarding>
           <KBar>
             <SidebarProvider defaultOpen={defaultOpen}>

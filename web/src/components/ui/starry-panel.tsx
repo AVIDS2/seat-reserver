@@ -20,7 +20,7 @@ export function StarryPanel({
   return (
     <section
       className={cn(
-        'relative isolate overflow-hidden rounded-xl border border-white/15 bg-[linear-gradient(120deg,#07111f_0%,#17294a_38%,#39205b_70%,#541d49_100%)] text-white shadow-none',
+        'starry-panel relative isolate overflow-hidden rounded-xl border border-white/15 text-white shadow-none',
         className
       )}
       {...props}
@@ -36,7 +36,7 @@ export function StarryPanel({
         maxSpeed={8}
         minDelay={2400}
         maxDelay={5600}
-        starColor='#f0abfc'
+        starColor='var(--primary)'
         trailColor='#38bdf8'
         starWidth={18}
         starHeight={1.5}
@@ -44,7 +44,7 @@ export function StarryPanel({
       />
       <ShineBorder
         duration={14}
-        shineColor={['#22d3ee', '#818cf8', '#f472b6', '#fbbf24']}
+        shineColor={['var(--primary)', '#38bdf8', '#a78bfa']}
         className='opacity-75'
       />
       <div className={cn('relative z-10', contentClassName)}>{children}</div>

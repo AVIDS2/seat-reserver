@@ -1,6 +1,6 @@
 'use client';
 
-import { motion, useReducedMotion } from 'motion/react';
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { useEffect, useMemo, useState } from 'react';
 
 import { Icons } from '@/components/icons';
@@ -30,11 +30,11 @@ export function BookingOpenCountdown() {
   return (
     <StarryPanel
       aria-label='预约开放警报倒计时'
-      className='min-w-0 flex-1 border-destructive/35'
+      className='min-w-0 flex-1 border-primary/35'
       contentClassName='p-5 sm:p-7'
     >
       <div
-        className='pointer-events-none absolute top-0 right-0 left-0 h-px bg-destructive/70'
+        className='pointer-events-none absolute top-0 right-0 left-0 h-px bg-primary/70'
         aria-hidden='true'
       />
       <div className='relative flex flex-col gap-6'>
@@ -46,10 +46,10 @@ export function BookingOpenCountdown() {
               transition={
                 reduceMotion ? undefined : { duration: 1.6, repeat: Infinity, ease: 'easeInOut' }
               }
-              className='mt-1 flex size-3 rounded-full bg-destructive shadow-[0_0_18px] shadow-destructive'
+              className='mt-1 flex size-3 rounded-full bg-primary shadow-[0_0_18px] shadow-primary'
             />
             <div>
-              <p className='text-xs font-semibold uppercase tracking-[0.2em] text-destructive'>
+              <p className='text-primary text-xs font-semibold uppercase tracking-[0.2em]'>
                 OPENING COUNTDOWN
               </p>
               <h2 className='mt-1 text-lg font-semibold tracking-tight sm:text-xl'>
@@ -58,17 +58,17 @@ export function BookingOpenCountdown() {
               <p className='mt-1 text-xs text-background/60'>开放后按你的座位和时段自动提交</p>
             </div>
           </div>
-          <Badge className='border-destructive/45 bg-destructive/10 text-destructive'>
+          <Badge className='border-primary/45 bg-primary/10 text-primary'>
             每天 {campus.bookingOpenTime} 开放
           </Badge>
         </div>
 
         <div className='grid gap-6 lg:grid-cols-[0.7fr_1.3fr] lg:items-end'>
-          <div className='border-l-2 border-destructive/70 pl-4'>
+          <div className='border-primary/70 border-l-2 pl-4'>
             <p className='text-[11px] font-medium uppercase tracking-[0.22em] text-background/45'>
               Open window
             </p>
-            <p className='mt-2 font-mono text-4xl font-bold tracking-tight text-destructive'>
+            <p className='text-primary mt-2 font-mono text-4xl font-bold tracking-tight'>
               {campus.bookingOpenTime}
             </p>
             <p className='mt-2 max-w-xs text-xs leading-5 text-background/60'>
@@ -98,7 +98,7 @@ export function BookingOpenCountdown() {
           <Progress
             value={countdown.progress}
             aria-label='当天距离预约开放的时间进度'
-            className='h-1 [&_[data-slot=progress-track]]:bg-background/15 [&_[data-slot=progress-indicator]]:bg-destructive'
+            className='h-1 [&_[data-slot=progress-track]]:bg-background/15 [&_[data-slot=progress-indicator]]:bg-primary'
           />
           <div className='flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-background/55'>
             <span className='flex items-center gap-1.5'>
@@ -128,20 +128,16 @@ function TimeBlock({
 }) {
   return (
     <div className='flex min-w-0 flex-col items-center gap-1'>
-      <div className='relative min-w-[4.25rem] overflow-hidden rounded-md border border-background/15 bg-background/10 px-2 py-3 text-center sm:min-w-[6.2rem] sm:px-3 sm:py-4'>
+      <div className='relative flex min-w-[4.25rem] items-center justify-center overflow-hidden rounded-md border border-background/15 bg-background/10 px-2 py-3 text-center sm:min-w-[6.2rem] sm:px-3 sm:py-4'>
         <span
-          className='pointer-events-none absolute top-1/2 right-0 left-0 h-px bg-destructive/30'
+          className='pointer-events-none absolute top-1/2 right-0 left-0 h-px bg-primary/30'
           aria-hidden='true'
         />
-        <motion.span
-          key={value}
-          initial={reduceMotion ? false : { opacity: 0.3, y: 6, filter: 'blur(3px)' }}
-          animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-          transition={{ duration: 0.18, ease: 'easeOut' }}
-          className='relative block font-mono text-5xl leading-none font-semibold tabular-nums text-destructive sm:text-7xl'
-        >
-          {value}
-        </motion.span>
+        <div className='relative flex h-[3.75rem] items-center font-mono text-5xl font-semibold tabular-nums text-primary sm:h-[5.25rem] sm:text-7xl'>
+          {value.split('').map((digit, index) => (
+            <RollingDigit key={index} value={digit} reduceMotion={reduceMotion} />
+          ))}
+        </div>
       </div>
       <span className='text-[10px] uppercase tracking-[0.18em] text-background/45'>{label}</span>
     </div>
@@ -149,7 +145,30 @@ function TimeBlock({
 }
 
 function Separator() {
-  return <span className='pb-6 font-mono text-2xl text-destructive/70 sm:pb-8 sm:text-3xl'>:</span>;
+  return <span className='text-primary/70 pb-6 font-mono text-2xl sm:pb-8 sm:text-3xl'>:</span>;
+}
+
+function RollingDigit({ value, reduceMotion }: { value: string; reduceMotion: boolean | null }) {
+  return (
+    <span className='relative inline-block h-[1em] w-[0.62em] overflow-hidden'>
+      <AnimatePresence initial={false} mode='popLayout'>
+        <motion.span
+          key={value}
+          initial={reduceMotion ? false : { opacity: 0, y: '100%', filter: 'blur(4px)' }}
+          animate={{ opacity: 1, y: '0%', filter: 'blur(0px)' }}
+          exit={reduceMotion ? undefined : { opacity: 0, y: '-100%', filter: 'blur(4px)' }}
+          transition={
+            reduceMotion
+              ? { duration: 0 }
+              : { type: 'spring', stiffness: 420, damping: 32, mass: 0.55 }
+          }
+          className='absolute inset-0 flex items-center justify-center'
+        >
+          {value}
+        </motion.span>
+      </AnimatePresence>
+    </span>
+  );
 }
 
 type Countdown = {

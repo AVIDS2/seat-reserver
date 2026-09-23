@@ -59,6 +59,21 @@
   }
 }
 
+.starry-panel {
+  background:
+    radial-gradient(
+      120% 110% at 10% -20%,
+      color-mix(in oklch, var(--primary) 24%, transparent),
+      transparent 52%
+    ),
+    radial-gradient(
+      90% 120% at 100% 100%,
+      color-mix(in oklch, var(--primary) 16%, #071827),
+      transparent 64%
+    ),
+    linear-gradient(135deg, #06121f 0%, #0a2438 52%, #0b3035 100%);
+}
+
 /* View Transition Wave Effect */
 ::view-transition-old(root),
 ::view-transition-new(root) {
