@@ -13,6 +13,7 @@ import type {
 import type { SeatCatalog, SeatLayout, SeatTimes } from '../types';
 import { normalizeAvatarUrl } from '@/lib/avatar-url';
 import type { CampusCode } from '@/config/campus-config';
+import { emitActivity } from '@/components/activity/activity-events';
 
 export type CreateAccountPayload = {
   schoolCode: CampusCode;
@@ -348,6 +349,11 @@ async function platformRequest<T>(
   options: RequestInit = {},
   allowRefresh = true
 ): Promise<T> {
+  const method = (options.method || 'GET').toUpperCase();
+  const activity = requestActivity(path, method);
+  const activityId = activity ? `request-${Date.now()}-${Math.random().toString(36).slice(2)}` : '';
+  if (activity) emitActivity({ phase: 'start', id: activityId, ...activity });
+
   let response: Response;
   try {
     response = await fetch(`${apiBase}${path}`, {
@@ -359,6 +365,14 @@ async function platformRequest<T>(
       ...options
     });
   } catch {
+    if (activity) {
+      emitActivity({
+        phase: 'error',
+        id: activityId,
+        title: activity.title,
+        detail: '网络暂时不可用，请稍后重试。'
+      });
+    }
     throw new Error('平台网络连接失败，请刷新页面后重试');
   }
 
@@ -374,11 +388,17 @@ async function platformRequest<T>(
     const message = Array.isArray(body?.message)
       ? body.message.join('；')
       : body?.message || Object.values(body?.errors || {})[0] || `请求失败（${response.status}）`;
+    if (activity) emitActivity({ phase: 'error', id: activityId, title: activity.title, detail: message });
     throw new Error(message);
   }
 
-  if (response.status === 204) return undefined as T;
-  return response.json() as Promise<T>;
+  if (response.status === 204) {
+    if (activity) emitActivity({ phase: 'success', id: activityId, title: activity.title, detail: '已完成。' });
+    return undefined as T;
+  }
+  const result = (await response.json()) as T;
+  if (activity) emitActivity({ phase: 'success', id: activityId, title: activity.title, detail: '已完成。' });
+  return result;
 }
 
 export async function getPlatformUser(): Promise<PlatformUser> {
@@ -980,6 +1000,12 @@ async function cachedSeatRequest<T>(
     if (flight) return flight as Promise<T>;
   }
 
+  const catalogActivity = catalogRequestActivity(path);
+  const catalogActivityId = catalogActivity
+    ? `catalog-${Date.now()}-${Math.random().toString(36).slice(2)}`
+    : '';
+  if (catalogActivity) emitActivity({ phase: 'start', id: catalogActivityId, ...catalogActivity });
+
   const flight = platformRequest<T>(path)
     .then((value) => {
       seatCache.set(key, { value, expiresAt: Date.now() + ttlMs });
@@ -988,13 +1014,70 @@ async function cachedSeatRequest<T>(
         if (oldest === undefined) break;
         seatCache.delete(oldest);
       }
+      if (catalogActivity) {
+        emitActivity({ phase: 'success', id: catalogActivityId, title: catalogActivity.title, detail: '已完成。' });
+      }
       return value;
+    })
+    .catch((error) => {
+      if (catalogActivity) {
+        emitActivity({
+          phase: 'error',
+          id: catalogActivityId,
+          title: catalogActivity.title,
+          detail: error instanceof Error ? error.message : '学校数据暂时不可用。'
+        });
+      }
+      throw error;
     })
     .finally(() => {
       if (seatFlights.get(key) === flight) seatFlights.delete(key);
     });
   seatFlights.set(key, flight);
   return flight;
+}
+
+function requestActivity(path: string, method: string): { title: string; detail: string } | null {
+  if (method === 'GET' || path.includes('/auth/refresh')) return null;
+  if (path === '/platform/accounts' || (path.includes('/platform/accounts/') && method === 'PATCH')) {
+    return { title: '绑定学校账号', detail: '正在验证学校登录并保存连接。' };
+  }
+  if (path.includes('/services/') && path.endsWith('/connect')) {
+    return { title: '连接预约系统', detail: '正在建立这所高校的服务连接。' };
+  }
+  if (path.includes('/accounts/') && path.endsWith('/refresh')) {
+    return { title: '刷新学校连接', detail: '正在重新检查账号状态。' };
+  }
+  if (path === '/platform/tasks' || path.match(/\/platform\/tasks\/\d+$/)) {
+    return { title: '保存预约任务', detail: '正在保存座位、时段和重复规则。' };
+  }
+  if (path.includes('/platform/tasks/') && (path.endsWith('/enable') || path.endsWith('/disable'))) {
+    return { title: '更新任务状态', detail: '正在同步自动预约开关。' };
+  }
+  if (path.includes('/platform/reservations/')) {
+    if (path.endsWith('/cancel')) return { title: '取消预约', detail: '正在向学校预约系统提交取消。' };
+    return { title: '提交预约', detail: '正在确认座位并提交本次预约。' };
+  }
+  if (path.includes('/platform/rewards/check-in')) {
+    return { title: '签到中', detail: '正在记录今日签到并更新席定币。' };
+  }
+  if (path.includes('/platform/profile')) {
+    return { title: '保存个人设置', detail: '正在保存你的个人展示设置。' };
+  }
+  return { title: '正在处理', detail: '请稍候，平台正在同步最新状态。' };
+}
+
+function catalogRequestActivity(path: string): { title: string; detail: string } | null {
+  if (path.includes('/platform/catalog/filters')) {
+    return { title: '读取学校空间', detail: '正在同步馆区、楼栋和可预约空间。' };
+  }
+  if (path.includes('/platform/catalog/layout')) {
+    return { title: '加载座位图', detail: '正在读取座位位置和当前状态。' };
+  }
+  if (path.includes('/platform/catalog/times')) {
+    return { title: '读取可用时段', detail: '正在确认这个座位的可预约时间。' };
+  }
+  return null;
 }
 
 function toPlatformUser(value: Record<string, unknown>): PlatformUser {
