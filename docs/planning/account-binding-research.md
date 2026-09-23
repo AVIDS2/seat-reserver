@@ -140,7 +140,7 @@ python tools/binding_discovery/analyze_capture.py tools/binding_discovery/captur
 - 南京工业大学不能复用当前 `cczu` 图书馆 WebVPN/`freeBook` 适配器；它使用自己的 WebVPN/OAuth/CAS 会话和 GraphQL 座位服务。
 - 已建立独立 `njtech` 学校适配器，第一阶段覆盖“阅览座位当天抢座”，并映射逸夫图书馆、浦江图书馆两组空间。任务触发时间默认为 07:00。
 - “朗读亭”和“面试亭”另建服务类型。面试亭需要处理“e 面试”小程序和电子锁密码，不能先混入座位图任务。
-- HAR 已确认登录、目录、座位图、预约 mutation 和取消 mutation；目前未在生产环境用真实账号提交预约，仍需一次只读登录/目录冒烟和用户自行确认的预约测试。
+- HAR 已确认登录、目录、座位图、预约 mutation 和取消 mutation。2026-09-23 已在生产环境用真实账号完成一次南工大预约与取消：预约 mutation 返回成功后，平台回读首页记录取得学校真实预约 ID、实际时段和座位，再使用短时 `getSToken` 完成取消；测试结束后没有残留可取消预约。
 
 ### 待补证据
 
