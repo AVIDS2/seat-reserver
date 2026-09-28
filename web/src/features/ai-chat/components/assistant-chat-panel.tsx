@@ -26,7 +26,7 @@ export function AssistantChatPanel({ aiConfigured }: { aiConfigured: boolean }) 
             <CardDescription className='mt-1'>和你的预约数据聊聊</CardDescription>
           </div>
           <Badge className='ms-auto shrink-0' variant={aiConfigured ? 'secondary' : 'outline'}>
-            {aiConfigured ? '在线' : '未连接'}
+            {aiConfigured ? '已配置' : '未连接'}
           </Badge>
         </div>
       </CardHeader>

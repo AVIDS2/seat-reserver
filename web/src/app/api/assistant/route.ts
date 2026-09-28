@@ -62,11 +62,30 @@ export async function POST(request: Request) {
     return createUIMessageStreamResponse({
       stream: toUIMessageStream({
         stream: result.stream,
-        onError: (error) => (error instanceof Error ? error.message : 'AI 服务暂时不可用')
+        onError: (error) => toPublicAssistantError(error)
       })
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'AI 服务暂时不可用';
-    return Response.json({ error: message }, { status: 500 });
+    return Response.json({ error: toPublicAssistantError(error) }, { status: 500 });
   }
+}
+
+function toPublicAssistantError(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error || '');
+  const normalized = message.toLowerCase();
+
+  if (normalized.includes('insufficient account balance')) {
+    return '模型服务余额不足，暂时无法生成回复。';
+  }
+  if (
+    normalized.includes('unauthorized') ||
+    normalized.includes('invalid api key') ||
+    normalized.includes('authentication')
+  ) {
+    return '模型服务授权失效，暂时无法生成回复。';
+  }
+  if (normalized.includes('timeout') || normalized.includes('timed out')) {
+    return '模型服务响应超时，请稍后重试。';
+  }
+  return 'AI 暂时不可用，请稍后重试。';
 }
