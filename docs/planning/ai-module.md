@@ -15,6 +15,7 @@
 | 消息视觉 | assistant-ui Thread registry + 现有 shadcn 基础组件 | 采用，不另造聊天 UI |
 | AI 上下文 | 平台已脱敏的 dashboard、focus room、rewards 数据 | 采用服务端只读快照，不把密码、Token、Cookie 传给模型 |
 | 工作流引擎 | LangGraph / Pi | P0 不引入；当前是短对话和只读建议，没有跨天审批图 |
+| Agent 产品底座 | LibreChat（完整前后端产品，MIT） | P1 按需拆分 Agent、MCP、Skills 和会话能力；不把 Dify/MaxKB/LobeHub 的整套运行时直接塞进席定 |
 | AI 云端存储 | assistant-ui cloud 等托管服务 | P0 不引入，避免新增账号、费用和数据出境边界 |
 
 ## P0 任务
@@ -29,12 +30,14 @@
 - [x] 没有配置模型时显示明确的未启用状态，不伪装成真实 AI。
 - [x] 添加错误、取消、重试、空状态和移动端布局。
 - [x] 页面文案改为短标题、动作和状态优先，避免重复解释和过程话。
+- [x] Chat 页面收敛为单一对话工作区，移除统计卡、星空 Hero、常用入口和旁支解释。
 - [x] 更新环境变量示例、根文档和部署文档。
 - [x] 运行 Web 类型检查、lint、构建，并完成未登录路由冒烟。
 - [ ] 使用真实登录会话完成桌面端和移动端视觉回归。
 
 ## P1 任务
 
+- [ ] 以 LibreChat 为完整 Agent 产品参考，拆出 Agent、MCP、Skills、会话和运行轨迹能力，接入席定权限与席定数据；不复制其独立登录和产品导航。
 - [ ] 结构化 `StudyPlanDraft` 卡片，可一键把计划带入任务编辑器，但仍需用户确认。
 - [ ] 座位图中的 AI 推荐：按用户偏好、历史成功率、空间设施和时间段排序。
 - [ ] 专注开始前目标卡、结束后的三问复盘和席定币奖励说明。
@@ -75,5 +78,9 @@
 - [Habitica](https://github.com/HabitRPG/habitica)
 - [Super Productivity](https://github.com/super-productivity/super-productivity)
 - [assistant-ui](https://github.com/assistant-ui/assistant-ui)
+- [LibreChat](https://github.com/LibreChat-AI/LibreChat)（完整前后端 Agent 产品，MIT）
+- [Dify](https://github.com/langgenius/dify)（完整 Agent 平台，Dify Open Source License；不作为席定 SaaS 代码底座）
+- [MaxKB](https://github.com/1Panel-dev/MaxKB)（完整企业智能体平台，GPL-3.0；不作为席定 SaaS 代码底座）
+- [LobeHub](https://github.com/lobehub/lobehub)（完整 Agent Operator，许可证需单独核对；不直接复制）
 - [CopilotKit](https://github.com/CopilotKit/CopilotKit)
 - [Vercel AI SDK OpenAI-compatible provider](https://github.com/vercel/ai/tree/main/packages/openai-compatible)
